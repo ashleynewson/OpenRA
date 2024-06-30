@@ -541,6 +541,23 @@ Container@EDITOR_WORLD_ROOT:
 							Height: 25
 							Align: Left
 							Visible: false
+				ScrollPanel@RANDOM_MAP_TOOL_PANEL:
+					X: 9
+					Y: 35
+					Width: 290
+					Height: WINDOW_BOTTOM - 490
+					Visible: false
+					ScrollBar: Hidden
+					ScrollbarWidth: 0
+					Logic: MapRandomMapToolLogic
+					Children:
+						Button@CLEAR_BUTTON:
+							X: 6
+							Y: 42
+							Width: 100
+							Height: 25
+							Text: button-random-map-clear
+							Font: Bold
 		Container@HISTORY_WIDGETS:
 			X: WINDOW_RIGHT - 320
 			Y: 354
@@ -924,6 +941,15 @@ Container@EDITOR_WORLD_ROOT:
 			Align: Left
 			Font: Bold
 			Contrast: true
+#		Button@RANDOM_BUTTON:
+#			X: 800
+#			Height: 25
+#			Width: 70
+#			Text: button-editor-world-root-random.label
+#			Font: Bold
+#			TooltipTemplate: BUTTON_TOOLTIP
+#			TooltipText: button-editor-world-root-random.tooltip
+#			TooltipContainer: TOOLTIP_CONTAINER
 
 ScrollPanel@CATEGORY_FILTER_PANEL:
 	Width: 240
