@@ -52,6 +52,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				redoButton.IsDisabled = () => !actionManager.HasRedos();
 				redoButton.OnClick = () => actionManager.Redo();
 			}
+
+			// var randomButton = widget.GetOrNull<ButtonWidget>("RANDOM_BUTTON");
+			// if (randomButton != null)
+			// {
+			// 	// var actionManager = world.WorldActor.Trait<EditorActionManager>();
+			// 	// randomButton.OnClick = () => actionManager.GenerateRandomMap();
+			// }
 		}
 	}
 }

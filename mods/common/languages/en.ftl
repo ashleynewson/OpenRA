@@ -804,6 +804,9 @@ notification-copied-tiles =
       *[other] Copied { $amount } tiles
     }
 
+## EditorRandomMapTool
+notification-generated-random-map = Generated random map
+
 ## EditorDefaultBrush
 notification-selected-area = Selected area { $x },{ $y } ({ $width },{ $height })
 notification-selected-actor = Selected actor { $id }
