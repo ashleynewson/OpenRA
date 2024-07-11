@@ -160,6 +160,9 @@
 				Sequences: gem01, gem02, gem03, gem04
 				Palette: player
 				Name: resource-minerals
+	ClearMapGenerator@clear:
+		Type: clear
+		Name: Clear
 
 World:
 	Inherits: ^BaseWorld

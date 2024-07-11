@@ -553,13 +553,39 @@ Container@EDITOR_WORLD_ROOT:
 					ScrollbarWidth: 0
 					Logic: MapRandomMapToolLogic
 					Children:
-						Button@CLEAR_BUTTON:
-							X: 6
-							Y: 42
+						Label@GENERATOR_LABEL:
+							X: 0
+							Width: 90
+							Height: 20
+							Text: label-random-map-generator
+						DropDownButton@GENERATOR:
+							X: 90
+							Y: 0
+							Width: PARENT_RIGHT - 90
+							Height: 25
+							Font: Bold
+						Button@GENERATE_BUTTON:
+							X: 0
+							Y: 25
 							Width: 100
 							Height: 25
-							Text: button-random-map-clear
+							Text: button-random-map-generate
 							Font: Bold
+						Container@SETTING_TEMPLATE:
+							Width: PARENT_RIGHT
+							Height: 30
+							Visible: false
+							Children:
+								Label@NAME:
+									X: 10
+									Width: 200
+									Height: 20
+									Visible: False
+								TextField@VALUE:
+									X: 220
+									Width: 60
+									Height: 20
+									Visible: False
 		Container@HISTORY_WIDGETS:
 			X: WINDOW_RIGHT - 320
 			Y: 354
