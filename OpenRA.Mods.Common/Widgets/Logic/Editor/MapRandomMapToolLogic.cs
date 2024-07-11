@@ -11,9 +11,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
@@ -21,22 +24,58 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	public class MapRandomMapToolLogic : ChromeLogic
 	{
 		readonly EditorActionManager editorActionManager;
-		readonly ButtonWidget clearButtonWidget;
+		readonly ButtonWidget generateButtonWidget;
 		// readonly EditorViewportControllerWidget editor;
 
 		readonly World world;
+		readonly WorldRenderer worldRenderer;
+		readonly ModData modData;
+
+		// nullable
+		IMapGenerator selectedGenerator;
 
 		[ObjectCreator.UseCtor]
-		public MapRandomMapToolLogic(Widget widget, World world, ModData modData)
+		public MapRandomMapToolLogic(Widget widget, World world, WorldRenderer worldRenderer, ModData modData)
 		{
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
 
 			this.world = world;
+			this.worldRenderer = worldRenderer;
+			this.modData = modData;
+
+			selectedGenerator = null;
 
 			// editor = widget.Parent.Parent.Parent.Parent.Get<EditorViewportControllerWidget>("MAP_EDITOR");
+			var mapGenerators = world.WorldActor.TraitsImplementing<IMapGenerator>().Where(generator => generator.ShowInEditor(world.Map, modData));
 
-			clearButtonWidget = widget.Get<ButtonWidget>("CLEAR_BUTTON");
-			clearButtonWidget.OnClick = ClearMap;
+			generateButtonWidget = widget.Get<ButtonWidget>("GENERATE_BUTTON");
+			generateButtonWidget.OnClick = GenerateMap;
+
+			var generatorDropDown = widget.Get<DropDownButtonWidget>("GENERATOR");
+			if (mapGenerators.Any()) {
+				generateButtonWidget.IsDisabled = () => false;
+				generatorDropDown.IsDisabled = () => false;
+				selectedGenerator = mapGenerators.First();
+				generatorDropDown.GetText = () => selectedGenerator.Info.Name;
+				generatorDropDown.OnMouseDown = _ =>
+				{
+					ScrollItemWidget SetupItem(IMapGenerator g, ScrollItemWidget template)
+					{
+						bool IsSelected() => g.Info.Type == selectedGenerator.Info.Type;
+						void OnClick() => ChangeGenerator(mapGenerators.Where(generator => generator.Info.Type == g.Info.Type).First());
+						var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
+						item.Get<LabelWidget>("LABEL").GetText = () => g.Info.Name;
+						return item;
+					}
+
+					generatorDropDown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", mapGenerators.Count() * 30, mapGenerators, SetupItem);
+				};
+			} else {
+				generateButtonWidget.IsDisabled = () => true;
+				generatorDropDown.IsDisabled = () => true;
+				// TODO: translate
+				generatorDropDown.GetText = () => "No generators available";
+			}
 		}
 
 		protected override void Dispose(bool disposing)
@@ -76,32 +115,49 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 		}
 
-		void ClearMap()
+		void ChangeGenerator(IMapGenerator newGenerator)
+		{
+			selectedGenerator = newGenerator;
+		}
+
+		void GenerateMap()
 		{
 			var map = world.Map;
+			var tileset = modData.DefaultTerrainInfo[map.Tileset];
+			var generatedMap = new Map(modData, tileset, map.MapSize.X, map.MapSize.Y);
+			var success = selectedGenerator.Generate(generatedMap, modData);
+			if (!success) {
+				// TODO: present error
+				return;
+			}
+
 			var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			var resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
 
-			var source = new CellCoordsRegion(new CPos(0, 0), new CPos(map.MapSize.X, map.MapSize.Y));
-			var selection = new CellRegion(map.Grid.Type, new CPos(0, 0), new CPos(map.MapSize.X, map.MapSize.Y));
-
-			var mapTiles = map.Tiles;
-			var mapHeight = map.Height;
-			var mapResources = map.Resources;
-
-			var previews = new Dictionary<string, EditorActorPreview>();
 			var tiles = new Dictionary<CPos, BlitTile>();
-
-			foreach (var cell in source)
+			foreach (var cell in generatedMap.AllCells)
 			{
-				// var resourceLayerContents = resourceLayer?.GetResource(cell);
-				// var tile = 0;
-				// var index = (byte)(i % 4 + j % 4 * 4);
-				// Tiles[new MPos(i, j)] = new TerrainTile(tile, index);
-				tiles.Add(cell, new BlitTile(new TerrainTile(255, 0), new ResourceTile(0, 0), null, 0));
+				var mpos = cell.ToMPos(map);
+				tiles.Add(cell, new BlitTile(generatedMap.Tiles[mpos], generatedMap.Resources[mpos], null, generatedMap.Height[mpos]));
 			}
 
-			var blitSource = new EditorBlitSource(selection, previews, tiles);
+			var previews = new Dictionary<string, EditorActorPreview>();
+			var players = generatedMap.PlayerDefinitions.Select(pr => new PlayerReference(new MiniYaml(pr.Key, pr.Value.Nodes)))
+				.ToDictionary(player => player.Name);
+			foreach (var kv in world.Map.ActorDefinitions)
+			{
+				var actorReference = new ActorReference(kv.Value.Value, kv.Value.ToDictionary());
+				var ownerInit = actorReference.Get<OwnerInit>();
+				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
+				{
+					// TODO: present error
+					return;
+				}
+				var preview = new EditorActorPreview(worldRenderer, kv.Key, actorReference, owner);
+				previews.Add(kv.Key, preview);
+			}
+
+			var blitSource = new EditorBlitSource(generatedMap.AllCells, previews, tiles);
 			var editorBlit = new EditorBlit(
 				MapBlitFilters.All,
 				resourceLayer,

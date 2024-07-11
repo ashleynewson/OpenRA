@@ -659,4 +659,23 @@ namespace OpenRA.Traits
 		bool CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses);
 		LongBitSet<PlayerBitMask> CrushableBy(Actor self, BitSet<CrushClass> crushClasses);
 	}
+
+	public interface IMapGeneratorInfo : ITraitInfoInterface
+	{
+		string Type { get; }
+		string Name { get; }
+	}
+
+	public interface IMapGenerator
+	{
+		/// <summary>
+		/// Manipulates a map in place and returns true if successful. Map should be discarded if false is returned.
+		/// </summary>
+		bool Generate(Map map, ModData modData);
+		/// <summary>
+		/// Returns true iff this map generator should be shown in the editor for a map like this (e.g. due to tileset constraints). The map is not altered.
+		/// </summary>)
+		bool ShowInEditor(Map map, ModData modData);
+		IMapGeneratorInfo Info { get; }
+	}
 }
