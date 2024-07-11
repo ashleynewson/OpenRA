@@ -45,7 +45,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			selectedGenerator = null;
 
-			// editor = widget.Parent.Parent.Parent.Parent.Get<EditorViewportControllerWidget>("MAP_EDITOR");
 			var mapGenerators = world.WorldActor.TraitsImplementing<IMapGenerator>().Where(generator => generator.ShowInEditor(world.Map, modData));
 
 			generateButtonWidget = widget.Get<ButtonWidget>("GENERATE_BUTTON");

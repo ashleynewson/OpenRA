@@ -9,7 +9,10 @@
  */
 #endregion
 
+using System;
 using System.Collections.Immutable;
+using OpenRA.Mods.Common.Terrain;
+using OpenRA.Support;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -47,10 +50,24 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 
+			// If the default terrain tile is part of a PickAny template, pick
+			// a random tile index. Otherwise, just use the default tile.
+			Func<TerrainTile> tilePicker = () => tileset.DefaultTerrainTile;
+			if (map.Rules.TerrainInfo is ITemplatedTerrainInfo templatedTerrainInfo)
+			{
+				var type = tileset.DefaultTerrainTile.Type;
+				if (templatedTerrainInfo.Templates.TryGetValue(type, out var template) && template.PickAny)
+				{
+					// Map generators should be deterministic.
+					var r = new MersenneTwister(0);
+					tilePicker = () => new TerrainTile(type, (byte)r.Next(0, template.TilesCount));
+				}
+			}
+
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
-				map.Tiles[mpos] = tileset.DefaultTerrainTile;
+				map.Tiles[mpos] = tilePicker();
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
 			}
