@@ -584,6 +584,49 @@ Container@EDITOR_WORLD_ROOT:
 							Height: 25
 							Align: Left
 							Visible: false
+				ScrollPanel@RANDOM_MAP_TOOL_PANEL:
+					X: 9
+					Y: 35
+					Width: 290
+					Height: WINDOW_BOTTOM - 490
+					Visible: false
+					ScrollBar: Hidden
+					ScrollbarWidth: 0
+					Logic: MapRandomMapToolLogic
+					Children:
+						Label@GENERATOR_LABEL:
+							X: 0
+							Width: 90
+							Height: 20
+							Text: label-random-map-generator
+						DropDownButton@GENERATOR:
+							X: 90
+							Y: 0
+							Width: PARENT_RIGHT - 90
+							Height: 25
+							Font: Bold
+						Button@GENERATE_BUTTON:
+							X: 0
+							Y: 25
+							Width: 100
+							Height: 25
+							Text: button-random-map-generate
+							Font: Bold
+						Container@SETTING_TEMPLATE:
+							Width: PARENT_RIGHT
+							Height: 30
+							Visible: false
+							Children:
+								Label@NAME:
+									X: 10
+									Width: 200
+									Height: 20
+									Visible: False
+								TextField@VALUE:
+									X: 220
+									Width: 60
+									Height: 20
+									Visible: False
 		Container@HISTORY_WIDGETS:
 			Logic: HistoryLogLogic
 			X: WINDOW_RIGHT - 295
