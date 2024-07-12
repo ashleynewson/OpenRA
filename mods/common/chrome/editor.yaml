@@ -571,6 +571,19 @@ Container@EDITOR_WORLD_ROOT:
 							Height: 25
 							Text: button-random-map-generate
 							Font: Bold
+						Button@GENERATE_RANDOM_BUTTON:
+							X: 100
+							Y: 25
+							Width: PARENT_RIGHT - 100
+							Height: 25
+							Text: button-random-map-generate-random
+							Font: Bold
+						TextField@SEED:
+							X: 0
+							Y: 50
+							Width: PARENT_RIGHT
+							Height: 25
+							Text: 0
 						Container@SETTING_TEMPLATE:
 							Width: PARENT_RIGHT
 							Height: 30

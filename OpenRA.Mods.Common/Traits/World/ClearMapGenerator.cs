@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
-		public void Generate(Map map, ModData modData)
+		public void Generate(Map map, ModData modData, MersenneTwister random)
 		{
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 
@@ -59,8 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (templatedTerrainInfo.Templates.TryGetValue(type, out var template) && template.PickAny)
 				{
 					// Map generators should be deterministic.
-					var r = new MersenneTwister(0);
-					tilePicker = () => new TerrainTile(type, (byte)r.Next(0, template.TilesCount));
+					tilePicker = () => new TerrainTile(type, (byte)random.Next(0, template.TilesCount));
 				}
 			}
 

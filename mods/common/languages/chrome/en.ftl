@@ -76,6 +76,7 @@ label-marker-axis-angle = Axis Angle
 label-random-map-generator = Generator
 button-random-map-clear = Clear
 button-random-map-generate = Generate
+button-random-map-generate-random = Generate Random
 
 button-map-editor-tab-container-select-tooltip = Select
 button-map-editor-tab-container-tiles-tooltip = Tiles
