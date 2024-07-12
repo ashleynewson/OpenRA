@@ -682,7 +682,7 @@ namespace OpenRA.Traits
 		/// <exception cref="MapGenerationException">
 		/// Thrown if the map could not be generated with the requested configuration. Map should be discarded.
 		/// </exception>
-		void Generate(Map map, ModData modData);
+		void Generate(Map map, ModData modData, MersenneTwister random);
 
 		/// <summary>
 		/// Returns true iff this map generator should be shown in the editor for a map like this (e.g. due to tileset constraints). The map is not altered.
