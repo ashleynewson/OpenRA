@@ -967,15 +967,6 @@ Container@EDITOR_WORLD_ROOT:
 			Align: Left
 			Font: Bold
 			Contrast: true
-#		Button@RANDOM_BUTTON:
-#			X: 800
-#			Height: 25
-#			Width: 70
-#			Text: button-editor-world-root-random.label
-#			Font: Bold
-#			TooltipTemplate: BUTTON_TOOLTIP
-#			TooltipText: button-editor-world-root-random.tooltip
-#			TooltipContainer: TOOLTIP_CONTAINER
 
 ScrollPanel@CATEGORY_FILTER_PANEL:
 	Width: 240
