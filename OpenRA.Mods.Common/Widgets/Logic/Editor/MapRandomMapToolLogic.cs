@@ -119,14 +119,29 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			selectedGenerator = newGenerator;
 		}
 
+		void DisplayError(MapGenerationException e)
+		{
+			Log.Write("debug", e);
+			// TODO: translate
+			ConfirmationDialogs.ButtonPrompt(modData,
+				title: "Map generation failed",
+				text: e.Message,
+				onCancel: () => {},
+				cancelText: "Dismiss");
+		}
+
 		void GenerateMap()
 		{
 			var map = world.Map;
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 			var generatedMap = new Map(modData, tileset, map.MapSize.X, map.MapSize.Y);
-			var success = selectedGenerator.Generate(generatedMap, modData);
-			if (!success) {
-				// TODO: present error
+			try
+			{
+				selectedGenerator.Generate(generatedMap, modData);
+			} catch (MapGenerationException e)
+			{
+				// TODO: present error, translate
+				DisplayError(e);
 				return;
 			}
 
@@ -149,7 +164,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var ownerInit = actorReference.Get<OwnerInit>();
 				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
 				{
-					// TODO: present error
+					// TODO: present error, translate
+					DisplayError(new MapGenerationException("Generator produced mismatching player and actor definitions."));
 					return;
 				}
 				var preview = new EditorActorPreview(worldRenderer, kv.Key, actorReference, owner);

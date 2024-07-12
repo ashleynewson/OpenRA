@@ -660,6 +660,14 @@ namespace OpenRA.Traits
 		LongBitSet<PlayerBitMask> CrushableBy(Actor self, BitSet<CrushClass> crushClasses);
 	}
 
+	public class MapGenerationException : Exception
+	{
+		public MapGenerationException(string message)
+			: base(message) { }
+		public MapGenerationException(string message, Exception inner)
+			: base(message, inner) { }
+	}
+
 	public interface IMapGeneratorInfo : ITraitInfoInterface
 	{
 		string Type { get; }
@@ -669,13 +677,18 @@ namespace OpenRA.Traits
 	public interface IMapGenerator
 	{
 		/// <summary>
-		/// Manipulates a map in place and returns true if successful. Map should be discarded if false is returned.
+		/// Manipulates a map in place.
 		/// </summary>
-		bool Generate(Map map, ModData modData);
+		/// <exception cref="MapGenerationException">
+		/// Thrown if the map could not be generated with the requested configuration. Map should be discarded.
+		/// </exception>
+		void Generate(Map map, ModData modData);
+
 		/// <summary>
 		/// Returns true iff this map generator should be shown in the editor for a map like this (e.g. due to tileset constraints). The map is not altered.
 		/// </summary>)
 		bool ShowInEditor(Map map, ModData modData);
+
 		IMapGeneratorInfo Info { get; }
 	}
 }

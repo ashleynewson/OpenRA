@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
-		public bool Generate(Map map, ModData modData)
+		public void Generate(Map map, ModData modData)
 		{
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 
@@ -74,8 +74,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			map.PlayerDefinitions = new MapPlayers(map.Rules, 0).ToMiniYaml();
 			map.ActorDefinitions = ImmutableArray<MiniYamlNode>.Empty;
-
-			return true;
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
