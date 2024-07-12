@@ -16,6 +16,7 @@ using System.Net;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Support;
 using OpenRA.Traits;
 using OpenRA.Widgets;
 
@@ -25,7 +26,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	{
 		readonly EditorActionManager editorActionManager;
 		readonly ButtonWidget generateButtonWidget;
-		// readonly EditorViewportControllerWidget editor;
+		readonly ButtonWidget generateRandomButtonWidget;
+		readonly TextFieldWidget seedTextFieldWidget;
 
 		readonly World world;
 		readonly WorldRenderer worldRenderer;
@@ -48,7 +50,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var mapGenerators = world.WorldActor.TraitsImplementing<IMapGenerator>().Where(generator => generator.ShowInEditor(world.Map, modData));
 
 			generateButtonWidget = widget.Get<ButtonWidget>("GENERATE_BUTTON");
+			generateRandomButtonWidget = widget.Get<ButtonWidget>("GENERATE_RANDOM_BUTTON");
+			seedTextFieldWidget = widget.Get<TextFieldWidget>("SEED");
+
 			generateButtonWidget.OnClick = GenerateMap;
+			generateRandomButtonWidget.OnClick = RandomSeedThenGenerateMap;
 
 			var generatorDropDown = widget.Get<DropDownButtonWidget>("GENERATOR");
 			if (mapGenerators.Any()) {
@@ -91,11 +97,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			readonly EditorBlit editorBlit;
 
-			public RandomMapEditorAction(EditorBlit editorBlit)
+			public RandomMapEditorAction(EditorBlit editorBlit, string description)
 			{
 				this.editorBlit = editorBlit;
 
-				Text = TranslationProvider.GetString(GeneratedRandomMap);
+				Text = description;
 			}
 
 			public void Execute()
@@ -130,20 +136,39 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				cancelText: "Dismiss");
 		}
 
+		void RandomSeedThenGenerateMap()
+		{
+			// Perhaps somewhat unsatisfactory?
+			seedTextFieldWidget.Text = Environment.TickCount.ToString();
+			GenerateMap();
+		}
+
 		void GenerateMap()
 		{
-			var map = world.Map;
-			var tileset = modData.DefaultTerrainInfo[map.Tileset];
-			var generatedMap = new Map(modData, tileset, map.MapSize.X, map.MapSize.Y);
 			try
 			{
-				selectedGenerator.Generate(generatedMap, modData);
+				GenerateMapMayThrow();
 			} catch (MapGenerationException e)
 			{
 				// TODO: present error, translate
 				DisplayError(e);
 				return;
 			}
+		}
+
+		void GenerateMapMayThrow()
+		{
+			int seed;
+			if (!Int32.TryParse(seedTextFieldWidget.Text, out seed))
+			{
+				throw new MapGenerationException("Invalid seed.");
+			}
+			var random = new MersenneTwister(seed);
+			var map = world.Map;
+			var tileset = modData.DefaultTerrainInfo[map.Tileset];
+			var generatedMap = new Map(modData, tileset, map.MapSize.X, map.MapSize.Y);
+			// May throw
+			selectedGenerator.Generate(generatedMap, modData, random);
 
 			var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			var resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
@@ -165,8 +190,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
 				{
 					// TODO: present error, translate
-					DisplayError(new MapGenerationException("Generator produced mismatching player and actor definitions."));
-					return;
+					throw new MapGenerationException("Generator produced mismatching player and actor definitions.");
 				}
 				var preview = new EditorActorPreview(worldRenderer, kv.Key, actorReference, owner);
 				previews.Add(kv.Key, preview);
@@ -180,7 +204,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				map,
 				blitSource,
 				editorActorLayer);
-			var action = new RandomMapEditorAction(editorBlit);
+			// TODO: translate
+			// TranslationProvider.GetString(GeneratedRandomMap)
+			var description = $"Generate {selectedGenerator.Info.Name} map ({seed})";
+			var action = new RandomMapEditorAction(editorBlit, description);
 			editorActionManager.Add(action);
 		}
 	}
