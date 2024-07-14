@@ -29,7 +29,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly ButtonWidget generateButtonWidget;
 		readonly ButtonWidget generateRandomButtonWidget;
 		readonly TextFieldWidget seedTextFieldWidget;
-
+		readonly DropDownButtonWidget presetsDropDownWidget;
 		readonly World world;
 		readonly WorldRenderer worldRenderer;
 		readonly ModData modData;
@@ -64,6 +64,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			generateButtonWidget = widget.Get<ButtonWidget>("GENERATE_BUTTON");
 			generateRandomButtonWidget = widget.Get<ButtonWidget>("GENERATE_RANDOM_BUTTON");
 			seedTextFieldWidget = widget.Get<TextFieldWidget>("SEED");
+			presetsDropDownWidget = widget.Get<DropDownButtonWidget>("PRESETS");
+
 			settingsPanel = widget.Get<ScrollPanelWidget>("SETTINGS_PANEL");
 			unknownSettingTemplate = settingsPanel.Get<Widget>("UNKNOWN_TEMPLATE");
 			sectionSettingTemplate = settingsPanel.Get<Widget>("SECTION_TEMPLATE");
@@ -78,8 +80,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			ChangeGenerator(mapGenerators.FirstOrDefault((IMapGenerator)null));
 			if (selectedGenerator != null)
 			{
-				generateButtonWidget.IsDisabled = () => false;
-				generatorDropDown.IsDisabled = () => false;
 				generatorDropDown.GetText = () => selectedGenerator.Info.Name;
 				generatorDropDown.OnMouseDown = _ =>
 				{
@@ -94,13 +94,36 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					generatorDropDown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", mapGenerators.Count() * 30, mapGenerators, SetupItem);
 				};
+
+				presetsDropDownWidget.OnMouseDown = _ =>
+				{
+					// TODO: Perhaps migrate to some MiniYAML defined structure.
+					var presets = selectedGenerator.GetPresets(world.Map, modData)
+						.Prepend(new KeyValuePair<string, string>(null, "Default"));
+					ScrollItemWidget SetupItem(KeyValuePair<string, string> preset, ScrollItemWidget template)
+					{
+						bool IsSelected() => false;
+						void OnClick()
+						{
+							generatorsToSettings[selectedGenerator] = selectedGenerator.GetPresetSettings(world.Map, modData, preset.Key);
+							UpdateSettingsUi();
+						}
+
+						var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
+						item.Get<LabelWidget>("LABEL").GetText = () => preset.Value;
+						return item;
+					}
+
+					presetsDropDownWidget.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", presets.Count() * 30, presets, SetupItem);
+				};
 			}
 			else
 			{
 				generateButtonWidget.IsDisabled = () => true;
+				generateRandomButtonWidget.IsDisabled = () => true;
+				seedTextFieldWidget.IsDisabled = () => true;
+				presetsDropDownWidget.IsDisabled = () => true;
 				generatorDropDown.IsDisabled = () => true;
-				// TODO: translate
-				generatorDropDown.GetText = () => "No generators available";
 			}
 		}
 
@@ -140,15 +163,20 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void ChangeGenerator(IMapGenerator newGenerator)
 		{
 			selectedGenerator = newGenerator;
-			settingsPanel.RemoveChildren();
-			settingsPanel.ContentHeight = 0;
 
-			if (selectedGenerator == null) return;
-
-			if (!generatorsToSettings.ContainsKey(selectedGenerator))
+			if (selectedGenerator != null && !generatorsToSettings.ContainsKey(selectedGenerator))
 			{
 				generatorsToSettings.Add(selectedGenerator, selectedGenerator.GetDefaultSettings(world.Map, modData));
 			}
+
+			UpdateSettingsUi();
+		}
+
+		void UpdateSettingsUi()
+		{
+			settingsPanel.RemoveChildren();
+			settingsPanel.ContentHeight = 0;
+			if (selectedGenerator == null) return;
 			foreach (var setting in generatorsToSettings[selectedGenerator])
 			{
 				Widget settingWidget;
@@ -266,7 +294,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			try
 			{
 				GenerateMapMayThrow();
-			} catch (MapGenerationException e)
+			}
+			catch (MapGenerationException e)
 			{
 				// TODO: present error, translate
 				DisplayError(e);
