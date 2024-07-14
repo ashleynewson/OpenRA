@@ -78,6 +78,7 @@ label-random-map-seed = Seed
 button-random-map-clear = Clear
 button-random-map-generate = Generate
 button-random-map-generate-random = Generate Random
+dropdownbutton-random-map-presets = Load settings preset
 
 button-map-editor-tab-container-select-tooltip = Selection
 button-map-editor-tab-container-tiles-tooltip = Tiles

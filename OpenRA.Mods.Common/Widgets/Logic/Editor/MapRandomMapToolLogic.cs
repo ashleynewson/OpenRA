@@ -99,7 +99,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				{
 					// TODO: Perhaps migrate to some MiniYAML defined structure.
 					var presets = selectedGenerator.GetPresets(world.Map, modData)
-						.Prepend(new KeyValuePair<string, string>(null, "Default"));
+						.Prepend(new KeyValuePair<string, string>(null, "Default settings"));
 					ScrollItemWidget SetupItem(KeyValuePair<string, string> preset, ScrollItemWidget template)
 					{
 						bool IsSelected() => false;
