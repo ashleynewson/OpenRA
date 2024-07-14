@@ -74,6 +74,7 @@ label-marker-alpha = Tile Alpha
 label-marker-mirror-mode = Mirror Mode
 label-marker-axis-angle = Axis Angle
 label-random-map-generator = Generator
+label-random-map-seed = Seed
 button-random-map-clear = Clear
 button-random-map-generate = Generate
 button-random-map-generate-random = Generate Random
