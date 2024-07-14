@@ -10,7 +10,9 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
 using OpenRA.Traits;
@@ -46,22 +48,44 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
-		public void Generate(Map map, ModData modData, MersenneTwister random)
+		public IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData)
 		{
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
+			return ImmutableList.Create(
+				new MapGeneratorSetting("tile", "Tile", new MapGeneratorSetting.IntegerValue(tileset.DefaultTerrainTile.Type))
+			);
+		}
+
+		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)
+		{
+			// TODO: translate exception messages?
+			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
+			var tileset = modData.DefaultTerrainInfo[map.Tileset];
+
+			ushort tileType;
+			try
+			{
+				checked
+				{
+					tileType = (ushort)settings["tile"].Get<long>();
+				}
+			}
+			catch (OverflowException)
+			{
+				throw new MapGenerationException("Illegal tile type");
+			}
+
+			var tile = new TerrainTile(tileType, 0);
+			if (!tileset.TryGetTerrainInfo(tile, out var _))
+				throw new MapGenerationException("Illegal tile type");
 
 			// If the default terrain tile is part of a PickAny template, pick
 			// a random tile index. Otherwise, just use the default tile.
-			Func<TerrainTile> tilePicker = () => tileset.DefaultTerrainTile;
-			if (map.Rules.TerrainInfo is ITemplatedTerrainInfo templatedTerrainInfo)
-			{
-				var type = tileset.DefaultTerrainTile.Type;
-				if (templatedTerrainInfo.Templates.TryGetValue(type, out var template) && template.PickAny)
-				{
-					// Map generators should be deterministic.
-					tilePicker = () => new TerrainTile(type, (byte)random.Next(0, template.TilesCount));
-				}
-			}
+			Func<TerrainTile> tilePicker;
+			if (map.Rules.TerrainInfo is ITemplatedTerrainInfo templatedTerrainInfo && templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
+				tilePicker = () => new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
+			else
+				tilePicker = () => tile;
 
 			foreach (var cell in map.AllCells)
 			{
