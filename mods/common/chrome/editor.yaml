@@ -576,27 +576,73 @@ Container@EDITOR_WORLD_ROOT:
 							Height: 25
 							Text: button-random-map-generate-random
 							Font: Bold
-						TextField@SEED:
+						Label@SEED_LABEL:
 							X: 0
 							Y: 50
-							Width: PARENT_RIGHT
+							Width: 100
+							Height: 25
+							Text: label-random-map-seed
+						TextField@SEED:
+							X: 100
+							Y: 50
+							Width: PARENT_RIGHT - 100
 							Height: 25
 							Text: 0
-						Container@SETTING_TEMPLATE:
+						ScrollPanel@SETTINGS_PANEL:
+							X: 0
+							Y: 100
 							Width: PARENT_RIGHT
-							Height: 30
-							Visible: false
+							Height: PARENT_BOTTOM - 100
 							Children:
-								Label@NAME:
-									X: 10
-									Width: 200
-									Height: 20
-									Visible: False
-								TextField@VALUE:
-									X: 220
-									Width: 60
-									Height: 20
-									Visible: False
+								Container@UNKNOWN_TEMPLATE:
+									Width: PARENT_RIGHT - 25
+									Height: 25
+									Children:
+										Label@PLACEHOLDER:
+											Width: PARENT_RIGHT
+											Height: PARENT_BOTTOM
+								Container@SECTION_TEMPLATE:
+									Width: PARENT_RIGHT - 25
+									Height: 100
+									Children:
+										Label@LABEL:
+											Width: PARENT_RIGHT
+											Height: PARENT_BOTTOM
+											Font: Bold
+											Align: Center
+								Container@CHECKBOX_TEMPLATE:
+									Width: PARENT_RIGHT - 25
+									Height: 25
+									Children:
+										Checkbox@CHECKBOX:
+											Width: PARENT_RIGHT
+											Height: PARENT_BOTTOM
+								Container@TEXT_TEMPLATE:
+									Width: PARENT_RIGHT - 25
+									Height: 45
+									Children:
+										LabelForInput@LABEL:
+											Y: 0
+											Width: PARENT_RIGHT
+											Height: 20
+											For: INPUT
+										TextField@INPUT:
+											Y: 20
+											Width: PARENT_RIGHT
+											Height: 25
+								Container@DROPDOWN_TEMPLATE:
+									Width: PARENT_RIGHT - 25
+									Height: 45
+									Children:
+										LabelForInput@LABEL:
+											Y: 0
+											Width: PARENT_RIGHT
+											Height: 20
+											For: DROPDOWN
+										DropDownButton@DROPDOWN:
+											Y: 20
+											Width: PARENT_RIGHT
+											Height: 25
 		Container@HISTORY_WIDGETS:
 			X: WINDOW_RIGHT - 320
 			Y: 354
