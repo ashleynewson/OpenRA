@@ -131,6 +131,28 @@ namespace OpenRA.Mods.Common.Traits
 			);
 		}
 
+		public IEnumerable<MapGeneratorSetting> GetPresetSettings(Map map, ModData modData, string preset)
+		{
+			var settings = GetDefaultSettings(map, modData);
+			switch (preset) {
+				case null:
+					break;
+				case "plains":
+					settings.Where(s => s.Name == "Water").First().Set<double>(0.0);
+					break;
+				default:
+					throw new ArgumentException("Invalid preset.");
+			}
+			return settings;
+		}
+
+		public IEnumerable<KeyValuePair<string, string>> GetPresets(Map map, ModData modData)
+		{
+			return ImmutableList.Create(
+				new KeyValuePair<string, string>("plains", "Plains")
+			);
+		}
+
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)
 		{
 			// TODO: translate exception messages?

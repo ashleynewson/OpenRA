@@ -21,6 +21,7 @@ namespace OpenRA
 		public interface ValueConverter<T>
 		{
 			T GetValue();
+			void SetValue(T value);
 		}
 
 		public sealed class SectionValue : IValue {}
@@ -35,6 +36,7 @@ namespace OpenRA
 			}
 
 			string ValueConverter<string>.GetValue() => Value;
+			void ValueConverter<string>.SetValue(string value) => Value = value;
 		}
 
 		public sealed class IntegerValue : IValue, ValueConverter<long>
@@ -47,6 +49,7 @@ namespace OpenRA
 			}
 
 			long ValueConverter<long>.GetValue() => Value;
+			void ValueConverter<long>.SetValue(long value) => Value = value;
 		}
 
 		public sealed class FloatValue : IValue, ValueConverter<double>
@@ -59,6 +62,7 @@ namespace OpenRA
 			}
 
 			double ValueConverter<double>.GetValue() => Value;
+			void ValueConverter<double>.SetValue(double value) => Value = value;
 		}
 
 		public sealed class BooleanValue : IValue, ValueConverter<bool>
@@ -71,6 +75,7 @@ namespace OpenRA
 			}
 
 			bool ValueConverter<bool>.GetValue() => Value;
+			void ValueConverter<bool>.SetValue(bool value) => Value = value;
 		}
 
 		public sealed class EnumValue : IValue, ValueConverter<string>, ValueConverter<int>
@@ -110,7 +115,9 @@ namespace OpenRA
 			}
 
 			string ValueConverter<string>.GetValue() => Value;
+			void ValueConverter<string>.SetValue(string value) => Value = value;
 			int ValueConverter<int>.GetValue() => int.Parse(Value);
+			void ValueConverter<int>.SetValue(int value) => Value = value.ToString();
 		}
 
 		public readonly string Name;
@@ -131,7 +138,17 @@ namespace OpenRA
 				return valueGetter.GetValue();
 			} else {
 				// Not really an argument.
-				throw new ArgumentException("Value type incompatibility");
+				throw new ArgumentException("Value type incompatibility for getter");
+			}
+		}
+		public void Set<T>(T value)
+		{
+			if (Value is ValueConverter<T> valueGetter)
+			{
+				valueGetter.SetValue(value);
+			} else {
+				// Not really an argument.
+				throw new ArgumentException("Value type incompatibility for setter");
 			}
 		}
 	}
