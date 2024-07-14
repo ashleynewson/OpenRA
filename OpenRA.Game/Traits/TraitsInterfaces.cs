@@ -677,15 +677,20 @@ namespace OpenRA.Traits
 	public interface IMapGenerator
 	{
 		/// <summary>
-		/// Manipulates a map in place.
+		/// Get the settings definitions for the map generator.
+		/// </summary>
+		IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData);
+
+		/// <summary>
+		/// Manipulate a map in place.
 		/// </summary>
 		/// <exception cref="MapGenerationException">
 		/// Thrown if the map could not be generated with the requested configuration. Map should be discarded.
 		/// </exception>
-		void Generate(Map map, ModData modData, MersenneTwister random);
+		void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settings);
 
 		/// <summary>
-		/// Returns true iff this map generator should be shown in the editor for a map like this (e.g. due to tileset constraints). The map is not altered.
+		/// Return true iff this map generator should be shown in the editor for a map like this (e.g. due to tileset constraints). The map is not altered.
 		/// </summary>)
 		bool ShowInEditor(Map map, ModData modData);
 

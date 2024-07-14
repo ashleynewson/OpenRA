@@ -163,6 +163,9 @@
 	ClearMapGenerator@clear:
 		Type: clear
 		Name: Clear
+	RaMapGenerator@ra:
+		Type: ra
+		Name: OpenRA Red Alert
 
 World:
 	Inherits: ^BaseWorld

@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
 using OpenRA.Graphics;
@@ -36,6 +37,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		// nullable
 		IMapGenerator selectedGenerator;
 
+		// Should settings be part of the IMapGenerator itself?
+		Dictionary<IMapGenerator, IEnumerable<MapGeneratorSetting>> generatorsToSettings;
+
+		readonly ScrollPanelWidget settingsPanel;
+		readonly Widget unknownSettingTemplate;
+		readonly Widget sectionSettingTemplate;
+		readonly Widget checkboxSettingTemplate;
+		readonly Widget textSettingTemplate;
+		readonly Widget dropDownSettingTemplate;
+
 		[ObjectCreator.UseCtor]
 		public MapRandomMapToolLogic(Widget widget, World world, WorldRenderer worldRenderer, ModData modData)
 		{
@@ -46,21 +57,29 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			this.modData = modData;
 
 			selectedGenerator = null;
+			generatorsToSettings = new Dictionary<IMapGenerator, IEnumerable<MapGeneratorSetting>>();
 
 			var mapGenerators = world.WorldActor.TraitsImplementing<IMapGenerator>().Where(generator => generator.ShowInEditor(world.Map, modData));
 
 			generateButtonWidget = widget.Get<ButtonWidget>("GENERATE_BUTTON");
 			generateRandomButtonWidget = widget.Get<ButtonWidget>("GENERATE_RANDOM_BUTTON");
 			seedTextFieldWidget = widget.Get<TextFieldWidget>("SEED");
+			settingsPanel = widget.Get<ScrollPanelWidget>("SETTINGS_PANEL");
+			unknownSettingTemplate = settingsPanel.Get<Widget>("UNKNOWN_TEMPLATE");
+			sectionSettingTemplate = settingsPanel.Get<Widget>("SECTION_TEMPLATE");
+			checkboxSettingTemplate = settingsPanel.Get<Widget>("CHECKBOX_TEMPLATE");
+			textSettingTemplate = settingsPanel.Get<Widget>("TEXT_TEMPLATE");
+			dropDownSettingTemplate = settingsPanel.Get<Widget>("DROPDOWN_TEMPLATE");
 
 			generateButtonWidget.OnClick = GenerateMap;
 			generateRandomButtonWidget.OnClick = RandomSeedThenGenerateMap;
 
 			var generatorDropDown = widget.Get<DropDownButtonWidget>("GENERATOR");
-			if (mapGenerators.Any()) {
+			ChangeGenerator(mapGenerators.FirstOrDefault((IMapGenerator)null));
+			if (selectedGenerator != null)
+			{
 				generateButtonWidget.IsDisabled = () => false;
 				generatorDropDown.IsDisabled = () => false;
-				selectedGenerator = mapGenerators.First();
 				generatorDropDown.GetText = () => selectedGenerator.Info.Name;
 				generatorDropDown.OnMouseDown = _ =>
 				{
@@ -75,17 +94,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					generatorDropDown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", mapGenerators.Count() * 30, mapGenerators, SetupItem);
 				};
-			} else {
+			}
+			else
+			{
 				generateButtonWidget.IsDisabled = () => true;
 				generatorDropDown.IsDisabled = () => true;
 				// TODO: translate
 				generatorDropDown.GetText = () => "No generators available";
 			}
-		}
-
-		protected override void Dispose(bool disposing)
-		{
-			base.Dispose(disposing);
 		}
 
 		sealed class RandomMapEditorAction : IEditorAction
@@ -120,9 +136,111 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 		}
 
+		// newGenerator may be null.
 		void ChangeGenerator(IMapGenerator newGenerator)
 		{
 			selectedGenerator = newGenerator;
+			settingsPanel.RemoveChildren();
+			settingsPanel.ContentHeight = 0;
+
+			if (selectedGenerator == null) return;
+
+			if (!generatorsToSettings.ContainsKey(selectedGenerator))
+			{
+				generatorsToSettings.Add(selectedGenerator, selectedGenerator.GetDefaultSettings(world.Map, modData));
+			}
+			foreach (var setting in generatorsToSettings[selectedGenerator])
+			{
+				Widget settingWidget;
+				switch (setting.Value)
+				{
+					case MapGeneratorSetting.SectionValue value:
+					{
+						settingWidget = sectionSettingTemplate.Clone();
+						var label = settingWidget.Get<LabelWidget>("LABEL");
+						label.GetText = () => setting.Label;
+						break;
+					}
+					case MapGeneratorSetting.BooleanValue value:
+					{
+						settingWidget = checkboxSettingTemplate.Clone();
+						var checkbox = settingWidget.Get<CheckboxWidget>("CHECKBOX");
+						checkbox.GetText = () => setting.Label;
+						checkbox.IsChecked = () => value.Value;
+						checkbox.OnClick = () => value.Value = !value.Value;
+						break;
+					}
+					case MapGeneratorSetting.StringValue value:
+					{
+						settingWidget = textSettingTemplate.Clone();
+						var label = settingWidget.Get<LabelWidget>("LABEL");
+						var input = settingWidget.Get<TextFieldWidget>("INPUT");
+						label.GetText = () => setting.Label;
+						input.Text = value.Value;
+						input.OnTextEdited = () => value.Value = input.Text;
+						break;
+					}
+					case MapGeneratorSetting.IntegerValue value:
+					{
+						settingWidget = textSettingTemplate.Clone();
+						var label = settingWidget.Get<LabelWidget>("LABEL");
+						var input = settingWidget.Get<TextFieldWidget>("INPUT");
+						label.GetText = () => setting.Label;
+						input.Text = value.Value.ToString();
+						input.OnTextEdited = () =>
+						{
+							var valid = long.TryParse(input.Text, out value.Value);
+							input.IsValid = () => valid;
+						};
+						break;
+					}
+					case MapGeneratorSetting.FloatValue value:
+					{
+						settingWidget = textSettingTemplate.Clone();
+						var label = settingWidget.Get<LabelWidget>("LABEL");
+						var input = settingWidget.Get<TextFieldWidget>("INPUT");
+						label.GetText = () => setting.Label;
+						input.Text = value.Value.ToString();
+						input.OnTextEdited = () =>
+						{
+							var valid = double.TryParse(input.Text, out value.Value);
+							input.IsValid = () => valid;
+						};
+						break;
+					}
+					case MapGeneratorSetting.EnumValue value:
+					{
+						settingWidget = dropDownSettingTemplate.Clone();
+						var label = settingWidget.Get<LabelWidget>("LABEL");
+						var dropDown = settingWidget.Get<DropDownButtonWidget>("DROPDOWN");
+						label.GetText = () => setting.Label;
+						dropDown.GetText = () => value.DisplayValue;
+						dropDown.OnMouseDown = _ =>
+						{
+							ScrollItemWidget SetupItem(KeyValuePair<string, string> kv, ScrollItemWidget template)
+							{
+								bool IsSelected() => kv.Key == value.Value;
+								void OnClick() => value.Value = kv.Key;
+								var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
+								item.Get<LabelWidget>("LABEL").GetText = () => kv.Value;
+								return item;
+							}
+
+							dropDown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", value.Choices.Count * 30, value.Choices, SetupItem);
+						};
+						break;
+					}
+					default:
+					{
+						settingWidget = unknownSettingTemplate.Clone();
+						// TODO: translate
+						settingWidget.Get<LabelWidget>("PLACEHOLDER").GetText = () => $"(?) {setting.Label}";
+						break;
+					}
+				}
+				settingWidget.IsVisible = () => true;
+				settingsPanel.AddChild(settingWidget);
+			}
 		}
 
 		void DisplayError(MapGenerationException e)
@@ -152,23 +270,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			{
 				// TODO: present error, translate
 				DisplayError(e);
-				return;
 			}
 		}
 
 		void GenerateMapMayThrow()
 		{
-			int seed;
-			if (!Int32.TryParse(seedTextFieldWidget.Text, out seed))
+			if (!int.TryParse(seedTextFieldWidget.Text, out var seed))
 			{
 				throw new MapGenerationException("Invalid seed.");
 			}
+
 			var random = new MersenneTwister(seed);
 			var map = world.Map;
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 			var generatedMap = new Map(modData, tileset, map.MapSize.X, map.MapSize.Y);
-			// May throw
-			selectedGenerator.Generate(generatedMap, modData, random);
+			var settings = generatorsToSettings[selectedGenerator];
+
+			// Run main generator logic. May throw
+			selectedGenerator.Generate(generatedMap, modData, random, settings);
 
 			var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			var resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
