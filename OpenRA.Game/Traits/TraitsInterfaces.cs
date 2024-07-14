@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -677,9 +678,26 @@ namespace OpenRA.Traits
 	public interface IMapGenerator
 	{
 		/// <summary>
-		/// Get the settings definitions for the map generator.
+		/// Get the default settings for the map generator.
 		/// </summary>
 		IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData);
+
+		/// <summary>
+		/// Get the settings for a particular preset (or default if null).
+		/// </summary>
+		IEnumerable<MapGeneratorSetting> GetPresetSettings(Map map, ModData modData, string name)
+		{
+			if (name != null) throw new ArgumentException("Invalid preset");
+			return GetDefaultSettings(map, modData);
+		}
+
+		/// <summary>
+		/// Return a list of names of settings presets. (Internal name and display text.)
+		/// </summary>
+		IEnumerable<KeyValuePair<string, string>> GetPresets(Map map, ModData modData)
+		{
+			return ImmutableList<KeyValuePair<string, string>>.Empty;
+		}
 
 		/// <summary>
 		/// Manipulate a map in place.
