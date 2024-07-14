@@ -553,65 +553,73 @@ Container@EDITOR_WORLD_ROOT:
 					ScrollbarWidth: 0
 					Logic: MapRandomMapToolLogic
 					Children:
-						Label@GENERATOR_LABEL:
-							X: 0
-							Width: 90
-							Height: 20
+						LabelForInput@GENERATOR_LABEL:
+							Y: 5
+							Width: 65
+							Height: 25
+							Align: Right
+							Font: TinyBold
 							Text: label-random-map-generator
+							For: GENERATOR
 						DropDownButton@GENERATOR:
-							X: 90
-							Y: 0
-							Width: PARENT_RIGHT - 90
+							X: 70
+							Y: 5
+							Width: PARENT_RIGHT - 75
 							Height: 25
 							Font: Bold
+						LabelForInput@SEED_LABEL:
+							X: 5
+							Y: 45
+							Width: 65
+							Height: 25
+							Align: Right
+							Font: TinyBold
+							Text: label-random-map-seed
+							For: SEED
+						TextField@SEED:
+							X: 70
+							Y: 45
+							Width: PARENT_RIGHT - 75
+							Height: 25
+							Text: 0
 						Button@GENERATE_BUTTON:
-							X: 0
-							Y: 25
-							Width: 100
+							X: 5
+							Y: 75
+							Width: 95
 							Height: 25
 							Text: button-random-map-generate
 							Font: Bold
 						Button@GENERATE_RANDOM_BUTTON:
-							X: 100
-							Y: 25
-							Width: PARENT_RIGHT - 100
+							X: 105
+							Y: 75
+							Width: 180
 							Height: 25
 							Text: button-random-map-generate-random
 							Font: Bold
-						Label@SEED_LABEL:
-							X: 0
-							Y: 50
-							Width: 100
-							Height: 25
-							Text: label-random-map-seed
-						TextField@SEED:
-							X: 100
-							Y: 50
-							Width: PARENT_RIGHT - 100
-							Height: 25
-							Text: 0
 						DropDownButton@PRESETS:
-							X: 0
-							Y: 75
-							Width: PARENT_RIGHT
+							X: 5
+							Y: 115
+							Width: PARENT_RIGHT - 10
 							Height: 25
 							Font: Bold
-							Text: Select Preset
+							Text: dropdownbutton-random-map-presets
 						ScrollPanel@SETTINGS_PANEL:
 							X: 0
-							Y: 100
+							Y: 160
 							Width: PARENT_RIGHT
-							Height: PARENT_BOTTOM - 100
+							Height: PARENT_BOTTOM - 160
 							Children:
 								Container@UNKNOWN_TEMPLATE:
-									Width: PARENT_RIGHT - 25
-									Height: 25
+									X: 5
+									Width: PARENT_RIGHT - 35
+									Height: 30
 									Children:
 										Label@PLACEHOLDER:
 											Width: PARENT_RIGHT
-											Height: PARENT_BOTTOM
+											Height: 25
 								Container@SECTION_TEMPLATE:
-									Width: PARENT_RIGHT - 25
+									X: 5
+									Width: PARENT_RIGHT - 35
 									Height: 100
 									Children:
 										Label@LABEL:
@@ -620,15 +628,17 @@ Container@EDITOR_WORLD_ROOT:
 											Font: Bold
 											Align: Center
 								Container@CHECKBOX_TEMPLATE:
-									Width: PARENT_RIGHT - 25
-									Height: 25
+									X: 5
+									Width: PARENT_RIGHT - 35
+									Height: 30
 									Children:
 										Checkbox@CHECKBOX:
 											Width: PARENT_RIGHT
-											Height: PARENT_BOTTOM
+											Height: 25
 								Container@TEXT_TEMPLATE:
-									Width: PARENT_RIGHT - 25
-									Height: 45
+									X: 5
+									Width: PARENT_RIGHT - 35
+									Height: 50
 									Children:
 										LabelForInput@LABEL:
 											Y: 0
@@ -640,8 +650,9 @@ Container@EDITOR_WORLD_ROOT:
 											Width: PARENT_RIGHT
 											Height: 25
 								Container@DROPDOWN_TEMPLATE:
-									Width: PARENT_RIGHT - 25
-									Height: 45
+									X: 5
+									Width: PARENT_RIGHT - 35
+									Height: 50
 									Children:
 										LabelForInput@LABEL:
 											Y: 0
