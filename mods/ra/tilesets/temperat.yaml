@@ -147,6 +147,11 @@ Templates:
 			12: Water
 			13: Water
 			16: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 4,1, 4,2, 3,2, 2,2, 1,2, 1,3, 0,3
 	Template@4:
 		Id: 4
 		Images: sh02.tem
@@ -168,6 +173,11 @@ Templates:
 			20: Water
 			21: Water
 			22: Rock
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 5,1, 5,2, 4,2, 4,3, 3,3, 3,4, 2,4, 1,4, 1,3, 0,3
 	Template@5:
 		Id: 5
 		Images: sh03.tem
@@ -183,6 +193,11 @@ Templates:
 			9: Water
 			10: Water
 			12: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 3,1, 3,2, 2,2, 1,2, 1,3, 0,3
 	Template@6:
 		Id: 6
 		Images: sh04.tem
@@ -198,6 +213,11 @@ Templates:
 			6: Water
 			7: Water
 			8: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 3,1, 2,1, 1,1, 0,1
 	Template@7:
 		Id: 7
 		Images: sh05.tem
@@ -213,6 +233,11 @@ Templates:
 			6: Rock
 			7: River
 			8: River
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 3,1, 2,1, 1,1, 0,1
 	Template@8:
 		Id: 8
 		Images: sh06.tem
@@ -228,6 +253,11 @@ Templates:
 			6: Water
 			7: Water
 			8: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 3,1, 2,1, 1,1, 0,1
 	Template@9:
 		Id: 9
 		Images: sh07.tem
@@ -243,6 +273,11 @@ Templates:
 			6: Water
 			7: Water
 			8: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 3,1, 2,1, 1,1, 0,1
 	Template@10:
 		Id: 10
 		Images: sh08.tem
@@ -251,6 +286,11 @@ Templates:
 		Tiles:
 			0: Beach
 			1: Beach
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 1,1, 0,1
 	Template@11:
 		Id: 11
 		Images: sh09.tem
@@ -287,6 +327,11 @@ Templates:
 			24: Rock
 			28: Water
 			29: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 5,4, 4,4, 4,3, 3,3, 2,3, 1,3, 1,2, 0,2, 0,1
 	Template@13:
 		Id: 13
 		Images: sh11.tem
@@ -306,6 +351,11 @@ Templates:
 			15: Beach
 			18: Water
 			19: Beach
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 4,3, 4,4, 3,4, 3,3, 2,3, 2,2, 1,2, 1,1, 0,1
 	Template@14:
 		Id: 14
 		Images: sh12.tem
@@ -323,6 +373,11 @@ Templates:
 			10: Water
 			11: Beach
 			14: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.L
+				Points: 3,3, 2,3, 2,2, 1,2, 1,1, 0,1
 	Template@15:
 		Id: 15
 		Images: sh13.tem
@@ -347,6 +402,11 @@ Templates:
 			27: Beach
 			28: Beach
 			29: Beach
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 4,5, 4,4, 3,4, 3,3, 2,3, 1,3, 1,2, 1,1, 1,0
 	Template@16:
 		Id: 16
 		Images: sh14.tem
@@ -365,6 +425,11 @@ Templates:
 			13: Water
 			14: Beach
 			15: Beach
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 2,4, 1,4, 1,3, 1,2, 0,2, 0,1, 0,0
 	Template@17:
 		Id: 17
 		Images: sh15.tem
@@ -381,6 +446,11 @@ Templates:
 			12: Water
 			13: Beach
 			14: Beach
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 3,3, 2,3, 2,2, 1,2, 1,1, 1,0
 	Template@18:
 		Id: 18
 		Images: sh16.tem
@@ -396,6 +466,11 @@ Templates:
 			6: Water
 			7: Beach
 			8: Clear
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 1,3, 1,2, 1,1, 1,0
 	Template@19:
 		Id: 19
 		Images: sh17.tem
@@ -404,6 +479,11 @@ Templates:
 		Tiles:
 			0: Beach
 			1: Clear
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 0,1, 0,0
 	Template@20:
 		Id: 20
 		Images: sh18.tem
@@ -440,6 +520,11 @@ Templates:
 			16: Water
 			17: Beach
 			18: Clear
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 0,5, 1,5, 1,4, 1,3, 0,3, 0,2, 1,2, 1,1, 2,1, 2,0
 	Template@22:
 		Id: 22
 		Images: sh20.tem
@@ -459,6 +544,11 @@ Templates:
 			15: Water
 			16: Beach
 			17: Beach
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 1,4, 0,4, 0,3, 0,2, 0,1, 1,1, 2,1, 3,1, 3,0
 	Template@23:
 		Id: 23
 		Images: sh21.tem
@@ -476,6 +566,11 @@ Templates:
 			10: Water
 			11: Beach
 			12: Beach
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.U
+				Points: 1,3, 0,3, 0,2, 0,1, 1,1, 2,1, 2,0, 3,0
 	Template@24:
 		Id: 24
 		Images: sh22.tem
@@ -499,6 +594,11 @@ Templates:
 			27: Beach
 			28: Beach
 			29: Beach
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,2, 1,2, 2,2, 2,3, 3,3, 4,3, 4,4, 5,4, 6,4
 	Template@25:
 		Id: 25
 		Images: sh23.tem
@@ -523,6 +623,11 @@ Templates:
 			22: Beach
 			23: Beach
 			24: Beach
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,1, 1,1, 2,1, 2,2, 3,2, 3,3, 4,3, 5,3, 5,4
 	Template@26:
 		Id: 26
 		Images: sh24.tem
@@ -537,6 +642,11 @@ Templates:
 			7: Clear
 			8: Beach
 			11: Clear
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,1, 1,1, 1,2, 2,2, 3,2, 3,3
 	Template@27:
 		Id: 27
 		Images: sh25.tem
@@ -552,6 +662,11 @@ Templates:
 			6: Rock
 			7: Rock
 			8: Beach
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,2, 1,2, 2,2, 3,2
 	Template@28:
 		Id: 28
 		Images: sh26.tem
@@ -567,6 +682,11 @@ Templates:
 			6: Beach
 			7: Beach
 			8: Beach
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,2, 1,2, 2,2, 3,2
 	Template@29:
 		Id: 29
 		Images: sh27.tem
@@ -582,6 +702,11 @@ Templates:
 			6: Beach
 			7: Beach
 			8: Rough
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,2, 1,2, 2,2, 3,2
 	Template@30:
 		Id: 30
 		Images: sh28.tem
@@ -596,6 +721,11 @@ Templates:
 			6: Beach
 			7: Rough
 			8: Rough
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,2, 1,2, 2,2, 3,2
 	Template@31:
 		Id: 31
 		Images: sh29.tem
@@ -604,6 +734,11 @@ Templates:
 		Tiles:
 			0: Beach
 			1: Clear
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,1, 1,1
 	Template@32:
 		Id: 32
 		Images: sh30.tem
@@ -644,6 +779,11 @@ Templates:
 			26: Beach
 			27: Beach
 			28: Clear
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,4, 1,4, 2,4, 3,4, 3,3, 3,2, 4,2, 4,1, 5,1, 6,1
 	Template@34:
 		Id: 34
 		Images: sh32.tem
@@ -661,6 +801,11 @@ Templates:
 			10: Beach
 			12: Clear
 			13: Clear
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,3, 1,3, 1,2, 2,2, 2,1, 3,1, 4,1
 	Template@35:
 		Id: 35
 		Images: sh33.tem
@@ -676,6 +821,11 @@ Templates:
 			7: Rough
 			9: Beach
 			10: Beach
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.R
+				Points: 0,3, 0,2, 1,2, 1,1, 2,1, 3,1
 	Template@36:
 		Id: 36
 		Images: sh34.tem
@@ -698,6 +848,11 @@ Templates:
 			24: Beach
 			25: Beach
 			26: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 5,0, 5,1, 4,1, 4,2, 3,2, 3,3, 3,4, 2,4, 2,5
 	Template@37:
 		Id: 37
 		Images: sh35.tem
@@ -715,6 +870,11 @@ Templates:
 			12: Clear
 			13: Beach
 			14: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 3,0, 3,1, 3,2, 3,3, 2,3, 2,4
 	Template@38:
 		Id: 38
 		Images: sh36.tem
@@ -730,6 +890,11 @@ Templates:
 			8: Beach
 			9: Water
 			10: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 3,0, 3,1, 2,1, 2,2, 1,2, 1,3
 	Template@39:
 		Id: 39
 		Images: sh37.tem
@@ -744,6 +909,11 @@ Templates:
 			6: Rough
 			7: Beach
 			8: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 2,0, 2,1, 2,2, 2,3
 	Template@40:
 		Id: 40
 		Images: sh38.tem
@@ -752,6 +922,11 @@ Templates:
 		Tiles:
 			0: Clear
 			1: Beach
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 2,0, 2,1
 	Template@41:
 		Id: 41
 		Images: sh39.tem
@@ -788,6 +963,11 @@ Templates:
 			22: Beach
 			23: Beach
 			24: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 2,0, 2,1, 2,2, 2,3, 3,3, 4,3, 4,4, 4,5
 	Template@43:
 		Id: 43
 		Images: sh41.tem
@@ -806,6 +986,11 @@ Templates:
 			13: Clear
 			14: Beach
 			15: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 1,0, 1,1, 1,2, 2,2, 2,3, 3,3, 3,4
 	Template@44:
 		Id: 44
 		Images: sh42.tem
@@ -821,6 +1006,11 @@ Templates:
 			9: Clear
 			10: Beach
 			11: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.D
+				Points: 1,0, 1,1, 2,1, 3,1, 3,2, 3,3
 	Template@45:
 		Id: 45
 		Images: sh43.tem
@@ -836,6 +1026,11 @@ Templates:
 			6: Beach
 			7: Water
 			8: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.U
+				Points: 3,1, 3,2, 2,2, 1,2, 1,3, 0,3, 0,2, 0,1, 0,0, 1,0
 	Template@46:
 		Id: 46
 		Images: sh44.tem
@@ -846,6 +1041,11 @@ Templates:
 			1: Beach
 			2: River
 			3: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.U
+				Points: 2,1, 1,1, 0,1, 0,0
 	Template@47:
 		Id: 47
 		Images: sh45.tem
@@ -861,6 +1061,11 @@ Templates:
 			6: Water
 			7: River
 			8: Beach
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.R
+				Points: 1,3, 1,2, 1,1, 1,0, 2,0, 2,1, 2,2, 3,2
 	Template@48:
 		Id: 48
 		Images: sh46.tem
@@ -871,6 +1076,11 @@ Templates:
 			1: River
 			2: River
 			3: Beach
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.R
+				Points: 0,2, 1,2, 1,1, 2,1
 	Template@49:
 		Id: 49
 		Images: sh47.tem
@@ -883,6 +1093,11 @@ Templates:
 			6: Beach
 			7: Beach
 			8: Water
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.D
+				Points: 0,2, 1,2, 2,2, 2,3
 	Template@50:
 		Id: 50
 		Images: sh48.tem
@@ -893,6 +1108,11 @@ Templates:
 			1: Water
 			2: Clear
 			3: Beach
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.D
+				Points: 0,1, 1,1, 2,1, 2,2
 	Template@51:
 		Id: 51
 		Images: sh49.tem
@@ -908,6 +1128,11 @@ Templates:
 			6: River
 			7: Rock
 			8: Rock
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.L
+				Points: 2,0, 2,1, 1,1, 0,1
 	Template@52:
 		Id: 52
 		Images: sh50.tem
@@ -918,6 +1143,11 @@ Templates:
 			1: Beach
 			2: Beach
 			3: Water
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.L
+				Points: 2,0, 1,0, 1,1, 0,1
 	Template@53:
 		Id: 53
 		Images: sh51.tem
@@ -931,6 +1161,11 @@ Templates:
 			5: Beach
 			7: Rough
 			8: Clear
+		Segments:
+			Segment:
+				Start: Beach.D
+				End: Beach.R
+				Points: 2,0, 2,1, 3,1, 3,2
 	Template@54:
 		Id: 54
 		Images: sh52.tem
@@ -944,6 +1179,11 @@ Templates:
 			5: Beach
 			7: Beach
 			8: Water
+		Segments:
+			Segment:
+				Start: Beach.L
+				End: Beach.D
+				Points: 3,1, 2,1, 2,2, 2,3
 	Template@55:
 		Id: 55
 		Images: sh53.tem
@@ -958,6 +1198,11 @@ Templates:
 			6: Water
 			7: Beach
 			8: Clear
+		Segments:
+			Segment:
+				Start: Beach.U
+				End: Beach.L
+				Points: 1,3, 1,2, 0,2, 0,1
 	Template@56:
 		Id: 56
 		Images: sh54.tem
@@ -970,6 +1215,11 @@ Templates:
 			3: Beach
 			4: Beach
 			6: Clear
+		Segments:
+			Segment:
+				Start: Beach.R
+				End: Beach.U
+				Points: 0,2, 0,1, 1,1, 1,0
 	Template@57:
 		Id: 57
 		Images: sh55.tem

@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace OpenRA
@@ -39,7 +40,7 @@ namespace OpenRA
 			void ValueConverter<string>.SetValue(string value) => Value = value;
 		}
 
-		public sealed class IntegerValue : IValue, ValueConverter<long>
+		public sealed class IntegerValue : IValue, ValueConverter<long>, ValueConverter<int>
 		{
 			public long Value;
 
@@ -50,9 +51,18 @@ namespace OpenRA
 
 			long ValueConverter<long>.GetValue() => Value;
 			void ValueConverter<long>.SetValue(long value) => Value = value;
+			int ValueConverter<int>.GetValue()
+			{
+				checked
+				{
+					return (int)Value;
+				}
+			}
+
+			void ValueConverter<int>.SetValue(int value) => Value = value;
 		}
 
-		public sealed class FloatValue : IValue, ValueConverter<double>
+		public sealed class FloatValue : IValue, ValueConverter<double>, ValueConverter<float>
 		{
 			public double Value;
 
@@ -63,6 +73,8 @@ namespace OpenRA
 
 			double ValueConverter<double>.GetValue() => Value;
 			void ValueConverter<double>.SetValue(double value) => Value = value;
+			float ValueConverter<float>.GetValue() => (float)Value;
+			void ValueConverter<float>.SetValue(float value) => Value = value;
 		}
 
 		public sealed class BooleanValue : IValue, ValueConverter<bool>
@@ -112,6 +124,14 @@ namespace OpenRA
 					throw new ArgumentException("Empty enum");
 				Choices = choices;
 				Value = value;
+			}
+
+			public EnumValue(IReadOnlyList<KeyValuePair<int, string>> choices, int value)
+			{
+				if (!choices.Any())
+					throw new ArgumentException("Empty enum");
+				Choices = choices.Select(kv => new KeyValuePair<string, string>(kv.Key.ToStringInvariant(), kv.Value)).ToImmutableList();
+				Value = value.ToStringInvariant();
 			}
 
 			string ValueConverter<string>.GetValue() => Value;
