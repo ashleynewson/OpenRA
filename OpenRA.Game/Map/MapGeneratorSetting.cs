@@ -18,16 +18,16 @@ namespace OpenRA
 {
 	public class MapGeneratorSetting
 	{
-		public interface IValue {}
-		public interface ValueConverter<T>
+		public interface IValue { }
+		public interface IValueConverter<T>
 		{
 			T GetValue();
 			void SetValue(T value);
 		}
 
-		public sealed class SectionValue : IValue {}
+		public sealed class SectionValue : IValue { }
 
-		public sealed class StringValue : IValue, ValueConverter<string>
+		public sealed class StringValue : IValue, IValueConverter<string>
 		{
 			public string Value;
 
@@ -36,11 +36,11 @@ namespace OpenRA
 				Value = value;
 			}
 
-			string ValueConverter<string>.GetValue() => Value;
-			void ValueConverter<string>.SetValue(string value) => Value = value;
+			string IValueConverter<string>.GetValue() => Value;
+			void IValueConverter<string>.SetValue(string value) => Value = value;
 		}
 
-		public sealed class IntegerValue : IValue, ValueConverter<long>, ValueConverter<int>
+		public sealed class IntegerValue : IValue, IValueConverter<long>, IValueConverter<int>
 		{
 			public long Value;
 
@@ -49,9 +49,9 @@ namespace OpenRA
 				Value = value;
 			}
 
-			long ValueConverter<long>.GetValue() => Value;
-			void ValueConverter<long>.SetValue(long value) => Value = value;
-			int ValueConverter<int>.GetValue()
+			long IValueConverter<long>.GetValue() => Value;
+			void IValueConverter<long>.SetValue(long value) => Value = value;
+			int IValueConverter<int>.GetValue()
 			{
 				checked
 				{
@@ -59,10 +59,10 @@ namespace OpenRA
 				}
 			}
 
-			void ValueConverter<int>.SetValue(int value) => Value = value;
+			void IValueConverter<int>.SetValue(int value) => Value = value;
 		}
 
-		public sealed class FloatValue : IValue, ValueConverter<double>, ValueConverter<float>
+		public sealed class FloatValue : IValue, IValueConverter<double>, IValueConverter<float>
 		{
 			public double Value;
 
@@ -71,13 +71,13 @@ namespace OpenRA
 				Value = value;
 			}
 
-			double ValueConverter<double>.GetValue() => Value;
-			void ValueConverter<double>.SetValue(double value) => Value = value;
-			float ValueConverter<float>.GetValue() => (float)Value;
-			void ValueConverter<float>.SetValue(float value) => Value = value;
+			double IValueConverter<double>.GetValue() => Value;
+			void IValueConverter<double>.SetValue(double value) => Value = value;
+			float IValueConverter<float>.GetValue() => (float)Value;
+			void IValueConverter<float>.SetValue(float value) => Value = value;
 		}
 
-		public sealed class BooleanValue : IValue, ValueConverter<bool>
+		public sealed class BooleanValue : IValue, IValueConverter<bool>
 		{
 			public bool Value;
 
@@ -86,27 +86,24 @@ namespace OpenRA
 				Value = value;
 			}
 
-			bool ValueConverter<bool>.GetValue() => Value;
-			void ValueConverter<bool>.SetValue(bool value) => Value = value;
+			bool IValueConverter<bool>.GetValue() => Value;
+			void IValueConverter<bool>.SetValue(bool value) => Value = value;
 		}
 
-		public sealed class EnumValue : IValue, ValueConverter<string>, ValueConverter<int>
+		public sealed class EnumValue : IValue, IValueConverter<string>, IValueConverter<int>
 		{
 			// Maps internal names to (pre-translated) display labels.
 			public readonly IReadOnlyList<KeyValuePair<string, string>> Choices;
 
-			string _value;
+			string value;
 			public string Value
 			{
-				get
-				{
-					return _value;
-				}
+				get => value;
 				set
 				{
-					if (!Choices.Where(kv => kv.Key == value).Any())
+					if (!Choices.Any(kv => kv.Key == value))
 						throw new ArgumentException($"Value {value} is not in a valid choice for this enum");
-					_value = value;
+					this.value = value;
 				}
 			}
 
@@ -114,13 +111,13 @@ namespace OpenRA
 			{
 				get
 				{
-					return Choices.Where(kv => kv.Key == _value).First().Value;
+					return Choices.First(kv => kv.Key == value).Value;
 				}
 			}
 
 			public EnumValue(IReadOnlyList<KeyValuePair<string, string>> choices, string value)
 			{
-				if (!choices.Any())
+				if (choices.Count == 0)
 					throw new ArgumentException("Empty enum");
 				Choices = choices;
 				Value = value;
@@ -128,16 +125,16 @@ namespace OpenRA
 
 			public EnumValue(IReadOnlyList<KeyValuePair<int, string>> choices, int value)
 			{
-				if (!choices.Any())
+				if (choices.Count == 0)
 					throw new ArgumentException("Empty enum");
 				Choices = choices.Select(kv => new KeyValuePair<string, string>(kv.Key.ToStringInvariant(), kv.Value)).ToImmutableList();
 				Value = value.ToStringInvariant();
 			}
 
-			string ValueConverter<string>.GetValue() => Value;
-			void ValueConverter<string>.SetValue(string value) => Value = value;
-			int ValueConverter<int>.GetValue() => int.Parse(Value);
-			void ValueConverter<int>.SetValue(int value) => Value = value.ToString();
+			string IValueConverter<string>.GetValue() => Value;
+			void IValueConverter<string>.SetValue(string value) => Value = value;
+			int IValueConverter<int>.GetValue() => Exts.ParseInt32Invariant(Value);
+			void IValueConverter<int>.SetValue(int value) => Value = value.ToStringInvariant();
 		}
 
 		public readonly string Name;
@@ -153,20 +150,25 @@ namespace OpenRA
 
 		public T Get<T>()
 		{
-			if (Value is ValueConverter<T> valueGetter)
+			if (Value is IValueConverter<T> valueGetter)
 			{
 				return valueGetter.GetValue();
-			} else {
+			}
+			else
+			{
 				// Not really an argument.
 				throw new ArgumentException("Value type incompatibility for getter");
 			}
 		}
+
 		public void Set<T>(T value)
 		{
-			if (Value is ValueConverter<T> valueGetter)
+			if (Value is IValueConverter<T> valueGetter)
 			{
 				valueGetter.SetValue(value);
-			} else {
+			}
+			else
+			{
 				// Not really an argument.
 				throw new ArgumentException("Value type incompatibility for setter");
 			}
