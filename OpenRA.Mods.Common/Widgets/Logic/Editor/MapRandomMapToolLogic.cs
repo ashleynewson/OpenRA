@@ -348,7 +348,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var editorBlit = new EditorBlit(
 				MapBlitFilters.All,
 				resourceLayer,
-				new CPos(1, 1),
+				new CPos(0, 0),
 				map,
 				blitSource,
 				editorActorLayer);

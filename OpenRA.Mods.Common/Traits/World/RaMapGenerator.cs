@@ -12,11 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Drawing;
-using System.Globalization;
 using System.Linq;
-using OpenRA.Mods.Common.Effects;
-using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
 using OpenRA.Traits;
 
@@ -67,6 +63,8 @@ namespace OpenRA.Mods.Common.Traits
 		const double SIN_240 = -0.86602540378443864676;
 
 		const double SQRT2 = 1.4142135623730951;
+
+		const float EXTERNAL_BIAS = 1000000.0f;
 
 		readonly RaMapGeneratorInfo info;
 
@@ -137,7 +135,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		readonly struct Matrix<T>
+		sealed class Matrix<T>
 		{
 			public readonly T[] Data;
 			public readonly int2 Size;
@@ -167,6 +165,33 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				get => Data[i];
 				set => Data[i] = value;
+			}
+
+			public bool ContainsXY(int2 xy)
+			{
+				return xy.X >= 0 && xy.X < Size.X && xy.Y >= 0 && xy.Y < Size.Y;
+			}
+
+			public bool ContainsXY(int x, int y)
+			{
+				return x >= 0 && x < Size.X && y >= 0 && y < Size.Y;
+			}
+
+			// <summary>
+			// Creates a transposed copy of the matrix.
+			// <summary>
+			public Matrix<T> Transpose()
+			{
+				var transposed = new Matrix<T>(new int2(Size.Y, Size.X));
+				for (var y = 0; y < Size.Y; y++)
+				{
+					for (var x = 0; x < Size.X; x++)
+					{
+						transposed[y, x] = this[x, y];
+					}
+				}
+
+				return transposed;
 			}
 		}
 
@@ -228,6 +253,7 @@ namespace OpenRA.Mods.Common.Traits
 					return Math.Sin(angle);
 			}
 		}
+
 		public IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData)
 		{
 			return ImmutableList.Create(
@@ -314,7 +340,8 @@ namespace OpenRA.Mods.Common.Traits
 		public IEnumerable<MapGeneratorSetting> GetPresetSettings(Map map, ModData modData, string preset)
 		{
 			var settings = GetDefaultSettings(map, modData);
-			switch (preset) {
+			switch (preset)
+			{
 				case null:
 					break;
 				case "plains":
@@ -323,6 +350,7 @@ namespace OpenRA.Mods.Common.Traits
 				default:
 					throw new ArgumentException("Invalid preset.");
 			}
+
 			return settings;
 		}
 
@@ -338,15 +366,24 @@ namespace OpenRA.Mods.Common.Traits
 			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 			var size = map.MapSize;
+			var minSpan = Math.Min(size.X, size.Y);
+			var maxSpan = Math.Max(size.X, size.Y);
+
 			var rotations = settings["Rotations"].Get<int>();
 			var mirror = (Mirror)settings["Mirror"].Get<int>();
 			var wavelengthScale = settings["WavelengthScale"].Get<float>();
+			var terrainSmoothing = settings["TerrainSmoothing"].Get<int>();
+			var externalCircularBias = settings["ExternalCircularBias"].Get<int>();
+			var minimumLandSeaThickness = settings["MinimumLandSeaThickness"].Get<int>();
+			var minimumMountainThickness = settings["MinimumMountainThickness"].Get<int>();
+			var water = settings["Water"].Get<float>();
 
-			if (settings["Water"].Get<double>() < 0.0 || settings["Water"].Get<double>() > 1.0)
+			if (water < 0.0f || water > 1.0f)
 			{
 				throw new MapGenerationException("water setting must be between 0 and 1 inclusive");
 			}
 
+			// TODO
 			// if (params.mountain < 0.0 || params.mountain > 1.0) {
 			//     die("mountain fraction must be between 0 and 1 inclusive");
 			// }
@@ -369,13 +406,39 @@ namespace OpenRA.Mods.Common.Traits
 			Log.Write("debug", "elevation: generating noise");
 			var elevation = FractalNoise2dWithSymmetry(waterRandom, size, rotations, mirror, wavelengthScale);
 
-			var clear = new TerrainTile(255, 0);
-			var water = new TerrainTile(1, 0);
+			if (terrainSmoothing > 0)
+			{
+				Log.Write("debug", "elevation: applying gaussian blur");
+				var radius = terrainSmoothing;
+				var kernel = GaussianKernel1D(radius, /*standardDeviation=*/radius);
+				elevation = KernelBlur(elevation, kernel, new int2(radius, 0));
+				elevation = KernelBlur(elevation, kernel.Transpose(), new int2(0, radius));
+			}
+
+			CalibrateHeightInPlace(
+				elevation,
+				0.0f,
+				water);
+			var externalCircleCenter = (size.ToFloat2() - new float2(0.5f, 0.5f)) / 2.0f;
+			if (externalCircularBias != 0)
+			{
+				ReserveCircleInPlace(
+					elevation,
+					externalCircleCenter,
+					minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
+					(_, _) => externalCircularBias * EXTERNAL_BIAS,
+					/*invert=*/true);
+			}
+
+			// Makeshift map assembly
+
+			var clearTile = new TerrainTile(255, 0);
+			var waterTile = new TerrainTile(1, 0);
 
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
-				map.Tiles[mpos] = elevation[mpos.U, mpos.V] >= 0 ? clear : water;
+				map.Tiles[mpos] = elevation[mpos.U, mpos.V] >= 0 ? clearTile : waterTile;
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
 			}
@@ -442,6 +505,7 @@ namespace OpenRA.Mods.Common.Traits
 					mirrored[x, y] = unmirrored[x, y] + unmirrored[txy];
 				}
 			}
+
 			return mirrored;
 		}
 
@@ -517,6 +581,7 @@ namespace OpenRA.Mods.Common.Traits
 			var ybw = y - ya;
 			var xaw = 1.0f - xbw;
 			var yaw = 1.0f - ybw;
+
 			if (xa < 0)
 			{
 				xa = 0;
@@ -527,6 +592,7 @@ namespace OpenRA.Mods.Common.Traits
 				xa = matrix.Size.X - 1;
 				xb = matrix.Size.X - 1;
 			}
+
 			if (ya < 0)
 			{
 				ya = 0;
@@ -537,11 +603,148 @@ namespace OpenRA.Mods.Common.Traits
 				ya = matrix.Size.Y - 1;
 				yb = matrix.Size.Y - 1;
 			}
+
 			var naa = matrix[xa, ya];
 			var nba = matrix[xb, ya];
 			var nab = matrix[xa, yb];
 			var nbb = matrix[xb, yb];
 			return (naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw;
+		}
+
+		static Matrix<float> GaussianKernel1D(int radius, float standardDeviation)
+		{
+			var span = radius * 2 + 1;
+			var kernel = new Matrix<float>(new int2(span, 1));
+			var dsd2 = 2 * standardDeviation * standardDeviation;
+			var total = 0.0f;
+			for (var x = -radius; x <= radius; x++)
+			{
+				var value = (float)Math.Exp(-x * x / dsd2);
+				kernel[x + radius] = value;
+				total += value;
+			}
+
+			// Instead of dividing by sqrt(PI * dsd2), divide by the total.
+			for (var i = 0; i < span; i++)
+			{
+				kernel[i] /= total;
+			}
+
+			return kernel;
+		}
+
+		static Matrix<float> KernelBlur(Matrix<float> input, Matrix<float> kernel, int2 kernelOffset)
+		{
+			var output = new Matrix<float>(input.Size);
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					var total = 0.0f;
+					var samples = 0;
+					for (var ky = 0; ky < kernel.Size.Y; ky++)
+					{
+						for (var kx = 0; kx < kernel.Size.X; kx++)
+						{
+							var x = cx + kx - kernelOffset.X;
+							var y = cy + ky - kernelOffset.Y;
+							if (!input.ContainsXY(x, y)) continue;
+							total += input[x, y] * kernel[kx, ky];
+							samples++;
+						}
+					}
+
+					output[cx, cy] = total / samples;
+				}
+			}
+
+			return output;
+		}
+
+		static void CalibrateHeightInPlace(Matrix<float> matrix, float target, float fraction)
+		{
+			var sorted = (float[])matrix.Data.Clone();
+			Array.Sort(sorted);
+			var adjustment = target - ArrayQuantile(sorted, fraction);
+			for (var i = 0; i < matrix.Data.Length; i++)
+			{
+				matrix[i] += adjustment;
+			}
+		}
+
+		static float ArrayQuantile(float[] array, float quantile)
+		{
+			if (array.Length == 0)
+			{
+				throw new ArgumentException("Cannot get quantile of empty array");
+			}
+
+			var iFloat = quantile * (array.Length - 1);
+			if (iFloat < 0)
+			{
+				iFloat = 0;
+			}
+
+			if (iFloat > array.Length - 1)
+			{
+				iFloat = array.Length - 1;
+			}
+
+			var iLow = (int)iFloat;
+			if (iLow == iFloat)
+			{
+				return array[iLow];
+			}
+
+			var iHigh = iLow + 1;
+			var weight = iFloat - iLow;
+			return array[iLow] * (1 - weight) + array[iHigh] * weight;
+		}
+
+		delegate T ReserveCircleSetTo<T>(float radiusSquared, T oldValue);
+		static void ReserveCircleInPlace<T>(Matrix<T> matrix, float2 center, float radius, ReserveCircleSetTo<T> setTo, bool invert)
+		{
+			int minX;
+			int minY;
+			int maxX;
+			int maxY;
+			if (invert)
+			{
+				minX = 0;
+				minY = 0;
+				maxX = matrix.Size.X - 1;
+				maxY = matrix.Size.Y - 1;
+			}
+			else
+			{
+				minX = (int)Math.Floor(center.X - radius);
+				minY = (int)Math.Floor(center.Y - radius);
+				maxX = (int)Math.Ceiling(center.X + radius);
+				maxY = (int)Math.Ceiling(center.Y + radius);
+				if (minX < 0)
+					minX = 0;
+				if (minY < 0)
+					minX = 0;
+				if (maxX >= matrix.Size.X)
+					maxX = matrix.Size.X - 1;
+				if (maxY >= matrix.Size.Y)
+					maxY = matrix.Size.Y - 1;
+			}
+
+			var radiusSquared = radius * radius;
+			for (var y = minY; y <= maxY; y++)
+			{
+				for (var x = minX; x <= maxX; x++)
+				{
+					var rx = x - center.X;
+					var ry = y - center.Y;
+					var thisRadiusSquared = rx * rx + ry * ry;
+					if (rx * rx + ry * ry <= radiusSquared != invert)
+					{
+						matrix[x, y] = setTo(thisRadiusSquared, matrix[x, y]);
+					}
+				}
+			}
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
@@ -553,6 +756,7 @@ namespace OpenRA.Mods.Common.Traits
 				default:
 					return false;
 			}
+
 			return true;
 		}
 	}
