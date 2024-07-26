@@ -12,7 +12,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Drawing;
+using System.Globalization;
 using System.Linq;
+using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
 using OpenRA.Traits;
@@ -39,6 +42,32 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class RaMapGenerator : IMapGenerator
 	{
+		const double DEGREES_0   = 0.0;
+		const double DEGREES_90  = Math.PI * 0.5;
+		const double DEGREES_180 = Math.PI * 1.0;
+		const double DEGREES_270 = Math.PI * 1.5;
+		const double DEGREES_360 = Math.PI * 2.0;
+		const double DEGREES_120 = Math.PI * (2.0 / 3.0);
+		const double DEGREES_240 = Math.PI * (4.0 / 3.0);
+
+		const double COS_0   = 1.0;
+		const double COS_90  = 0.0;
+		const double COS_180 = -1.0;
+		const double COS_270 = 0.0;
+		const double COS_360 = 1.0;
+		const double COS_120 = -0.5;
+		const double COS_240 = -0.5;
+
+		const double SIN_0   = 0.0;
+		const double SIN_90  = 1.0;
+		const double SIN_180 = 0.0;
+		const double SIN_270 = -1.0;
+		const double SIN_360 = 0.0;
+		const double SIN_120 = 0.86602540378443864676;
+		const double SIN_240 = -0.86602540378443864676;
+
+		const double SQRT2 = 1.4142135623730951;
+
 		readonly RaMapGeneratorInfo info;
 
 		IMapGeneratorInfo IMapGenerator.Info => info;
@@ -48,6 +77,157 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
+		enum Mirror
+		{
+			None = 0,
+			LeftMatchesRight = 1,
+			TopLeftMatchesBottomRight = 2,
+			TopMatchesBottom = 3,
+			TopRightMatchesBottomLeft = 4,
+		}
+
+
+		static int2 MirrorXY(Mirror mirror, int2 original, int2 size)
+		{
+			if (size.X != size.Y)
+			{
+				throw new NotImplementedException("Size.X must match Size.Y for now");
+			}
+
+			// THESE LOOK WRONG!
+			switch (mirror)
+			{
+				case Mirror.None:
+					throw new ArgumentException("Mirror.None has no transformed point");
+				case Mirror.LeftMatchesRight:
+					return new int2(original.X, size.Y - 1 - original.Y);
+				case Mirror.TopLeftMatchesBottomRight:
+					return new int2(original.Y, original.X);
+				case Mirror.TopMatchesBottom:
+					return new int2(size.X - 1 - original.X, original.Y);
+				case Mirror.TopRightMatchesBottomLeft:
+					return new int2(size.Y - 1 - original.Y, size.X - 1 - original.X);
+				default:
+					throw new ArgumentException("Bad mirror");
+			}
+		}
+
+		static float2 MirrorXY(Mirror mirror, float2 original, float2 size)
+		{
+			if (size.X != size.Y)
+			{
+				throw new NotImplementedException("Size.X must match Size.Y for now");
+			}
+
+			// THESE LOOK WRONG!
+			switch (mirror)
+			{
+				case Mirror.None:
+					throw new ArgumentException("Mirror.None has no transformed point");
+				case Mirror.LeftMatchesRight:
+					return new float2(original.X, size.Y - 1.0f - original.Y);
+				case Mirror.TopLeftMatchesBottomRight:
+					return new float2(original.Y, original.X);
+				case Mirror.TopMatchesBottom:
+					return new float2(size.X - 1.0f - original.X, original.Y);
+				case Mirror.TopRightMatchesBottomLeft:
+					return new float2(size.Y - 1.0f - original.Y, size.X - 1.0f - original.X);
+				default:
+					throw new ArgumentException("Bad mirror");
+			}
+		}
+
+		readonly struct Matrix<T>
+		{
+			public readonly T[] Data;
+			public readonly int2 Size;
+			public Matrix(int2 size)
+			{
+				Data = new T[size.X * size.Y];
+				Size = size;
+			}
+
+			public Matrix(int x, int y)
+				: this(new int2(x, y))
+			{ }
+
+			public T this[int x, int y]
+			{
+				get => Data[y * Size.X + x];
+				set => Data[y * Size.X + x] = value;
+			}
+
+			public T this[int2 xy]
+			{
+				get => Data[xy.Y * Size.X + xy.X];
+				set => Data[xy.Y * Size.X + xy.X] = value;
+			}
+
+			public T this[int i]
+			{
+				get => Data[i];
+				set => Data[i] = value;
+			}
+		}
+
+
+		static double SinSnap(double angle)
+		{
+			switch (angle)
+			{
+				case DEGREES_0:
+					return COS_0;
+				case DEGREES_90:
+				case (double)(float)DEGREES_90:
+					return COS_90;
+				case DEGREES_180:
+				case (double)(float)DEGREES_180:
+					return COS_180;
+				case DEGREES_270:
+				case (double)(float)DEGREES_270:
+					return COS_270;
+				case DEGREES_360:
+				case (double)(float)DEGREES_360:
+					return COS_360;
+				case DEGREES_120:
+				case (double)(float)DEGREES_120:
+					return COS_120;
+				case DEGREES_240:
+				case (double)(float)DEGREES_240:
+					return COS_240;
+				default:
+					return Math.Cos(angle);
+			}
+		}
+
+		static double CosSnap(double angle)
+		{
+			switch (angle)
+			{
+				case DEGREES_0:
+					return SIN_0;
+				case DEGREES_90:
+				case (double)(float)DEGREES_90:
+					return SIN_90;
+				case DEGREES_180:
+				case (double)(float)DEGREES_180:
+					return SIN_180;
+				case DEGREES_270:
+				case (double)(float)DEGREES_270:
+					return SIN_270;
+				case DEGREES_360:
+				case (double)(float)DEGREES_360:
+					return SIN_360;
+				case DEGREES_120:
+				case (double)(float)DEGREES_120:
+					return SIN_120;
+				case DEGREES_240:
+				case (double)(float)DEGREES_240:
+					return SIN_240;
+				default:
+					return Math.Sin(angle);
+			}
+		}
 		public IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData)
 		{
 			return ImmutableList.Create(
@@ -55,13 +235,13 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("Rotations", "Rotations", new MapGeneratorSetting.IntegerValue(2)),
 				new MapGeneratorSetting("Mirror", "Mirror", new MapGeneratorSetting.EnumValue(
 					ImmutableList.Create(
-						new KeyValuePair<string, string>("0", "None"),
-						new KeyValuePair<string, string>("1", "Left matches right"),
-						new KeyValuePair<string, string>("2", "Top-left matches bottom-right"),
-						new KeyValuePair<string, string>("3", "Top matches bottom"),
-						new KeyValuePair<string, string>("4", "Top-right matches bottom-left")
+						new KeyValuePair<int, string>((int)Mirror.None, "None"),
+						new KeyValuePair<int, string>((int)Mirror.LeftMatchesRight, "Left matches right"),
+						new KeyValuePair<int, string>((int)Mirror.TopLeftMatchesBottomRight, "Top-left matches bottom-right"),
+						new KeyValuePair<int, string>((int)Mirror.TopMatchesBottom, "Top matches bottom"),
+						new KeyValuePair<int, string>((int)Mirror.TopRightMatchesBottomLeft, "Top-right matches bottom-left")
 					),
-					"0"
+					(int)Mirror.None
 				)),
 				new MapGeneratorSetting("Players", "Players per symmetry", new MapGeneratorSetting.IntegerValue(1)),
 
@@ -138,7 +318,7 @@ namespace OpenRA.Mods.Common.Traits
 				case null:
 					break;
 				case "plains":
-					settings.Where(s => s.Name == "Water").First().Set<double>(0.0);
+					settings.First(s => s.Name == "Water").Set(0.0);
 					break;
 				default:
 					throw new ArgumentException("Invalid preset.");
@@ -149,8 +329,7 @@ namespace OpenRA.Mods.Common.Traits
 		public IEnumerable<KeyValuePair<string, string>> GetPresets(Map map, ModData modData)
 		{
 			return ImmutableList.Create(
-				new KeyValuePair<string, string>("plains", "Plains")
-			);
+				new KeyValuePair<string, string>("plains", "Plains"));
 		}
 
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)
@@ -158,7 +337,211 @@ namespace OpenRA.Mods.Common.Traits
 			// TODO: translate exception messages?
 			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
-			throw new MapGenerationException("Unimplemented");
+			var size = map.MapSize;
+			var rotations = settings["Rotations"].Get<int>();
+			var mirror = (Mirror)settings["Mirror"].Get<int>();
+			var wavelengthScale = settings["WavelengthScale"].Get<float>();
+
+			if (settings["Water"].Get<double>() < 0.0 || settings["Water"].Get<double>() > 1.0)
+			{
+				throw new MapGenerationException("water setting must be between 0 and 1 inclusive");
+			}
+
+			// if (params.mountain < 0.0 || params.mountain > 1.0) {
+			//     die("mountain fraction must be between 0 and 1 inclusive");
+			// }
+			// if (params.water + params.mountain > 1.0) {
+			//     die("water and mountain fractions combined must not exceed 1");
+			// }
+
+			Log.Write("debug", "deriving random generators");
+
+			// Use `random` to derive separate independent random number generators.
+			//
+			// This prevents changes in one part of the algorithm from affecting randomness in
+			// other parts and provides flexibility for future parallel processing.
+			//
+			// In order to maximize stability, additions should be appended only. Disused
+			// derivatives may be deleted but should be replaced with their unused call to
+			// random.Next(). All generators should be created unconditionally.
+			var waterRandom = new MersenneTwister(random.Next());
+
+			Log.Write("debug", "elevation: generating noise");
+			var elevation = FractalNoise2dWithSymmetry(waterRandom, size, rotations, mirror, wavelengthScale);
+
+			var clear = new TerrainTile(255, 0);
+			var water = new TerrainTile(1, 0);
+
+			foreach (var cell in map.AllCells)
+			{
+				var mpos = cell.ToMPos(map);
+				map.Tiles[mpos] = elevation[mpos.U, mpos.V] >= 0 ? clear : water;
+				map.Resources[mpos] = new ResourceTile(0, 0);
+				map.Height[mpos] = 0;
+			}
+
+			map.PlayerDefinitions = new MapPlayers(map.Rules, 0).ToMiniYaml();
+			map.ActorDefinitions = ImmutableArray<MiniYamlNode>.Empty;
+		}
+
+		static Matrix<float> FractalNoise2dWithSymmetry(MersenneTwister random, int2 size, int rotations, Mirror mirror, float wavelengthScale)
+		{
+			if (rotations < 1)
+			{
+				throw new ArgumentException("rotations must be >= 1");
+			}
+
+			// Need higher resolution due to cropping and rotation artifacts
+			var templateSpan = Math.Max(size.X, size.Y) * 2 + 2;
+			var templateSize = new int2(templateSpan, templateSpan);
+			var template = FractalNoise2d(random, templateSize, wavelengthScale);
+			var unmirrored = new Matrix<float>(size);
+
+			// This -1 is required to compensate for the top-left vs the center of a grid square.
+			var offset = new float2((size.X - 1) / 2.0f, (size.Y - 1) / 2.0f);
+			var templateOffset = new float2(templateSpan / 2.0f, templateSpan / 2.0f);
+			for (var rotation = 0; rotation < rotations; rotation++)
+			{
+				var angle = rotation * 2.0 * Math.PI / rotations;
+				var cosAngle = (float)CosSnap(angle);
+				var sinAngle = (float)SinSnap(angle);
+				for (var y = 0; y < size.Y; y++)
+				{
+					for (var x = 0; x < size.X; x++)
+					{
+						var xy = new float2(x, y);
+
+						// xy # corner noise space
+						// xy - offset # middle noise space
+						// (xy - offset) * SQRT2 # middle temp space
+						// R * ((xy - offset) * SQRT2) # middle temp space rotate
+						// R * ((xy - offset) * SQRT2) + to # corner temp space rotate
+						var midt = (xy - offset) * (float)SQRT2;
+						var tx = (midt.X * cosAngle - midt.Y * sinAngle) + templateOffset.X;
+						var ty = (midt.X * sinAngle + midt.Y * cosAngle) + templateOffset.Y;
+						unmirrored[x, y] +=
+							Interpolate2d(
+								template,
+								tx,
+								ty) / rotations;
+					}
+				}
+			}
+
+			if (mirror == Mirror.None)
+			{
+				return unmirrored;
+			}
+
+			var mirrored = new Matrix<float>(size);
+			for (var y = 0; y < size.Y; y++)
+			{
+				for (var x = 0; x < size.X; x++)
+				{
+					var txy = MirrorXY(mirror, new int2(x, y), size);
+					mirrored[x, y] = unmirrored[x, y] + unmirrored[txy];
+				}
+			}
+			return mirrored;
+		}
+
+		static Matrix<float> FractalNoise2d(MersenneTwister random, int2 size, float wavelengthScale)
+		{
+			var span = Math.Max(size.X, size.Y);
+			var wavelengths = new float[(int)Math.Log2(span)];
+			for (var i = 0; i < wavelengths.Length; i++)
+			{
+				wavelengths[i] = (1 << i) * wavelengthScale;
+			}
+
+			float AmpFunc(float wavelength) => wavelength / span / wavelengths.Length;
+			var noise = new Matrix<float>(size);
+			foreach (var wavelength in wavelengths)
+			{
+				var amps = AmpFunc(wavelength);
+				var subSpan = (int)(span / wavelength) + 2;
+				var subNoise = PerlinNoise2d(random, subSpan);
+
+				// Offsets should align to grid.
+				// (The wavelength is divided back out later.)
+				var offsetX = (int)(random.NextFloat() * wavelength);
+				var offsetY = (int)(random.NextFloat() * wavelength);
+				for (var y = 0; y < size.Y; y++)
+				{
+					for (var x = 0; x < size.X; x++)
+					{
+						noise[y * size.X + x] +=
+							amps * Interpolate2d(
+								subNoise,
+								(offsetX + x) / wavelength,
+								(offsetY + y) / wavelength);
+					}
+				}
+			}
+
+			return noise;
+		}
+
+		static Matrix<float> PerlinNoise2d(MersenneTwister random, int span)
+		{
+			var noise = new Matrix<float>(span, span);
+			const float D = 0.25f;
+			for (var y = 0; y <= span; y++)
+			{
+				for (var x = 0; x <= span; x++)
+				{
+					var phase = 2.0f * (float)Math.PI * random.NextFloatExclusive();
+					var vx = (float)Math.Cos(phase);
+					var vy = (float)Math.Sin(phase);
+					if (x > 0 && y > 0)
+						noise[x - 1, y - 1] += vx * -D + vy * -D;
+					if (x < span && y > 0)
+						noise[x    , y - 1] += vx *  D + vy * -D;
+					if (x > 0 && y < span)
+						noise[x - 1, y    ] += vx * -D + vy *  D;
+					if (x < span && y < span)
+						noise[x    , y    ] += vx *  D + vy *  D;
+				}
+			}
+
+			return noise;
+		}
+
+		static float Interpolate2d(Matrix<float> matrix, float x, float y)
+		{
+			var xa = (int)Math.Floor(x) | 0;
+			var xb = (int)Math.Ceiling(x) | 0;
+			var ya = (int)Math.Floor(y) | 0;
+			var yb = (int)Math.Ceiling(y) | 0;
+			var xbw = x - xa;
+			var ybw = y - ya;
+			var xaw = 1.0f - xbw;
+			var yaw = 1.0f - ybw;
+			if (xa < 0)
+			{
+				xa = 0;
+				xb = 0;
+			}
+			else if (xb > matrix.Size.X - 1)
+			{
+				xa = matrix.Size.X - 1;
+				xb = matrix.Size.X - 1;
+			}
+			if (ya < 0)
+			{
+				ya = 0;
+				yb = 0;
+			}
+			else if (yb > matrix.Size.Y - 1)
+			{
+				ya = matrix.Size.Y - 1;
+				yb = matrix.Size.Y - 1;
+			}
+			var naa = matrix[xa, ya];
+			var nba = matrix[xb, ya];
+			var nab = matrix[xa, yb];
+			var nbb = matrix[xb, yb];
+			return (naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw;
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
