@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using OpenRA.Support;
 using OpenRA.Traits;
@@ -139,26 +140,36 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			public readonly T[] Data;
 			public readonly int2 Size;
-			public Matrix(int2 size)
+			Matrix(int2 size, T[] data)
 			{
-				Data = new T[size.X * size.Y];
+				Data = data;
 				Size = size;
 			}
+
+			public Matrix(int2 size)
+				: this(size, new T[size.X * size.Y])
+			{ }
 
 			public Matrix(int x, int y)
 				: this(new int2(x, y))
 			{ }
 
+			int Index(int x, int y)
+			{
+				Debug.Assert(ContainsXY(x, y), $"({x}, {y}) is out of bounds for a matrix of size ({Size.X}, {Size.Y})");
+				return y * Size.X + x;
+			}
+
 			public T this[int x, int y]
 			{
-				get => Data[y * Size.X + x];
-				set => Data[y * Size.X + x] = value;
+				get => Data[Index(x, y)];
+				set => Data[Index(x, y)] = value;
 			}
 
 			public T this[int2 xy]
 			{
-				get => Data[xy.Y * Size.X + xy.X];
-				set => Data[xy.Y * Size.X + xy.X] = value;
+				get => Data[Index(xy.X, xy.Y)];
+				set => Data[Index(xy.X, xy.Y)] = value;
 			}
 
 			public T this[int i]
@@ -177,6 +188,21 @@ namespace OpenRA.Mods.Common.Traits
 				return x >= 0 && x < Size.X && y >= 0 && y < Size.Y;
 			}
 
+			public int2 Clamp(int2 xy)
+			{
+				var (nx, ny) = Clamp(xy.X, xy.Y);
+				return new int2(nx, ny);
+			}
+
+			public (int Nx, int Ny) Clamp(int x, int y)
+			{
+				if (x >= Size.X) x = Size.X - 1;
+				if (x < 0) x = 0;
+				if (y >= Size.Y) y = Size.Y - 1;
+				if (y < 0) y = 0;
+				return (x, y);
+			}
+
 			// <summary>
 			// Creates a transposed copy of the matrix.
 			// <summary>
@@ -193,8 +219,39 @@ namespace OpenRA.Mods.Common.Traits
 
 				return transposed;
 			}
-		}
 
+			public Matrix<R> Map<R>(Func<T, R> func)
+			{
+				var mapped = new Matrix<R>(Size);
+				for (var i = 0; i < Data.Length; i++)
+				{
+					mapped.Data[i] = func(Data[i]);
+				}
+
+				return mapped;
+			}
+
+			public Matrix<T> Fill(T value)
+			{
+				Array.Fill(Data, value);
+				return this;
+			}
+
+			public Matrix<T> Clone()
+			{
+				return new Matrix<T>(Size, (T[])Data.Clone());
+			}
+
+			public static Matrix<T> Zip<T1, T2>(Matrix<T1> a, Matrix<T2> b, Func<T1, T2, T> func)
+			{
+				if (a.Size != b.Size)
+					throw new ArgumentException("Input matrices to FromZip must match in shape and size");
+				var matrix = new Matrix<T>(a.Size);
+				for (var i = 0; i < a.Data.Length; i++)
+					matrix.Data[i] = func(a.Data[i], b.Data[i]);
+				return matrix;
+			}
+		}
 
 		static double SinSnap(double angle)
 		{
@@ -373,6 +430,7 @@ namespace OpenRA.Mods.Common.Traits
 			var mirror = (Mirror)settings["Mirror"].Get<int>();
 			var wavelengthScale = settings["WavelengthScale"].Get<float>();
 			var terrainSmoothing = settings["TerrainSmoothing"].Get<int>();
+			var smoothingThreshold = settings["SmoothingThreshold"].Get<float>();
 			var externalCircularBias = settings["ExternalCircularBias"].Get<int>();
 			var minimumLandSeaThickness = settings["MinimumLandSeaThickness"].Get<int>();
 			var minimumMountainThickness = settings["MinimumMountainThickness"].Get<int>();
@@ -430,6 +488,9 @@ namespace OpenRA.Mods.Common.Traits
 					/*invert=*/true);
 			}
 
+			Log.Write("debug", "land planning: fixing terrain anomalies");
+			var landPlan = ProduceTerrain(elevation, terrainSmoothing, smoothingThreshold, minimumLandSeaThickness, /*bias=*/water < 0.5, "land planning");
+
 			// Makeshift map assembly
 
 			var clearTile = new TerrainTile(255, 0);
@@ -438,7 +499,7 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
-				map.Tiles[mpos] = elevation[mpos.U, mpos.V] >= 0 ? clearTile : waterTile;
+				map.Tiles[mpos] = landPlan[mpos.U, mpos.V] ? clearTile : waterTile;
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
 			}
@@ -724,7 +785,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (minX < 0)
 					minX = 0;
 				if (minY < 0)
-					minX = 0;
+					minY = 0;
 				if (maxX >= matrix.Size.X)
 					maxX = matrix.Size.X - 1;
 				if (maxY >= matrix.Size.Y)
@@ -745,6 +806,354 @@ namespace OpenRA.Mods.Common.Traits
 					}
 				}
 			}
+		}
+
+		static Matrix<bool> ProduceTerrain(Matrix<float> elevation, int terrainSmoothing, float smoothingThreshold, int minimumThickness, bool bias, string debugLabel)
+		{
+			Log.Write("debug", $"{debugLabel}: fixing terrain anomalies: primary median blur");
+			var maxSpan = Math.Max(elevation.Size.X, elevation.Size.Y);
+			var landmass = elevation.Map(v => v >= 0);
+
+			(landmass, _) = BooleanBlur(landmass, terrainSmoothing, true, 0.0f);
+			for (var i1 = 0; i1 < /*max passes*/16; i1++)
+			{
+				for (var i2 = 0; i2 < maxSpan; i2++)
+				{
+					int changes;
+					var changesAcc = 0;
+					for (var r = 1; r <= terrainSmoothing; r++)
+					{
+						(landmass, changes) = BooleanBlur(landmass, r, true, smoothingThreshold);
+						changesAcc += changes;
+					}
+
+					if (changesAcc == 0)
+					{
+						break;
+					}
+				}
+
+				{
+					var changesAcc = 0;
+					int changes;
+					int thinnest;
+					(landmass, changes) = ErodeAndDilate(landmass, true, minimumThickness);
+					changesAcc += changes;
+					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, true, minimumThickness);
+					changesAcc += changes;
+
+					var midFixLandmass = landmass.Clone();
+
+					(landmass, changes) = ErodeAndDilate(landmass, false, minimumThickness);
+					changesAcc += changes;
+					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, false, minimumThickness);
+					changesAcc += changes;
+					if (changesAcc == 0)
+					{
+						break;
+					}
+
+					if (i1 >= 8 && i1 % 4 == 0)
+					{
+						var diff = Matrix<bool>.Zip(midFixLandmass, landmass, (a, b) => a != b);
+						for (var y = 0; y < elevation.Size.Y; y++)
+						{
+							for (var x = 0; x < elevation.Size.X; x++)
+							{
+								if (diff[x, y])
+									ReserveCircleInPlace(landmass, new float2(x, y), minimumThickness * 2, (_, _) => bias, false);
+							}
+						}
+					}
+				}
+			}
+
+			return landmass;
+		}
+
+		// // Perhaps replace with booleans or ints.
+		// static (Matrix<float> Output, int Changes, int SignChanges) MedianBlur(Matrix<float> input, int radius, bool extendOut, float threshold)
+		// {
+		// 	var halfThreshold = threshold / 2.0f;
+		// 	var output = new Matrix<float>(input.Size);
+		// 	var changes = 0;
+		// 	var signChanges = 0;
+		// 	var samples = new float[(2 * radius + 1) * (2 * radius + 1)];
+		// 	for (var cy = 0; cy < input.Size.Y; cy++)
+		// 	{
+		// 		for (var cx = 0; cx < input.Size.X; cx++)
+		// 		{
+		// 			// const ci = cy * size + cx;
+		// 			var sampleCount = 0;
+		// 			for (var oy = -radius; oy <= radius; oy++)
+		// 			{
+		// 				for (var ox = -radius; ox <= radius; ox++)
+		// 				{
+		// 					var x = cx + ox;
+		// 					var y = cy + oy;
+		// 					if (extendOut)
+		// 					{
+		// 						(x, y) = input.Clamp(x, y);
+		// 					}
+		// 					else
+		// 					{
+		// 						if (!input.ContainsXY(x, y)) continue;
+		// 					}
+
+		// 					samples[sampleCount++] = input[x, y];
+		// 				}
+		// 			}
+
+		// 			var thisInput = input[cx, cy];
+		// 			Array.Sort(samples, 0, sampleCount);
+		// 			if (threshold != 0)
+		// 			{
+		// 				var low = ArrayQuantile(samples, 0.5f - halfThreshold);
+		// 				var high = ArrayQuantile(samples, 0.5f + halfThreshold);
+		// 				if (low <= thisInput && thisInput <= high)
+		// 				{
+		// 					output[cx, cy] = thisInput;
+		// 					continue;
+		// 				}
+		// 			}
+
+		// 			var thisOutput = ArrayQuantile(samples, 0.5f);
+		// 			output[cx, cy] = thisOutput;
+		// 			changes++;
+		// 			if (Math.Sign(thisOutput) != Math.Sign(thisInput))
+		// 			{
+		// 				signChanges++;
+		// 			}
+		// 		}
+		// 	}
+
+		// 	return (output, changes, signChanges);
+		// }
+
+		static (Matrix<bool> Output, int Changes) BooleanBlur(Matrix<bool> input, int radius, bool extendOut, float threshold)
+		{
+			// var halfThreshold = threshold / 2.0f;
+			var output = new Matrix<bool>(input.Size);
+			var changes = 0;
+
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					var falseCount = 0;
+					var trueCount = 0;
+					for (var oy = -radius; oy <= radius; oy++)
+					{
+						for (var ox = -radius; ox <= radius; ox++)
+						{
+							var x = cx + ox;
+							var y = cy + oy;
+							if (extendOut)
+							{
+								(x, y) = input.Clamp(x, y);
+							}
+							else
+							{
+								if (!input.ContainsXY(x, y)) continue;
+							}
+
+							if (input[x, y])
+								trueCount++;
+							else
+								falseCount++;
+						}
+					}
+
+					var sampleCount = falseCount + trueCount;
+					var requirement = (int)(sampleCount * threshold);
+					var thisInput = input[cx, cy];
+					bool thisOutput;
+					if (trueCount - falseCount > requirement)
+						thisOutput = true;
+					else if (falseCount - trueCount > requirement)
+						thisOutput = false;
+					else
+						thisOutput = input[cx, cy];
+
+					output[cx, cy] = thisOutput;
+					if (thisOutput != thisInput)
+						changes++;
+				}
+			}
+
+			return (output, changes);
+		}
+
+		static (Matrix<bool> Output, int Changes) ErodeAndDilate(Matrix<bool> input, bool foreground, int amount)
+		{
+			var output = new Matrix<bool>(input.Size).Fill(!foreground);
+			for (var cy = 1 - amount; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 1 - amount; cx < input.Size.X; cx++)
+				{
+					bool IsRetained()
+					{
+						for (var ry = 0; ry < amount; ry++)
+						{
+							for (var rx = 0; rx < amount; rx++)
+							{
+								var x = cx + rx;
+								var y = cy + ry;
+								if (!input.ContainsXY(x, y)) continue;
+
+								if (input[x, y] != foreground)
+								{
+									return false;
+								}
+							}
+						}
+
+						return true;
+					}
+
+					if (!IsRetained()) continue;
+
+					for (var ry = 0; ry < amount; ry++)
+					{
+						for (var rx = 0; rx < amount; rx++)
+						{
+							var x = cx + rx;
+							var y = cy + ry;
+							if (!input.ContainsXY(x, y)) continue;
+
+							output[x, y] = foreground;
+						}
+					}
+				}
+			}
+
+			var changes = 0;
+			for (var i = 0; i < input.Data.Length; i++)
+			{
+				if (input[i] != output[i])
+					changes++;
+			}
+
+			return (output, changes);
+		}
+
+		static (int Thinnest, int Changes) FixThinMassesInPlaceFull(Matrix<bool> input, bool dilate, int width)
+		{
+			int thinnest;
+			int changes;
+			int changesAcc;
+			(thinnest, changes) = FixThinMassesInPlace(input, dilate, width);
+			changesAcc = changes;
+			while (changes > 0)
+			{
+				(_, changes) = FixThinMassesInPlace(input, dilate, width);
+				changesAcc += changes;
+			}
+
+			return (thinnest, changesAcc);
+		}
+
+		static (int Thinnest, int Changes) FixThinMassesInPlace(Matrix<bool> input, bool dilate, int width)
+		{
+			var sizeMinus1 = input.Size - new int2(1, 1);
+			var cornerMaskSpan = width + 1;
+
+			// Zero means ignore.
+			var cornerMask = new Matrix<int>(cornerMaskSpan, cornerMaskSpan);
+
+			for (var y = 0; y < cornerMaskSpan; y++)
+			{
+				for (var x = 0; x < cornerMaskSpan; x++)
+				{
+					cornerMask[x, y] = 1 + width + width - x - y;
+				}
+			}
+
+			cornerMask[0] = 0;
+
+			// Higher number indicates a thinner area.
+			var thinness = new Matrix<int>(input.Size);
+			void SetThinness(int x, int y, int v)
+			{
+				if (!input.ContainsXY(x, y)) return;
+				if (input[x, y] == dilate) return;
+				thinness[x, y] = Math.Max(v, thinness[x, y]);
+			}
+
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					if (input[cx, cy] == dilate)
+						continue;
+
+					// _L_eft _R_ight _U_p _D_own
+					var l = input[Math.Max(cx - 1, 0), cy] == dilate;
+					var r = input[Math.Min(cx + 1, sizeMinus1.X), cy] == dilate;
+					var u = input[cx, Math.Max(cy - 1, 0)] == dilate;
+					var d = input[cx, Math.Min(cy + 1, sizeMinus1.Y)] == dilate;
+					var lu = l && u;
+					var ru = r && u;
+					var ld = l && d;
+					var rd = r && d;
+					for (var ry = 0; ry < cornerMaskSpan; ry++)
+					{
+						for (var rx = 0; rx < cornerMaskSpan; rx++)
+						{
+							if (rd)
+							{
+								var x = cx + rx;
+								var y = cy + ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+
+							if (ru)
+							{
+								var x = cx + rx;
+								var y = cy - ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+
+							if (ld)
+							{
+								var x = cx - rx;
+								var y = cy + ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+
+							if (lu)
+							{
+								var x = cx - rx;
+								var y = cy - ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+						}
+					}
+				}
+			}
+
+			var thinnest = thinness.Data.Max();
+			if (thinnest == 0)
+			{
+				// No fixes
+				return (0, 0);
+			}
+
+			var changes = 0;
+			for (var y = 0; y < input.Size.Y; y++)
+			{
+				for (var x = 0; x < input.Size.X; x++)
+				{
+					if (thinness[x, y] == thinnest)
+					{
+						input[x, y] = dilate;
+						changes++;
+					}
+				}
+			}
+
+			// Fixes made, with potentially more that can be in another pass.
+			return (thinnest, changes);
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)

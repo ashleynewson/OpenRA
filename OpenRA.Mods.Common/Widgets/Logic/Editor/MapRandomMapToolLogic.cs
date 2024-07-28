@@ -309,6 +309,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				throw new MapGenerationException("Invalid seed.");
 			}
 
+			Log.Write("debug", $"Running map generator {selectedGenerator.Info.Type} with seed {seed}");
+
 			var random = new MersenneTwister(seed);
 			var map = world.Map;
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
