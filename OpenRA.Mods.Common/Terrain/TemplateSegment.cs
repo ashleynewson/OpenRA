@@ -11,7 +11,6 @@
 
 using System;
 using System.Text.RegularExpressions;
-using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.Terrain
 {
@@ -23,7 +22,7 @@ namespace OpenRA.Mods.Common.Terrain
 		public readonly string Start;
 		public readonly string End;
 		[FieldLoader.Ignore]
-		public readonly int2 Points;
+		public readonly int2[] Points;
 
 		public TemplateSegment(MiniYaml my)
 		{
@@ -36,11 +35,23 @@ namespace OpenRA.Mods.Common.Terrain
 					.Split(',', StringSplitOptions.RemoveEmptyEntries);
 				if (parts.Length % 2 != 0)
 					FieldLoader.InvalidValueAction(value, typeof(int2[]), "Points");
-				var Points = new int2[parts.Length / 2];
+				Points = new int2[parts.Length / 2];
 				for (var i = 0; i < Points.Length; i++)
 					Points[i] = new int2(Exts.ParseInt32Invariant(parts[2 * i]), Exts.ParseInt32Invariant(parts[2 * i + 1]));
 			}
 
 		}
+
+		public static bool MatchesType(string type, string matcher)
+		{
+			if (type == matcher)
+			{
+				return true;
+			}
+			return type.StartsWith($"{matcher}.", StringComparison.InvariantCulture);
+		}
+
+		public bool HasType(string matcher)
+			=> MatchesType(Start, matcher) || MatchesType(End, matcher);
 	}
 }

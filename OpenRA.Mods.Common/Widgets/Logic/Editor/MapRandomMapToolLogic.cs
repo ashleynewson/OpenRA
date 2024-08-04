@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using OpenRA.Graphics;
@@ -309,8 +310,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				throw new MapGenerationException("Invalid seed.");
 			}
 
-			Log.Write("debug", $"Running map generator {selectedGenerator.Info.Type} with seed {seed}");
-
 			var random = new MersenneTwister(seed);
 			var map = world.Map;
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
@@ -318,7 +317,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var settings = generatorsToSettings[selectedGenerator];
 
 			// Run main generator logic. May throw
+			var generateStopwatch = Stopwatch.StartNew();
+			Log.Write("debug", $"Running '{selectedGenerator.Info.Type}' map generator with seed {seed}");
 			selectedGenerator.Generate(generatedMap, modData, random, settings);
+			Log.Write("debug", $"Generator finished, taking {generateStopwatch.ElapsedMilliseconds}ms");
 
 			var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			var resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();

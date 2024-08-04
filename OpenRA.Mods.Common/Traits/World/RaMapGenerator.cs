@@ -14,6 +14,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using OpenRA.Mods.Common.Terrain;
+using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
 
@@ -40,12 +42,20 @@ namespace OpenRA.Mods.Common.Traits
 	public sealed class RaMapGenerator : IMapGenerator
 	{
 		const double DEGREES_0   = 0.0;
-		const double DEGREES_90  = Math.PI * 0.5;
-		const double DEGREES_180 = Math.PI * 1.0;
-		const double DEGREES_270 = Math.PI * 1.5;
-		const double DEGREES_360 = Math.PI * 2.0;
-		const double DEGREES_120 = Math.PI * (2.0 / 3.0);
-		const double DEGREES_240 = Math.PI * (4.0 / 3.0);
+		const double DEGREES_90  = Math.Tau * 0.25;
+		const double DEGREES_180 = Math.Tau * 0.5;
+		const double DEGREES_270 = Math.Tau * 0.75;
+		const double DEGREES_360 = Math.Tau * 1.0;
+		const double DEGREES_120 = Math.Tau * (1.0 / 3.0);
+		const double DEGREES_240 = Math.Tau * (2.0 / 3.0);
+
+		const float DEGREESF_0   = 0.0f;
+		const float DEGREESF_90  = MathF.Tau * 0.25f;
+		const float DEGREESF_180 = MathF.Tau * 0.5f;
+		const float DEGREESF_270 = MathF.Tau * 0.75f;
+		const float DEGREESF_360 = MathF.Tau * 1.0f;
+		const float DEGREESF_120 = MathF.Tau * (1.0f / 3.0f);
+		const float DEGREESF_240 = MathF.Tau * (2.0f / 3.0f);
 
 		const double COS_0   = 1.0;
 		const double COS_90  = 0.0;
@@ -85,6 +95,92 @@ namespace OpenRA.Mods.Common.Traits
 			TopRightMatchesBottomLeft = 4,
 		}
 
+		const int DIRECTION_NONE = -1;
+		const int DIRECTION_R = 0;
+		const int DIRECTION_RD = 1;
+		const int DIRECTION_D = 2;
+		const int DIRECTION_LD = 3;
+		const int DIRECTION_L = 4;
+		const int DIRECTION_LU = 5;
+		const int DIRECTION_U = 6;
+		const int DIRECTION_RU = 7;
+
+		const int DIRECTION_M_R = 1 << DIRECTION_R;
+		const int DIRECTION_M_RD = 1 << DIRECTION_RD;
+		const int DIRECTION_M_D = 1 << DIRECTION_D;
+		const int DIRECTION_M_LD = 1 << DIRECTION_LD;
+		const int DIRECTION_M_L = 1 << DIRECTION_L;
+		const int DIRECTION_M_LU = 1 << DIRECTION_LU;
+		const int DIRECTION_M_U = 1 << DIRECTION_U;
+		const int DIRECTION_M_RU = 1 << DIRECTION_RU;
+
+		static int CalculateDirection(int dx, int dy)
+		{
+			if (dx > 0)
+			{
+				if (dy > 0)
+					return DIRECTION_RD;
+				else if (dy < 0)
+					return DIRECTION_RU;
+				else
+					return DIRECTION_R;
+			}
+			else if (dx < 0)
+			{
+				if (dy > 0)
+					return DIRECTION_LD;
+				else if (dy < 0)
+					return DIRECTION_LU;
+				else
+					return DIRECTION_L;
+			}
+			else
+			{
+				if (dy > 0)
+					return DIRECTION_D;
+				else if (dy < 0)
+					return DIRECTION_U;
+				else
+					throw new ArgumentException("Bad direction");
+			}
+		}
+
+		static int CalculateDirection(int2 delta)
+			=> CalculateDirection(delta.X, delta.Y);
+
+		static int ReverseDirection(int direction)
+		{
+			if (direction == DIRECTION_NONE)
+				return DIRECTION_NONE;
+			return direction ^ 4;
+		}
+
+		static string DirectionToString(int direction)
+		{
+			switch (direction)
+			{
+				case DIRECTION_NONE:
+					return "None";
+				case DIRECTION_R:
+					return "R";
+				case DIRECTION_RD:
+					return "RD";
+				case DIRECTION_D:
+					return "D";
+				case DIRECTION_LD:
+					return "LD";
+				case DIRECTION_L:
+					return "L";
+				case DIRECTION_LU:
+					return "LU";
+				case DIRECTION_U:
+					return "U";
+				case DIRECTION_RU:
+					return "RU";
+				default:
+					throw new ArgumentException("bad direction");
+			}
+		}
 
 		static int2 MirrorXY(Mirror mirror, int2 original, int2 size)
 		{
@@ -136,6 +232,9 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		// <summary>
+		// A fixed-size 2D array that can be indexed either linearly or by coordinates.
+		// </summary>
 		sealed class Matrix<T>
 		{
 			public readonly T[] Data;
@@ -253,6 +352,74 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		readonly struct PathTerminal
+		{
+			public readonly string Type;
+			public readonly int Direction;
+
+			public string SegmentType
+			{
+				get => $"{Type}.{DirectionToString(Direction)}";
+			}
+
+			public PathTerminal(string type, int direction)
+			{
+				Type = type;
+				Direction = direction;
+			}
+		}
+
+		sealed class PermittedTemplates
+		{
+			// This should probably be changed to store Segments rather than Templates.
+			public readonly IEnumerable<TerrainTemplateInfo> Start;
+			public readonly IEnumerable<TerrainTemplateInfo> Inner;
+			public readonly IEnumerable<TerrainTemplateInfo> End;
+			public IEnumerable<TerrainTemplateInfo> All => Start.Union(Inner).Union(End);
+
+			public PermittedTemplates(IEnumerable<TerrainTemplateInfo> start, IEnumerable<TerrainTemplateInfo> inner, IEnumerable<TerrainTemplateInfo> end)
+			{
+				Start = start;
+				Inner = inner;
+				End = end;
+			}
+
+			public PermittedTemplates(IEnumerable<TerrainTemplateInfo> all)
+				: this(all, all, all)
+			{ }
+
+			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, string[] types)
+			{
+				return templatedTerrainInfo.Templates.Values
+					.Where(template => template.Segments.Any(segment => types.Any(type => segment.HasType(type))))
+					.ToArray();
+			}
+		}
+
+		sealed class Path
+		{
+			public int2[] Points;
+			public PathTerminal Start;
+			public PathTerminal End;
+			public PermittedTemplates PermittedTemplates;
+			public bool IsLoop
+			{
+				get => Points[0] == Points[^1];
+			}
+
+			// <summary>
+			// Simple constructor for paths
+			public Path(int2[] points, string startType, string endType, PermittedTemplates permittedTemplates)
+			{
+				Points = points;
+				var startDirection = CalculateDirection(Points[1] - Points[0]);
+				Start = new PathTerminal(startType, startDirection);
+				var endDirection = CalculateDirection(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
+				End = new PathTerminal(endType, endDirection);
+				PermittedTemplates = permittedTemplates;
+			}
+		}
+
 		static double SinSnap(double angle)
 		{
 			switch (angle)
@@ -260,22 +427,16 @@ namespace OpenRA.Mods.Common.Traits
 				case DEGREES_0:
 					return COS_0;
 				case DEGREES_90:
-				case (double)(float)DEGREES_90:
 					return COS_90;
 				case DEGREES_180:
-				case (double)(float)DEGREES_180:
 					return COS_180;
 				case DEGREES_270:
-				case (double)(float)DEGREES_270:
 					return COS_270;
 				case DEGREES_360:
-				case (double)(float)DEGREES_360:
 					return COS_360;
 				case DEGREES_120:
-				case (double)(float)DEGREES_120:
 					return COS_120;
 				case DEGREES_240:
-				case (double)(float)DEGREES_240:
 					return COS_240;
 				default:
 					return Math.Cos(angle);
@@ -289,25 +450,65 @@ namespace OpenRA.Mods.Common.Traits
 				case DEGREES_0:
 					return SIN_0;
 				case DEGREES_90:
-				case (double)(float)DEGREES_90:
 					return SIN_90;
 				case DEGREES_180:
-				case (double)(float)DEGREES_180:
 					return SIN_180;
 				case DEGREES_270:
-				case (double)(float)DEGREES_270:
 					return SIN_270;
 				case DEGREES_360:
-				case (double)(float)DEGREES_360:
 					return SIN_360;
 				case DEGREES_120:
-				case (double)(float)DEGREES_120:
 					return SIN_120;
 				case DEGREES_240:
-				case (double)(float)DEGREES_240:
 					return SIN_240;
 				default:
 					return Math.Sin(angle);
+			}
+		}
+
+		static float SinSnapF(float angle)
+		{
+			switch (angle)
+			{
+				case DEGREESF_0:
+					return (float)COS_0;
+				case DEGREESF_90:
+					return (float)COS_90;
+				case DEGREESF_180:
+					return (float)COS_180;
+				case DEGREESF_270:
+					return (float)COS_270;
+				case DEGREESF_360:
+					return (float)COS_360;
+				case DEGREESF_120:
+					return (float)COS_120;
+				case DEGREESF_240:
+					return (float)COS_240;
+				default:
+					return MathF.Cos(angle);
+			}
+		}
+
+		static float CosSnapF(float angle)
+		{
+			switch (angle)
+			{
+				case DEGREESF_0:
+					return (float)SIN_0;
+				case DEGREESF_90:
+					return (float)SIN_90;
+				case DEGREESF_180:
+					return (float)SIN_180;
+				case DEGREESF_270:
+					return (float)SIN_270;
+				case DEGREESF_360:
+					return (float)SIN_360;
+				case DEGREESF_120:
+					return (float)SIN_120;
+				case DEGREESF_240:
+					return (float)SIN_240;
+				default:
+					return MathF.Sin(angle);
 			}
 		}
 
@@ -421,7 +622,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			// TODO: translate exception messages?
 			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
-			var tileset = modData.DefaultTerrainInfo[map.Tileset];
+			var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
 			var size = map.MapSize;
 			var minSpan = Math.Min(size.X, size.Y);
 			var maxSpan = Math.Max(size.X, size.Y);
@@ -435,11 +636,17 @@ namespace OpenRA.Mods.Common.Traits
 			var minimumLandSeaThickness = settings["MinimumLandSeaThickness"].Get<int>();
 			var minimumMountainThickness = settings["MinimumMountainThickness"].Get<int>();
 			var water = settings["Water"].Get<float>();
+			var forests = settings["Forests"].Get<float>();
+			var forestClumpiness = settings["ForestClumpiness"].Get<float>();
 
 			if (water < 0.0f || water > 1.0f)
-			{
 				throw new MapGenerationException("water setting must be between 0 and 1 inclusive");
-			}
+
+			if (forests < 0.0f || forests > 1.0f)
+				throw new MapGenerationException("forest setting must be between 0 and 1 inclusive");
+
+			if (forestClumpiness < 0.0f)
+				throw new MapGenerationException("forestClumpiness setting must be >= 0");
 
 			// TODO
 			// if (params.mountain < 0.0 || params.mountain > 1.0) {
@@ -460,9 +667,18 @@ namespace OpenRA.Mods.Common.Traits
 			// derivatives may be deleted but should be replaced with their unused call to
 			// random.Next(). All generators should be created unconditionally.
 			var waterRandom = new MersenneTwister(random.Next());
+			var beachTilingRandom = new MersenneTwister(random.Next());
+			var forestRandom = new MersenneTwister(random.Next());
+			var resourceRandom = new MersenneTwister(random.Next());
 
 			Log.Write("debug", "elevation: generating noise");
-			var elevation = FractalNoise2dWithSymmetry(waterRandom, size, rotations, mirror, wavelengthScale);
+			var elevation = FractalNoise2dWithSymmetry(
+				waterRandom,
+				size,
+				rotations,
+				mirror,
+				wavelengthScale,
+				PinkAmplitudeFunction);
 
 			if (terrainSmoothing > 0)
 			{
@@ -488,8 +704,45 @@ namespace OpenRA.Mods.Common.Traits
 					/*invert=*/true);
 			}
 
-			Log.Write("debug", "land planning: fixing terrain anomalies");
+			Log.Write("debug", "land planning: producing terrain");
 			var landPlan = ProduceTerrain(elevation, terrainSmoothing, smoothingThreshold, minimumLandSeaThickness, /*bias=*/water < 0.5, "land planning");
+
+			Log.Write("debug", "beaches");
+			var beaches = BordersToPoints(landPlan);
+			var beachPermittedTemplates = new PermittedTemplates(PermittedTemplates.FindTemplates(tileset, new[] { "Beach" }));
+			for (var i = 0; i < beaches.Length; i++)
+			{
+				var tweakedPoints = TweakPathPoints(beaches[i], size);
+				var beachPath = new Path(tweakedPoints, "Beach", "Beach", beachPermittedTemplates);
+				var tiledBeach =
+					TilePath(map, beachPath, beachTilingRandom, minimumLandSeaThickness);
+			}
+
+			Matrix<float> forestNoise = null;
+			if (forests > 0.0f)
+			{
+				Log.Write("debug", "forests: generating noise");
+				forestNoise = FractalNoise2dWithSymmetry(
+					forestRandom,
+					size,
+					rotations,
+					mirror,
+					wavelengthScale,
+					wavelength => MathF.Pow(wavelength, forestClumpiness));
+				CalibrateHeightInPlace(
+					forestNoise,
+					0.0f,
+					1.0f - forests);
+			}
+
+			Log.Write("debug", "forests: generating noise");
+			var orePattern = FractalNoise2dWithSymmetry(
+				resourceRandom,
+				size,
+				rotations,
+				mirror,
+				wavelengthScale,
+				wavelength => MathF.Pow(wavelength, forestClumpiness));
 
 			// Makeshift map assembly
 
@@ -499,7 +752,7 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
-				map.Tiles[mpos] = landPlan[mpos.U, mpos.V] ? clearTile : waterTile;
+				// map.Tiles[mpos] = landPlan[mpos.U, mpos.V] ? clearTile : waterTile;
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
 			}
@@ -508,7 +761,7 @@ namespace OpenRA.Mods.Common.Traits
 			map.ActorDefinitions = ImmutableArray<MiniYamlNode>.Empty;
 		}
 
-		static Matrix<float> FractalNoise2dWithSymmetry(MersenneTwister random, int2 size, int rotations, Mirror mirror, float wavelengthScale)
+		static Matrix<float> FractalNoise2dWithSymmetry(MersenneTwister random, int2 size, int rotations, Mirror mirror, float wavelengthScale, AmplitudeFunction ampFunc)
 		{
 			if (rotations < 1)
 			{
@@ -518,7 +771,7 @@ namespace OpenRA.Mods.Common.Traits
 			// Need higher resolution due to cropping and rotation artifacts
 			var templateSpan = Math.Max(size.X, size.Y) * 2 + 2;
 			var templateSize = new int2(templateSpan, templateSpan);
-			var template = FractalNoise2d(random, templateSize, wavelengthScale);
+			var template = FractalNoise2d(random, templateSize, wavelengthScale, ampFunc);
 			var unmirrored = new Matrix<float>(size);
 
 			// This -1 is required to compensate for the top-left vs the center of a grid square.
@@ -526,9 +779,9 @@ namespace OpenRA.Mods.Common.Traits
 			var templateOffset = new float2(templateSpan / 2.0f, templateSpan / 2.0f);
 			for (var rotation = 0; rotation < rotations; rotation++)
 			{
-				var angle = rotation * 2.0 * Math.PI / rotations;
-				var cosAngle = (float)CosSnap(angle);
-				var sinAngle = (float)SinSnap(angle);
+				var angle = rotation * MathF.Tau / rotations;
+				var cosAngle = CosSnapF(angle);
+				var sinAngle = SinSnapF(angle);
 				for (var y = 0; y < size.Y; y++)
 				{
 					for (var x = 0; x < size.X; x++)
@@ -570,7 +823,9 @@ namespace OpenRA.Mods.Common.Traits
 			return mirrored;
 		}
 
-		static Matrix<float> FractalNoise2d(MersenneTwister random, int2 size, float wavelengthScale)
+		delegate float AmplitudeFunction(float wavelength);
+		static float PinkAmplitudeFunction(float wavelength) => wavelength;
+		static Matrix<float> FractalNoise2d(MersenneTwister random, int2 size, float wavelengthScale, AmplitudeFunction ampFunc)
 		{
 			var span = Math.Max(size.X, size.Y);
 			var wavelengths = new float[(int)Math.Log2(span)];
@@ -579,11 +834,11 @@ namespace OpenRA.Mods.Common.Traits
 				wavelengths[i] = (1 << i) * wavelengthScale;
 			}
 
-			float AmpFunc(float wavelength) => wavelength / span / wavelengths.Length;
+			// float AmpFunc(float wavelength) => wavelength / span / wavelengths.Length;
 			var noise = new Matrix<float>(size);
 			foreach (var wavelength in wavelengths)
 			{
-				var amps = AmpFunc(wavelength);
+				var amps = ampFunc(wavelength);
 				var subSpan = (int)(span / wavelength) + 2;
 				var subNoise = PerlinNoise2d(random, subSpan);
 
@@ -615,9 +870,9 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				for (var x = 0; x <= span; x++)
 				{
-					var phase = 2.0f * (float)Math.PI * random.NextFloatExclusive();
-					var vx = (float)Math.Cos(phase);
-					var vy = (float)Math.Sin(phase);
+					var phase = MathF.Tau * random.NextFloatExclusive();
+					var vx = MathF.Cos(phase);
+					var vy = MathF.Sin(phase);
 					if (x > 0 && y > 0)
 						noise[x - 1, y - 1] += vx * -D + vy * -D;
 					if (x < span && y > 0)
@@ -634,10 +889,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		static float Interpolate2d(Matrix<float> matrix, float x, float y)
 		{
-			var xa = (int)Math.Floor(x) | 0;
-			var xb = (int)Math.Ceiling(x) | 0;
-			var ya = (int)Math.Floor(y) | 0;
-			var yb = (int)Math.Ceiling(y) | 0;
+			var xa = (int)MathF.Floor(x);
+			var xb = (int)MathF.Ceiling(x);
+			var ya = (int)MathF.Floor(y);
+			var yb = (int)MathF.Ceiling(y);
+
+			// "w" for "weight"
 			var xbw = x - xa;
 			var ybw = y - ya;
 			var xaw = 1.0f - xbw;
@@ -680,7 +937,7 @@ namespace OpenRA.Mods.Common.Traits
 			var total = 0.0f;
 			for (var x = -radius; x <= radius; x++)
 			{
-				var value = (float)Math.Exp(-x * x / dsd2);
+				var value = MathF.Exp(-x * x / dsd2);
 				kernel[x + radius] = value;
 				total += value;
 			}
@@ -778,10 +1035,10 @@ namespace OpenRA.Mods.Common.Traits
 			}
 			else
 			{
-				minX = (int)Math.Floor(center.X - radius);
-				minY = (int)Math.Floor(center.Y - radius);
-				maxX = (int)Math.Ceiling(center.X + radius);
-				maxY = (int)Math.Ceiling(center.Y + radius);
+				minX = (int)MathF.Floor(center.X - radius);
+				minY = (int)MathF.Floor(center.Y - radius);
+				maxX = (int)MathF.Ceiling(center.X + radius);
+				maxY = (int)MathF.Ceiling(center.Y + radius);
 				if (minX < 0)
 					minX = 0;
 				if (minY < 0)
@@ -870,65 +1127,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			return landmass;
 		}
-
-		// // Perhaps replace with booleans or ints.
-		// static (Matrix<float> Output, int Changes, int SignChanges) MedianBlur(Matrix<float> input, int radius, bool extendOut, float threshold)
-		// {
-		// 	var halfThreshold = threshold / 2.0f;
-		// 	var output = new Matrix<float>(input.Size);
-		// 	var changes = 0;
-		// 	var signChanges = 0;
-		// 	var samples = new float[(2 * radius + 1) * (2 * radius + 1)];
-		// 	for (var cy = 0; cy < input.Size.Y; cy++)
-		// 	{
-		// 		for (var cx = 0; cx < input.Size.X; cx++)
-		// 		{
-		// 			// const ci = cy * size + cx;
-		// 			var sampleCount = 0;
-		// 			for (var oy = -radius; oy <= radius; oy++)
-		// 			{
-		// 				for (var ox = -radius; ox <= radius; ox++)
-		// 				{
-		// 					var x = cx + ox;
-		// 					var y = cy + oy;
-		// 					if (extendOut)
-		// 					{
-		// 						(x, y) = input.Clamp(x, y);
-		// 					}
-		// 					else
-		// 					{
-		// 						if (!input.ContainsXY(x, y)) continue;
-		// 					}
-
-		// 					samples[sampleCount++] = input[x, y];
-		// 				}
-		// 			}
-
-		// 			var thisInput = input[cx, cy];
-		// 			Array.Sort(samples, 0, sampleCount);
-		// 			if (threshold != 0)
-		// 			{
-		// 				var low = ArrayQuantile(samples, 0.5f - halfThreshold);
-		// 				var high = ArrayQuantile(samples, 0.5f + halfThreshold);
-		// 				if (low <= thisInput && thisInput <= high)
-		// 				{
-		// 					output[cx, cy] = thisInput;
-		// 					continue;
-		// 				}
-		// 			}
-
-		// 			var thisOutput = ArrayQuantile(samples, 0.5f);
-		// 			output[cx, cy] = thisOutput;
-		// 			changes++;
-		// 			if (Math.Sign(thisOutput) != Math.Sign(thisInput))
-		// 			{
-		// 				signChanges++;
-		// 			}
-		// 		}
-		// 	}
-
-		// 	return (output, changes, signChanges);
-		// }
 
 		static (Matrix<bool> Output, int Changes) BooleanBlur(Matrix<bool> input, int radius, bool extendOut, float threshold)
 		{
@@ -1154,6 +1352,681 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Fixes made, with potentially more that can be in another pass.
 			return (thinnest, changes);
+		}
+
+		static int2[][] BordersToPoints(Matrix<bool> matrix)
+		{
+			// There is redundant memory/iteration, but I don't care enough.
+
+			// These are really only the signs of the gradients.
+			var gradientH = new Matrix<sbyte>(matrix.Size);
+			var gradientV = new Matrix<sbyte>(matrix.Size);
+			for (var y = 0; y < matrix.Size.Y; y++)
+			{
+				for (var x = 1; x < matrix.Size.X; x++)
+				{
+					var l = matrix[x - 1, y] ? 1 : 0;
+					var r = matrix[x, y] ? 1 : 0;
+					gradientV[x, y] = (sbyte)(r - l);
+				}
+			}
+
+			for (var y = 1; y < matrix.Size.Y; y++)
+			{
+				for (var x = 0; x < matrix.Size.X; x++)
+				{
+					var u = matrix[x, y - 1] ? 1 : 0;
+					var d = matrix[x, y] ? 1 : 0;
+					gradientH[x, y] = (sbyte)(d - u);
+				}
+			}
+
+			// Looping paths contain the start/end point twice.
+			var paths = new List<int2[]>();
+			void TracePath(int sx, int sy, int direction)
+			{
+				var points = new List<int2>();
+				var x = sx;
+				var y = sy;
+				points.Add(new int2(x, y));
+				do
+				{
+					switch (direction)
+					{
+						case DIRECTION_R:
+							gradientH[x, y] = 0;
+							x++;
+							break;
+						case DIRECTION_D:
+							gradientV[x, y] = 0;
+							y++;
+							break;
+						case DIRECTION_L:
+							x--;
+							gradientH[x, y] = 0;
+							break;
+						case DIRECTION_U:
+							y--;
+							gradientV[x, y] = 0;
+							break;
+						default:
+							throw new ArgumentException("direction assertion failed");
+					}
+
+					points.Add(new int2(x, y));
+					var r = gradientH.ContainsXY(x, y) && gradientH[x, y] > 0;
+					var d = gradientV.ContainsXY(x, y) && gradientV[x, y] < 0;
+					var l = gradientH.ContainsXY(x - 1, y) && gradientH[x - 1, y] < 0;
+					var u = gradientV.ContainsXY(x, y - 1) && gradientV[x, y - 1] > 0;
+					if (direction == DIRECTION_R && u)
+						direction = DIRECTION_U;
+					else if (direction == DIRECTION_D && r)
+						direction = DIRECTION_R;
+					else if (direction == DIRECTION_L && d)
+						direction = DIRECTION_D;
+					else if (direction == DIRECTION_U && l)
+						direction = DIRECTION_L;
+					else if (r)
+						direction = DIRECTION_R;
+					else if (d)
+						direction = DIRECTION_D;
+					else if (l)
+						direction = DIRECTION_L;
+					else if (u)
+						direction = DIRECTION_U;
+					else
+						break; // Dead end (not a loop)
+				}
+				while (x != sx || y != sy);
+
+				paths.Add(points.ToArray());
+			}
+
+			// Trace non-loops (from edge of map)
+			for (var x = 1; x < matrix.Size.X; x++)
+			{
+				if (gradientV[x, 0] < 0)
+					TracePath(x, 0, DIRECTION_D);
+				if (gradientV[x, matrix.Size.Y - 1] > 0)
+					TracePath(x, matrix.Size.Y, DIRECTION_U);
+			}
+
+			for (var y = 1; y < matrix.Size.Y; y++)
+			{
+				if (gradientH[0, y] > 0)
+					TracePath(0, y, DIRECTION_R);
+				if (gradientH[matrix.Size.X - 1, y] < 0)
+					TracePath(matrix.Size.X, y, DIRECTION_L);
+			}
+
+			// Trace loops
+			for (var y = 0; y < matrix.Size.Y; y++)
+			{
+				for (var x = 0; x < matrix.Size.X; x++)
+				{
+					if (gradientH[x, y] > 0)
+						TracePath(x, y, DIRECTION_R);
+					else if (gradientH[x, y] < 0)
+						TracePath(x + 1, y, DIRECTION_L);
+
+					if (gradientV[x, y] < 0)
+						TracePath(x, y, DIRECTION_D);
+					else if (gradientV[x, y] > 0)
+						TracePath(x, y + 1, DIRECTION_U);
+				}
+			}
+
+			return paths.ToArray();
+		}
+
+		// <summary>
+		// Modifies a points (for a path) to be easier to tile.
+		// For loops, the points are made to start and end within the longest straight.
+		// For map edge-connected paths, the path is extended beyond the edge.
+		static int2[] TweakPathPoints(int2[] points, int2 size)
+		{
+			var len = points.Length;
+			var last = len - 1;
+			if (points[0].X == points[last].X && points[0].Y == points[last].Y)
+			{
+				// Closed loop. Find the longest straight
+				// (nrlen excludes the repeated point at the end.)
+				var nrlen = len - 1;
+				var prevDim = -1;
+				var scanStart = -1;
+				var bestScore = -1;
+				var bestBend = -1;
+				var prevBend = -1;
+				var prevI = 0;
+				for (var i = 1; ; i++)
+				{
+					if (i == nrlen)
+						i = 0;
+					var dim = points[i].X == points[prevI].X ? 1 : 0;
+					if (prevDim != -1 && prevDim != dim)
+					{
+						if (scanStart == -1)
+						{
+							// This is technically just after the bend. But that's fine.
+							scanStart = i;
+						}
+						else
+						{
+							var score = prevI - prevBend;
+							if (score < 0)
+								score += nrlen;
+
+							if (score > bestScore)
+							{
+								bestBend = prevBend;
+								bestScore = score;
+							}
+
+							if (i == scanStart)
+							{
+								break;
+							}
+						}
+
+						prevBend = prevI;
+					}
+
+					prevDim = dim;
+					prevI = i;
+				}
+
+				var favouritePoint = (bestBend + (bestScore >> 1)) % nrlen;
+
+				// Repeat the start at the end.
+				// [...points.slice(favouritePoint, nrlen), ...points.slice(0, favouritePoint + 1)];
+				var tweaked = new int2[points.Length];
+				Array.Copy(points, favouritePoint, tweaked, 0, nrlen - favouritePoint);
+				Array.Copy(points, 0, tweaked, nrlen - favouritePoint, favouritePoint + 1);
+				return tweaked;
+			}
+			else
+			{
+				// Not a loop.
+				int2[] Extend(int2 point, int extensionLength)
+				{
+					var ox = (point.X == 0) ? -1
+						: (point.X == size.X) ? 1
+						: 0;
+					var oy = (point.Y == 0) ? -1
+						: (point.Y == size.Y) ? 1
+						: 0;
+					if (ox == 0 && oy == 0)
+						return Array.Empty<int2>(); // We're not on an edge, so don't extend.
+					var offset = new int2(ox, oy);
+
+					var extension = new int2[extensionLength];
+					var newPoint = point;
+					for (var i = 0; i < extensionLength; i++)
+					{
+						newPoint += offset;
+						extension[i] = newPoint;
+					}
+
+					return extension;
+				}
+
+				// Open paths. Extend if beyond edges.
+				var startExt = Extend(points[0], /*extensionLength=*/4).Reverse().ToArray();
+				var endExt = Extend(points[last], /*extensionLength=*/4);
+
+				// [...startExt, ...points, ...endExt];
+				var tweaked = new int2[points.Length + startExt.Length + endExt.Length];
+				Array.Copy(startExt, 0, tweaked, 0, startExt.Length);
+				Array.Copy(points, 0, tweaked, startExt.Length, points.Length);
+				Array.Copy(endExt, 0, tweaked, points.Length + startExt.Length, endExt.Length);
+				return tweaked;
+			}
+		}
+
+		class TilePathSegment
+		{
+			public readonly TerrainTemplateInfo TemplateInfo;
+			public readonly TemplateSegment TemplateSegment;
+			public readonly int StartTypeId;
+			public readonly int EndTypeId;
+			public readonly int2 Offset;
+			public readonly int2 Moves;
+			public readonly int2[] RelativePoints;
+			public readonly int[] Directions;
+			public readonly int[] DirectionMasks;
+			public readonly int[] ReverseDirectionMasks;
+
+			public TilePathSegment(TerrainTemplateInfo templateInfo, TemplateSegment templateSegment, int startId, int endId)
+			{
+				TemplateInfo = templateInfo;
+				TemplateSegment = templateSegment;
+				StartTypeId = startId;
+				EndTypeId = endId;
+				Offset = templateSegment.Points[0];
+				Moves = templateSegment.Points[^1] - Offset;
+				RelativePoints = templateSegment.Points
+					.Select(p => p - templateSegment.Points[0])
+					.ToArray();
+
+				Directions = new int[RelativePoints.Length];
+				DirectionMasks = new int[RelativePoints.Length];
+				ReverseDirectionMasks = new int[RelativePoints.Length];
+
+				// Last point has no direction.
+				Directions[^1] = DIRECTION_NONE;
+				DirectionMasks[^1] = 0;
+				ReverseDirectionMasks[^1] = 0;
+				for (var i = 0; i < RelativePoints.Length - 1; i++)
+				{
+					var direction = CalculateDirection(RelativePoints[i + 1] - RelativePoints[i]);
+					if (direction == DIRECTION_NONE)
+						throw new ArgumentException("TemplateSegment has duplicate points in sequence");
+					Directions[i] = direction;
+					DirectionMasks[i] = 1 << direction;
+					ReverseDirectionMasks[i] = 1 << ReverseDirection(direction);
+				}
+			}
+		}
+
+		static int2[] TilePath(Map map, Path path, MersenneTwister random, int minimumThickness)
+		{
+			var maxDeviation = (minimumThickness - 1) >> 1;
+			var minPoint = new int2(
+				path.Points.Min(p => p.X) - maxDeviation,
+				path.Points.Min(p => p.Y) - maxDeviation);
+			var maxPoint = new int2(
+				path.Points.Max(p => p.X) + maxDeviation,
+				path.Points.Max(p => p.Y) + maxDeviation);
+			var points = path.Points.Select(point => point - minPoint).ToArray();
+
+			var isLoop = path.IsLoop;
+
+			// grid points (not squares), so these are offset 0.5 from tile centers.
+			var size = new int2(1 + maxPoint.X - minPoint.X, 1 + maxPoint.Y - minPoint.Y);
+			var sizeXY = size.X * size.Y;
+
+			const int MAX_DEVIATION = int.MaxValue;
+
+			// Bit masks of 8-angle directions which are considered a positive progress
+			// traversal. Template choices with an overall negative progress traversal
+			// are rejected.
+			var directions = new Matrix<byte>(size);
+
+			// How far away from the path this point is.
+			var deviations = new Matrix<int>(size).Fill(MAX_DEVIATION);
+
+			// Bit masks of 8-angle directions which define whether it's permitted
+			// to traverse from one point to a given neighbour.
+			var traversables = new Matrix<byte>(size);
+			{
+				var gradientX = new Matrix<int>(size);
+				var gradientY = new Matrix<int>(size);
+				for (var pointI = 0; pointI < points.Length; pointI++)
+				{
+					if (isLoop && pointI == 0)
+					{
+						// Same as last point.
+						continue;
+					}
+
+					var point = points[pointI];
+					var pointPrevI = pointI - 1;
+					var pointNextI = pointI + 1;
+					var directionX = 0;
+					var directionY = 0;
+					if (pointNextI < points.Length)
+					{
+						directionX += points[pointNextI].X - point.X;
+						directionY += points[pointNextI].Y - point.Y;
+					}
+
+					if (pointPrevI >= 0)
+					{
+						directionX += point.X - points[pointPrevI].X;
+						directionY += point.Y - points[pointPrevI].Y;
+					}
+
+					for (var deviation = 0; deviation <= maxDeviation; deviation++)
+					{
+						var minX = point.X - deviation;
+						var minY = point.Y - deviation;
+						var maxX = point.X + deviation;
+						var maxY = point.Y + deviation;
+						for (var y = minY; y <= maxY; y++)
+						{
+							for (var x = minX; x <= maxX; x++)
+							{
+								// const i = y * sizeX + x;
+								if (deviation < deviations[x, y])
+								{
+									deviations[x, y] = deviation;
+								}
+
+								if (deviation == maxDeviation)
+								{
+									gradientX[x, y] += directionX;
+									gradientY[x, y] += directionY;
+									if (x > minX)
+										traversables[x, y] |= DIRECTION_M_L;
+									if (x < maxX)
+										traversables[x, y] |= DIRECTION_M_R;
+									if (y > minY)
+										traversables[x, y] |= DIRECTION_M_U;
+									if (y < maxY)
+										traversables[x, y] |= DIRECTION_M_D;
+									if (x > minX && y > minY)
+										traversables[x, y] |= DIRECTION_M_LU;
+									if (x > minX && y < maxY)
+										traversables[x, y] |= DIRECTION_M_LD;
+									if (x < maxX && y > minY)
+										traversables[x, y] |= DIRECTION_M_RU;
+									if (x < maxX && y < maxY)
+										traversables[x, y] |= DIRECTION_M_RD;
+								}
+							}
+						}
+					}
+				}
+
+				// Probational
+				for (var i = 0; i < sizeXY; i++)
+				{
+					if (gradientX[i] == 0 && gradientY[i] == 0)
+					{
+						directions[i] = 0;
+						continue;
+					}
+
+					var direction = CalculateDirection(gradientX[i], gradientY[i]);
+
+					// .... direction: 0123456701234567
+					//                 UUU DDD UUU DDD
+					//                 R LLL RRR LLL R
+					directions[i] = (byte)(0b100000111000001 >> (7 - direction));
+				}
+			}
+
+			var pathStart = points[0];
+			var pathEnd = points[^1];
+			var permittedTemplates = path.PermittedTemplates.All.ToImmutableHashSet();
+
+			const int MAX_SCORE = int.MaxValue;
+			var segmentTypeToId = new Dictionary<string, int>();
+			var segmentsByStart = new List<List<TilePathSegment>>();
+			var segmentsByEnd = new List<List<TilePathSegment>>();
+			var scores = new List<Matrix<int>>();
+			{
+				void RegisterSegmentType(string type)
+				{
+					if (segmentTypeToId.ContainsKey(type)) return;
+					var newId = segmentTypeToId.Count;
+					segmentTypeToId.Add(type, newId);
+					segmentsByStart.Add(new List<TilePathSegment>());
+					segmentsByEnd.Add(new List<TilePathSegment>());
+					scores.Add(new Matrix<int>(size).Fill(MAX_SCORE));
+				}
+
+				foreach (var template in permittedTemplates)
+				{
+					foreach (var segment in template.Segments)
+					{
+						RegisterSegmentType(segment.Start);
+						RegisterSegmentType(segment.End);
+						var startTypeId = segmentTypeToId[segment.Start];
+						var endTypeId = segmentTypeToId[segment.End];
+						var tilePathSegment = new TilePathSegment(template, segment, startTypeId, endTypeId);
+						segmentsByStart[startTypeId].Add(tilePathSegment);
+						segmentsByEnd[endTypeId].Add(tilePathSegment);
+					}
+				}
+			}
+
+			var totalTypeIds = segmentTypeToId.Count;
+
+			var priorities = new PriorityArray<int>(totalTypeIds * size.X * size.Y, MAX_SCORE);
+			void SetPriorityAt(int typeId, int2 pos, int priority)
+				=> priorities[typeId * sizeXY + pos.Y * size.X + pos.X] = priority;
+			(int TypeId, int2 Pos, int Priority) GetNextPriority()
+			{
+				var index = priorities.GetMinIndex();
+				var priority = priorities[index];
+				var typeId = index / sizeXY;
+				var xy = index % sizeXY;
+				return (typeId, new int2(xy % size.X, xy / size.X), priority);
+			}
+
+			var pathStartTypeId = segmentTypeToId[path.Start.SegmentType];
+			var pathEndTypeId = segmentTypeToId[path.End.SegmentType];
+			var innerTypeIds = path.PermittedTemplates.Inner
+				.SelectMany(template => template.Segments)
+				.SelectMany(segment => new[] { segment.Start, segment.End })
+				.Select(segmentType => segmentTypeToId[segmentType])
+				.ToImmutableHashSet();
+
+			// Assumes both f and t are in the sizeX/sizeY bounds.
+			// Lower (closer to zero) scores are better matches.
+			// Higher scores are worse matches.
+			// MAX_SCORE means totally unacceptable.
+			int ScoreSegment(TilePathSegment segment, int2 from)
+			{
+				if (from == pathStart)
+				{
+					if (segment.StartTypeId != pathStartTypeId)
+						return MAX_SCORE;
+				}
+				else
+				{
+					if (!innerTypeIds.Contains(segment.StartTypeId))
+						return MAX_SCORE;
+				}
+
+				if (from + segment.Moves == pathEnd)
+				{
+					if (segment.EndTypeId != pathEndTypeId)
+						return MAX_SCORE;
+				}
+				else
+				{
+					if (!innerTypeIds.Contains(segment.EndTypeId))
+						return MAX_SCORE;
+				}
+
+				var deviationAcc = 0;
+				var progressionAcc = 0;
+				var lastPointI = segment.RelativePoints.Length - 1;
+				for (var pointI = 0; pointI <= lastPointI; pointI++)
+				{
+					var point = from + segment.RelativePoints[pointI];
+					var directionMask = segment.DirectionMasks[pointI];
+					var reverseDirectionMask = segment.ReverseDirectionMasks[pointI];
+					if (point.X < 0 || point.X >= size.X || point.Y < 0 || point.Y >= size.Y)
+					{
+						// Intermediate point escapes array bounds.
+						return MAX_SCORE;
+					}
+
+					if (pointI < lastPointI)
+					{
+						if ((traversables[point] & directionMask) == 0)
+						{
+							// Next point escapes traversable area.
+							return MAX_SCORE;
+						}
+
+						if ((directions[point] & directionMask) == directionMask)
+						{
+							progressionAcc++;
+						}
+						else if ((directions[point] & reverseDirectionMask) == reverseDirectionMask)
+						{
+							progressionAcc--;
+						}
+					}
+
+					if (pointI > 0)
+					{
+						// Don't double-count the template's path's starts and ends
+						deviationAcc += deviations[point];
+					}
+				}
+
+				if (progressionAcc < 0)
+				{
+					// It's moved backwards
+					return MAX_SCORE;
+				}
+
+				// Satisfies all requirements.
+				return deviationAcc;
+			}
+
+			void UpdateFrom(int2 from, int fromTypeId)
+			{
+				var fromScore = scores[fromTypeId][from];
+				foreach (var segment in segmentsByStart[fromTypeId])
+				{
+					var to = from + segment.Moves;
+					if (to.X < 0 || to.X >= size.X || to.Y < 0 || to.Y >= size.Y)
+					{
+						continue;
+					}
+
+					// Most likely to fail. Check first.
+					if (deviations[to] == MAX_DEVIATION)
+					{
+						// End escapes bounds.
+						continue;
+					}
+
+					var segmentScore = ScoreSegment(segment, from);
+					if (segmentScore == MAX_SCORE)
+					{
+						continue;
+					}
+
+					var toScore = fromScore + segmentScore;
+					var toTypeId = segment.EndTypeId;
+					if (toScore < scores[toTypeId][to])
+					{
+						scores[toTypeId][to] = toScore;
+						SetPriorityAt(toTypeId, to, toScore);
+					}
+				}
+
+				SetPriorityAt(fromTypeId, from, MAX_SCORE);
+			}
+
+			scores[pathStartTypeId][pathStart] = 0;
+			UpdateFrom(pathStart, pathStartTypeId);
+
+			// Needed in case we loop back to the start.
+			scores[pathStartTypeId][pathStart] = MAX_SCORE;
+
+			while (true)
+			{
+				var (fromTypeId, from, priority) = GetNextPriority();
+
+				// TODO: Break if we're on the end point?
+				if (priority == MAX_SCORE)
+				{
+					break;
+				}
+
+				UpdateFrom(from, fromTypeId);
+			}
+
+			// Trace back and update tiles
+			var resultPoints = new List<int2>
+			{
+				pathEnd + minPoint
+			};
+
+			(int2 From, int FromTypeId) TraceBackStep(int2 to, int toTypeId)
+			{
+				var toScore = scores[toTypeId][to];
+				var candidates = new List<TilePathSegment>();
+				foreach (var segment in segmentsByEnd[toTypeId])
+				{
+					var from = to - segment.Moves;
+					if (from.X < 0 || from.X >= size.X || from.Y < 0 || from.Y >= size.Y)
+					{
+						continue;
+					}
+
+					// Most likely to fail. Check first.
+					if (deviations[from] == MAX_DEVIATION)
+					{
+						// Start escapes bounds.
+						continue;
+					}
+
+					var segmentScore = ScoreSegment(segment, from);
+					if (segmentScore == MAX_SCORE)
+					{
+						continue;
+					}
+
+					var fromScore = toScore - segmentScore;
+					if (fromScore == scores[segment.StartTypeId][from])
+					{
+						candidates.Add(segment);
+					}
+				}
+
+				Debug.Assert(candidates.Count >= 1, "TraceBack didn't find an original route");
+				var chosenSegment = candidates[random.Next(candidates.Count)];
+				var chosenFrom = to - chosenSegment.Moves;
+				PaintTemplate(map, chosenFrom - chosenSegment.Offset + minPoint, chosenSegment.TemplateInfo);
+
+				// Skip end point as it is recorded in the previous template.
+				for (var i = chosenSegment.RelativePoints.Length - 2; i >= 0; i--)
+				{
+					var point = chosenSegment.RelativePoints[i];
+					resultPoints.Add(chosenFrom + point + minPoint);
+				}
+
+				return (chosenFrom, chosenSegment.StartTypeId);
+			}
+
+			{
+				var to = pathEnd;
+				var toTypeId = pathEndTypeId;
+				if (scores[toTypeId][to] == MAX_SCORE)
+					throw new MapGenerationException("Could not fit tiles for path");
+				(to, toTypeId) = TraceBackStep(to, toTypeId);
+
+				// We previously set this to MAX_SCORE in case we were a loop. Reset it for getting back to the start.
+				scores[pathStartTypeId][pathStart] = 0;
+
+				// No need to check direction. If that is an issue, I have bigger problems to worry about.
+				while (to != pathStart)
+				{
+					(to, toTypeId) = TraceBackStep(to, toTypeId);
+				}
+			}
+
+			// Traced back in reverse, so reverse the reversal.
+			resultPoints.Reverse();
+			return resultPoints.ToArray();
+		}
+
+		static void PaintTemplate(Map map, int2 at, TerrainTemplateInfo template)
+		{
+			if (template.PickAny)
+				throw new ArgumentException("PaintTemplate does not expect PickAny");
+			for (var y = 0; y < template.Size.Y; y++)
+			{
+				for (var x = 0; x < template.Size.X; x++)
+				{
+					var i = (byte)(y * template.Size.X + x);
+					if (template[i] == null)
+						continue;
+					var tile = new TerrainTile(template.Id, i);
+					var mpos = new MPos(at.X + x, at.Y + y);
+					if (map.Tiles.Contains(mpos))
+						map.Tiles[mpos] = tile;
+				}
+			}
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
