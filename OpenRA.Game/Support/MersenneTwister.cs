@@ -50,6 +50,7 @@ namespace OpenRA.Support
 			Last = (int)(y % int.MaxValue);
 			return y;
 		}
+
 		/// <summary>
 		/// Produces an unsigned integer between -0x80000000 and 0x7fffffff inclusive.
 		/// </summary>
