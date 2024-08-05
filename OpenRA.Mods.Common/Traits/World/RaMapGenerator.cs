@@ -41,6 +41,9 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class RaMapGenerator : IMapGenerator
 	{
+		const ushort LAND_TILE = 255;
+		const ushort WATER_TILE = 1;
+
 		const double DEGREES_0   = 0.0;
 		const double DEGREES_90  = Math.Tau * 0.25;
 		const double DEGREES_180 = Math.Tau * 0.5;
@@ -113,6 +116,14 @@ namespace OpenRA.Mods.Common.Traits
 		const int DIRECTION_M_LU = 1 << DIRECTION_LU;
 		const int DIRECTION_M_U = 1 << DIRECTION_U;
 		const int DIRECTION_M_RU = 1 << DIRECTION_RU;
+
+		static readonly ImmutableArray<int2> SPREAD4 = ImmutableArray.Create(new[]
+		{
+			new int2(1, 0),
+			new int2(0, 1),
+			new int2(-1, 0),
+			new int2(0, -1)
+		});
 
 		static int CalculateDirection(int dx, int dy)
 		{
@@ -670,6 +681,24 @@ namespace OpenRA.Mods.Common.Traits
 			var beachTilingRandom = new MersenneTwister(random.Next());
 			var forestRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
+			var pickAnyRandom = new MersenneTwister(random.Next());
+
+			TerrainTile PickTile(ushort tileType)
+			{
+				if (tileset.Templates.TryGetValue(tileType, out var template) && template.PickAny)
+					return new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
+				else
+					return new TerrainTile(tileType, 0);
+			}
+
+			Log.Write("debug", "clearing map");
+			foreach (var cell in map.AllCells)
+			{
+				var mpos = cell.ToMPos(map);
+				map.Tiles[mpos] = PickTile(LAND_TILE);
+				map.Resources[mpos] = new ResourceTile(0, 0);
+				map.Height[mpos] = 0;
+			}
 
 			Log.Write("debug", "elevation: generating noise");
 			var elevation = FractalNoise2dWithSymmetry(
@@ -709,13 +738,38 @@ namespace OpenRA.Mods.Common.Traits
 
 			Log.Write("debug", "beaches");
 			var beaches = BordersToPoints(landPlan);
-			var beachPermittedTemplates = new PermittedTemplates(PermittedTemplates.FindTemplates(tileset, new[] { "Beach" }));
-			for (var i = 0; i < beaches.Length; i++)
+			if (beaches.Length > 0)
 			{
-				var tweakedPoints = TweakPathPoints(beaches[i], size);
-				var beachPath = new Path(tweakedPoints, "Beach", "Beach", beachPermittedTemplates);
-				var tiledBeach =
-					TilePath(map, beachPath, beachTilingRandom, minimumLandSeaThickness);
+				var beachPermittedTemplates = new PermittedTemplates(PermittedTemplates.FindTemplates(tileset, new[] { "Beach" }));
+				var tiledBeaches = new int2[beaches.Length][];
+				for (var i = 0; i < beaches.Length; i++)
+				{
+					var tweakedPoints = TweakPathPoints(beaches[i], size);
+					var beachPath = new Path(tweakedPoints, "Beach", "Beach", beachPermittedTemplates);
+					tiledBeaches[i] = TilePath(map, beachPath, beachTilingRandom, minimumLandSeaThickness);
+				}
+
+				Log.Write("debug", "filling water");
+				var beachChirality = PointsChirality(size, tiledBeaches);
+				foreach (var cell in map.AllCells)
+				{
+					var mpos = cell.ToMPos(map);
+					var point = new int2(mpos.U, mpos.V);
+
+					// `map.Tiles[mpos].Index == LAND_TILE` avoids overwriting beach tiles.
+					if (beachChirality[mpos.U, mpos.V] < 0 && map.Tiles[mpos].Type == LAND_TILE)
+						map.Tiles[mpos] = PickTile(WATER_TILE);
+				}
+			}
+			else
+			{
+				// There weren't any coastlines
+				var tileType = landPlan[0] ? LAND_TILE : WATER_TILE;
+				foreach (var cell in map.AllCells)
+				{
+					var mpos = cell.ToMPos(map);
+					map.Tiles[mpos] = PickTile(tileType);
+				}
 			}
 
 			Matrix<float> forestNoise = null;
@@ -746,13 +800,9 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Makeshift map assembly
 
-			var clearTile = new TerrainTile(255, 0);
-			var waterTile = new TerrainTile(1, 0);
-
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
-				// map.Tiles[mpos] = landPlan[mpos.U, mpos.V] ? clearTile : waterTile;
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
 			}
@@ -2027,6 +2077,79 @@ namespace OpenRA.Mods.Common.Traits
 						map.Tiles[mpos] = tile;
 				}
 			}
+		}
+
+		private Matrix<sbyte> PointsChirality(int2 size, int2[][] pointArrayArray)
+		{
+			var chirality = new Matrix<sbyte>(size);
+			var next = new List<int2>();
+			void SeedChirality(int2 point, sbyte value, bool firstPass)
+			{
+				if (!chirality.ContainsXY(point))
+					return;
+				if (firstPass)
+				{
+					// Some paths which overlap or go back on themselves
+					// might fight for chirality. Vote on it.
+					chirality[point] += value;
+				}
+				else
+				{
+					if (chirality[point] != 0)
+						return;
+					chirality[point] = value;
+				}
+
+				next.Add(point);
+			}
+
+			foreach (var pointArray in pointArrayArray)
+			{
+				for (var i = 1; i < pointArray.Length; i++)
+				{
+					var from = pointArray[i - 1];
+					var to = pointArray[i];
+					var direction = CalculateDirection(to - from);
+					var fx = from.X;
+					var fy = from.Y;
+					switch (direction)
+					{
+						case DIRECTION_R:
+							SeedChirality(new int2(fx    , fy    ),  1, true);
+							SeedChirality(new int2(fx    , fy - 1), -1, true);
+							break;
+						case DIRECTION_D:
+							SeedChirality(new int2(fx - 1, fy    ),  1, true);
+							SeedChirality(new int2(fx    , fy    ), -1, true);
+							break;
+						case DIRECTION_L:
+							SeedChirality(new int2(fx - 1, fy - 1),  1, true);
+							SeedChirality(new int2(fx - 1, fy    ), -1, true);
+							break;
+						case DIRECTION_U:
+							SeedChirality(new int2(fx    , fy - 1),  1, true);
+							SeedChirality(new int2(fx - 1, fy - 1), -1, true);
+							break;
+						default:
+							throw new ArgumentException("Unsupported direction for chirality");
+					}
+				}
+			}
+
+			while (next.Count != 0)
+			{
+				var current = next;
+				next = new List<int2>();
+				foreach (var point in current)
+				{
+					foreach (var offset in SPREAD4)
+					{
+						SeedChirality(point + offset, chirality[point], false);
+					}
+				}
+			}
+
+			return chirality;
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
