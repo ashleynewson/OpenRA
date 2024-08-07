@@ -400,9 +400,16 @@ namespace OpenRA.Mods.Common.Traits
 			{ }
 
 			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, string[] types)
+				=> FindTemplates(templatedTerrainInfo, types, types);
+
+			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, string[] startTypes, string[] endTypes)
 			{
 				return templatedTerrainInfo.Templates.Values
-					.Where(template => template.Segments.Any(segment => types.Any(type => segment.HasType(type))))
+					.Where(
+						template => template.Segments.Any(
+							segment =>
+								startTypes.Any(type => segment.HasStartType(type) &&
+								endTypes.Any(type => segment.HasEndType(type)))))
 					.ToArray();
 			}
 		}
@@ -649,6 +656,12 @@ namespace OpenRA.Mods.Common.Traits
 			var water = settings["Water"].Get<float>();
 			var forests = settings["Forests"].Get<float>();
 			var forestClumpiness = settings["ForestClumpiness"].Get<float>();
+			var mountains = settings["Mountains"].Get<float>();
+			var roughness = settings["Roughness"].Get<float>();
+			var roughnessRadius = settings["RoughnessRadius"].Get<int>();
+			var maximumAltitude = settings["MaximumAltitude"].Get<int>();
+			var minimumTerrainContourSpacing = settings["MinimumTerrainContourSpacing"].Get<int>();
+			var minimumCliffLength = settings["MinimumCliffLength"].Get<int>();
 
 			if (water < 0.0f || water > 1.0f)
 				throw new MapGenerationException("water setting must be between 0 and 1 inclusive");
@@ -677,11 +690,12 @@ namespace OpenRA.Mods.Common.Traits
 			// In order to maximize stability, additions should be appended only. Disused
 			// derivatives may be deleted but should be replaced with their unused call to
 			// random.Next(). All generators should be created unconditionally.
+			var pickAnyRandom = new MersenneTwister(random.Next());
 			var waterRandom = new MersenneTwister(random.Next());
 			var beachTilingRandom = new MersenneTwister(random.Next());
+			var cliffTilingRandom = new MersenneTwister(random.Next());
 			var forestRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
-			var pickAnyRandom = new MersenneTwister(random.Next());
 
 			TerrainTile PickTile(ushort tileType)
 			{
@@ -726,11 +740,11 @@ namespace OpenRA.Mods.Common.Traits
 			if (externalCircularBias != 0)
 			{
 				ReserveCircleInPlace(
-					elevation,
-					externalCircleCenter,
-					minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
-					(_, _) => externalCircularBias * EXTERNAL_BIAS,
-					/*invert=*/true);
+					matrix: elevation,
+					center: externalCircleCenter,
+					radius: minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
+					setTo: (_, _) => externalCircularBias * EXTERNAL_BIAS,
+					invert: true);
 			}
 
 			Log.Write("debug", "land planning: producing terrain");
@@ -789,7 +803,7 @@ namespace OpenRA.Mods.Common.Traits
 					1.0f - forests);
 			}
 
-			Log.Write("debug", "forests: generating noise");
+			Log.Write("debug", "ORE: generating noise");
 			var orePattern = FractalNoise2dWithSymmetry(
 				resourceRandom,
 				size,
@@ -797,6 +811,109 @@ namespace OpenRA.Mods.Common.Traits
 				mirror,
 				wavelengthScale,
 				wavelength => MathF.Pow(wavelength, forestClumpiness));
+
+			var nonLoopedCliffPermittedTemplates = new PermittedTemplates(
+				PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Cliff" }),
+				PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }),
+				PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }, new[] { "Clear" }));
+			var loopedCliffPermittedTemplates = new PermittedTemplates(
+				PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }));
+			if (externalCircularBias > 0)
+			{
+				Log.Write("debug", "creating circular cliff map border");
+				var cliffRing = new Matrix<bool>(size);
+				ReserveCircleInPlace(
+					matrix: cliffRing,
+					center: externalCircleCenter,
+					radius: minSpan / 2.0f - minimumLandSeaThickness,
+					setTo: (_, _) => true,
+					invert: true);
+				var cliffs = BordersToPoints(cliffRing);
+				foreach (var cliff in cliffs)
+				{
+					var tweakedPoints = TweakPathPoints(cliff, size);
+					var isLoop = tweakedPoints[0] == tweakedPoints[^1];
+					Path cliffPath;
+					if (isLoop)
+						cliffPath = new Path(tweakedPoints, "Cliff", "Cliff", loopedCliffPermittedTemplates);
+					else
+						cliffPath = new Path(tweakedPoints, "Clear", "Clear", nonLoopedCliffPermittedTemplates);
+					TilePath(map, cliffPath, cliffTilingRandom, minimumMountainThickness);
+				}
+			}
+
+			if (mountains > 0.0f || externalCircularBias == 1)
+			{
+				Log.Write("debug", "mountains: calculating elevation roughness");
+				var roughnessMatrix = GridVariance2d(elevation, roughnessRadius).Map(v => MathF.Sqrt(v));
+				CalibrateHeightInPlace(
+					roughnessMatrix,
+					0.0f,
+					1.0f - roughness);
+				var cliffMask = roughnessMatrix.Map(v => v >= 0);
+				var mountainElevation = elevation.Clone();
+				var cliffPlan = landPlan;
+				if (externalCircularBias > 0)
+				{
+					ReserveCircleInPlace(
+						matrix: cliffPlan,
+						center: externalCircleCenter,
+						radius: minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
+						setTo: (_, _) => false,
+						invert: true);
+				}
+
+				for (var altitude = 1; altitude <= maximumAltitude; altitude++)
+				{
+					Log.Write("debug", $"mountains: altitude {altitude}: determining eligible area for cliffs");
+
+					// Limit mountain area to the existing mountain space (starting with all available land)
+					var roominess = CalculateRoominess(cliffPlan, true);
+					var available = 0;
+					var total = size.X * size.Y;
+					for (var n = 0; n < mountainElevation.Data.Length; n++)
+					{
+						if (roominess.Data[n] < minimumTerrainContourSpacing)
+						{
+							// Too close to existing cliffs (or coastline)
+							mountainElevation.Data[n] = -1.0f;
+						}
+						else
+						{
+							available++;
+						}
+
+						total++;
+					}
+
+					var availableFraction = (float)available / (float)total;
+					CalibrateHeightInPlace(
+						mountainElevation,
+						0.0f,
+						1.0f - availableFraction * mountains);
+					Log.Write("debug", $"mountains: altitude {altitude}: fixing terrain anomalies");
+					cliffPlan = ProduceTerrain(mountainElevation, terrainSmoothing, smoothingThreshold, minimumMountainThickness, false, $"mountains: altitude {altitude}");
+					Log.Write("debug", $"mountains: altitude {altitude}: tracing cliffs");
+					var unmaskedCliffs = BordersToPoints(cliffPlan);
+					Log.Write("debug", $"mountains: altitude {altitude}: appling roughness mask to cliffs");
+					var maskedCliffs = MaskPoints(unmaskedCliffs, cliffMask);
+					var cliffs = maskedCliffs.Where(cliff => cliff.Length >= minimumCliffLength).ToArray();
+					if (cliffs.Length == 0)
+						break;
+					Log.Write("debug", $"mountains: altitude {altitude}: fitting and laying tiles");
+					foreach (var cliff in cliffs)
+					{
+						var tweakedPoints = TweakPathPoints(cliff, size);
+						var isLoop = tweakedPoints[0] == tweakedPoints[^1];
+						Path cliffPath;
+						if (isLoop)
+							cliffPath = new Path(tweakedPoints, "Cliff", "Cliff", loopedCliffPermittedTemplates);
+						else
+							cliffPath = new Path(tweakedPoints, "Clear", "Clear", nonLoopedCliffPermittedTemplates);
+						TilePath(map, cliffPath, cliffTilingRandom, minimumMountainThickness);
+					}
+				}
+			}
 
 			// Makeshift map assembly
 
@@ -2150,6 +2267,190 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return chirality;
+		}
+
+		// <summary>
+		// Finds the local variance of points in a 2d grid (using a square sample area).
+		// Sample areas are centered on data point corners, so output is (size + 1) * (size + 1).
+		// </summary>
+		static Matrix<float> GridVariance2d(Matrix<float> input, int radius)
+		{
+			var output = new Matrix<float>(input.Size + new int2(1, 1));
+			for (var cy = 0; cy < output.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < output.Size.X; cx++)
+				{
+					var total = 0.0f;
+					var samples = 0;
+					for (var ry = -radius; ry < radius; ry++)
+					{
+						for (var rx = -radius; rx < radius; rx++)
+						{
+							var y = cy + ry;
+							var x = cx + rx;
+							if (!input.ContainsXY(x, y))
+								continue;
+							total += input[x, y];
+							samples++;
+						}
+					}
+
+					var mean = total / samples;
+					var sumOfSquares = 0.0f;
+					for (var ry = -radius; ry < radius; ry++)
+					{
+						for (var rx = -radius; rx < radius; rx++)
+						{
+							var y = cy + ry;
+							var x = cx + rx;
+							if (!input.ContainsXY(x, y))
+								continue;
+							sumOfSquares += MathF.Pow(mean - input[x, y], 2);
+						}
+					}
+
+					output[cx, cy] = sumOfSquares / samples;
+				}
+			}
+
+			return output;
+		}
+
+		static Matrix<int> CalculateRoominess(Matrix<bool> elevations, bool roomyEdges)
+		{
+			var roominess = new Matrix<int>(elevations.Size);
+
+			// This could be more efficient.
+			var next = new List<int2>();
+
+			// Find shores and map boundary
+			for (var cy = 0; cy < elevations.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < elevations.Size.X; cx++)
+				{
+					var pCount = 0;
+					var nCount = 0;
+					for (var oy = -1; oy <= 1; oy++)
+					{
+						for (var ox = -1; ox <= 1; ox++)
+						{
+							var x = cx + ox;
+							var y = cy + oy;
+							if (!elevations.ContainsXY(x, y))
+							{
+								// Boundary
+							}
+							else if (elevations[x, y])
+								pCount++;
+							else
+								nCount++;
+						}
+					}
+
+					if (roomyEdges && nCount + pCount != 9)
+					{
+						continue;
+					}
+
+					if (pCount != 9 && nCount != 9)
+					{
+						roominess[cx, cy] = elevations[cx, cy] ? 1 : -1;
+						next.Add(new int2(cx, cy));
+					}
+				}
+			}
+
+			if (next.Count == 0)
+			{
+				// There were no shores. Use minSpan or -minSpan as appropriate.
+				var minSpan = Math.Min(elevations.Size.X, elevations.Size.Y);
+				roominess.Fill(elevations[0] ? minSpan : -minSpan);
+				return roominess;
+			}
+
+			for (var distance = 2; next.Count != 0; distance++)
+			{
+				var current = next;
+				next = new List<int2>();
+				foreach (var point in current)
+				{
+					var cx = point.X;
+					var cy = point.Y;
+					for (var oy = -1; oy <= 1; oy++)
+					{
+						for (var ox = -1; ox <= 1; ox++)
+						{
+							if (ox == 0 && oy == 0)
+								continue;
+							var x = cx + ox;
+							var y = cy + oy;
+							if (!roominess.ContainsXY(x, y))
+								continue;
+							if (roominess[x, y] != 0)
+								continue;
+							roominess[x, y] = elevations[x, y] ? distance : -distance;
+							next.Add(new int2(x, y));
+						}
+					}
+				}
+			}
+
+			return roominess;
+		}
+
+		static int2[][] MaskPoints(int2[][] pointArrayArray, Matrix<bool> mask)
+		{
+			var newPointArrayArray = new List<int2[]>();
+
+			foreach (var pointArray in pointArrayArray)
+			{
+				var isLoop = pointArray[0] == pointArray[^1];
+				int firstBad;
+				for (firstBad = 0; firstBad < pointArray.Length; firstBad++)
+				{
+					if (!mask[pointArray[firstBad]])
+						break;
+				}
+
+				if (firstBad == pointArray.Length)
+				{
+					// The path is entirely within the mask already.
+					newPointArrayArray.Add(pointArray);
+					continue;
+				}
+
+				var startAt = isLoop ? firstBad : 0;
+				var wrapAt = isLoop ? pointArray.Length - 1 : pointArray.Length;
+				if (wrapAt == 0)
+					throw new ArgumentException("single point paths should not exist");
+				Debug.Assert(startAt < wrapAt, "start outside wrap bounds");
+				var i = startAt;
+				List<int2> currentPointArray = null;
+				do
+				{
+					if (mask[pointArray[i]])
+					{
+						currentPointArray ??= new List<int2>();
+						currentPointArray.Add(pointArray[i]);
+					}
+					else
+					{
+						if (currentPointArray != null && currentPointArray.Count > 1)
+							newPointArrayArray.Add(currentPointArray.ToArray());
+						currentPointArray = null;
+					}
+
+					i++;
+					if (i == wrapAt)
+						i = 0;
+				}
+				while (i != startAt);
+
+				if (currentPointArray != null && currentPointArray.Count > 1)
+					newPointArrayArray.Add(currentPointArray.ToArray());
+			}
+
+			return newPointArrayArray.ToArray();
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
