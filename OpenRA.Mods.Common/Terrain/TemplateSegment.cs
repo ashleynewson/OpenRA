@@ -19,6 +19,7 @@ namespace OpenRA.Mods.Common.Terrain
 	/// </summary>
 	public class TemplateSegment
 	{
+		// TODO: I'm probably going to have to have a main type afterall.
 		public readonly string Start;
 		public readonly string End;
 		[FieldLoader.Ignore]
@@ -51,7 +52,9 @@ namespace OpenRA.Mods.Common.Terrain
 			return type.StartsWith($"{matcher}.", StringComparison.InvariantCulture);
 		}
 
-		public bool HasType(string matcher)
-			=> MatchesType(Start, matcher) || MatchesType(End, matcher);
+		public bool HasStartType(string matcher)
+			=> MatchesType(Start, matcher);
+		public bool HasEndType(string matcher)
+			=> MatchesType(End, matcher);
 	}
 }
