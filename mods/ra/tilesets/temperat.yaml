@@ -1245,6 +1245,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Clear.L
+				Points: 2,1, 1,1, 0,1
 	Template@136:
 		Id: 136
 		Images: s02.tem
@@ -1257,6 +1262,11 @@ Templates:
 			3: Rock
 			4: Rock
 			5: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Cliff.L
+				Points: 2,2, 1,2, 1,1, 0,1
 	Template@137:
 		Id: 137
 		Images: s03.tem
@@ -1267,6 +1277,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Cliff.L
+				Points: 2,1, 1,1, 0,1
 	Template@138:
 		Id: 138
 		Images: s04.tem
@@ -1277,6 +1292,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Cliff.L
+				Points: 2,1, 1,1, 0,1
 	Template@139:
 		Id: 139
 		Images: s05.tem
@@ -1287,6 +1307,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Cliff.L
+				Points: 2,1, 1,1, 0,1
 	Template@140:
 		Id: 140
 		Images: s06.tem
@@ -1298,6 +1323,11 @@ Templates:
 			2: Rock
 			3: Rock
 			4: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Cliff.L
+				Points: 2,1, 1,1, 0,2
 	Template@141:
 		Id: 141
 		Images: s07.tem
@@ -1308,6 +1338,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Clear.L
+				End: Cliff.L
+				Points: 2,1, 1,1, 0,1
 	Template@142:
 		Id: 142
 		Images: s08.tem
@@ -1318,6 +1353,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Clear.U
+				Points: 1,2, 1,1, 1,0
 	Template@143:
 		Id: 143
 		Images: s09.tem
@@ -1330,6 +1370,11 @@ Templates:
 			3: Rock
 			4: Rock
 			5: Rock
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Cliff.U
+				Points: 2,2, 2,1, 1,1, 1,0
 	Template@144:
 		Id: 144
 		Images: s10.tem
@@ -1340,6 +1385,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Cliff.U
+				Points: 1,2, 1,1, 1,0
 	Template@145:
 		Id: 145
 		Images: s11.tem
@@ -1350,6 +1400,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Cliff.U
+				Points: 1,2, 1,1, 1,0
 	Template@146:
 		Id: 146
 		Images: s12.tem
@@ -1360,6 +1415,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Cliff.U
+				Points: 1,2, 1,1, 1,0
 	Template@147:
 		Id: 147
 		Images: s13.tem
@@ -1372,6 +1432,11 @@ Templates:
 			3: Rock
 			4: Rock
 			5: Rough
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Cliff.U
+				Points: 1,2, 1,1, 2,1, 2,0
 	Template@148:
 		Id: 148
 		Images: s14.tem
@@ -1381,6 +1446,11 @@ Templates:
 			0: Rock
 			1: Rough
 			2: Rock
+		Segments:
+			Segment:
+				Start: Clear.U
+				End: Cliff.U
+				Points: 1,2, 1,1, 1,0
 	Template@149:
 		Id: 149
 		Images: s15.tem
@@ -1391,6 +1461,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Clear.R
+				End: Cliff.R
+				Points: 0,1, 1,1, 2,1
 	Template@150:
 		Id: 150
 		Images: s16.tem
@@ -1401,6 +1476,11 @@ Templates:
 			2: Rock
 			3: Rock
 			5: Rock
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Cliff.R
+				Points: 0,1, 1,1, 1,2, 2,2
 	Template@151:
 		Id: 151
 		Images: s17.tem
@@ -1411,6 +1491,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Cliff.R
+				Points: 0,1, 1,1, 2,1
 	Template@152:
 		Id: 152
 		Images: s18.tem
@@ -1421,6 +1506,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Cliff.R
+				Points: 0,1, 1,1, 2,1
 	Template@153:
 		Id: 153
 		Images: s19.tem
@@ -1431,6 +1521,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Cliff.R
+				Points: 0,1, 1,1, 2,1
 	Template@154:
 		Id: 154
 		Images: s20.tem
@@ -1442,6 +1537,11 @@ Templates:
 			3: Rock
 			4: Rock
 			5: Rough
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Cliff.R
+				Points: 0,2, 1,2, 1,1, 2,1
 	Template@155:
 		Id: 155
 		Images: s21.tem
@@ -1450,6 +1550,11 @@ Templates:
 		Tiles:
 			0: Rock
 			1: Rock
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Clear.R
+				Points: 0,1, 1,1
 	Template@156:
 		Id: 156
 		Images: s22.tem
@@ -1458,6 +1563,11 @@ Templates:
 		Tiles:
 			0: Rock
 			1: Rock
+		Segments:
+			Segment:
+				Start: Clear.D
+				End: Cliff.D
+				Points: 1,0, 1,1
 	Template@157:
 		Id: 157
 		Images: s23.tem
@@ -1470,6 +1580,11 @@ Templates:
 			3: Rock
 			4: Rock
 			5: Rough
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Cliff.D
+				Points: 2,0, 2,1, 1,1, 1,2
 	Template@158:
 		Id: 158
 		Images: s24.tem
@@ -1480,6 +1595,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Cliff.D
+				Points: 1,0, 1,1, 1,2
 	Template@159:
 		Id: 159
 		Images: s25.tem
@@ -1490,6 +1610,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Cliff.D
+				Points: 1,0, 1,1, 1,2
 	Template@160:
 		Id: 160
 		Images: s26.tem
@@ -1500,6 +1625,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Cliff.D
+				Points: 1,0, 1,1, 1,2
 	Template@161:
 		Id: 161
 		Images: s27.tem
@@ -1512,6 +1642,11 @@ Templates:
 			3: Rough
 			4: Rock
 			5: Rock
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Cliff.D
+				Points: 1,0, 1,1, 2,1, 2,2
 	Template@162:
 		Id: 162
 		Images: s28.tem
@@ -1521,6 +1656,11 @@ Templates:
 			0: Rock
 			1: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Clear.D
+				Points: 1,0, 1,1, 1,2
 	Template@163:
 		Id: 163
 		Images: s29.tem
@@ -1531,6 +1671,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Cliff.U
+				Points: 2,1, 1,1, 1,0
 	Template@164:
 		Id: 164
 		Images: s30.tem
@@ -1541,6 +1686,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Cliff.R
+				Points: 1,2, 1,1, 2,1
 	Template@165:
 		Id: 165
 		Images: s31.tem
@@ -1551,6 +1701,11 @@ Templates:
 			1: Rough
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Cliff.D
+				Points: 0,1, 1,1, 1,2
 	Template@166:
 		Id: 166
 		Images: s32.tem
@@ -1560,6 +1715,11 @@ Templates:
 			0: Rock
 			1: Rock
 			2: Rough
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Cliff.L
+				Points: 1,0, 1,1, 0,1
 	Template@167:
 		Id: 167
 		Images: s33.tem
@@ -1570,6 +1730,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.D
+				End: Cliff.R
+				Points: 1,0, 1,1, 2,1
 	Template@168:
 		Id: 168
 		Images: s34.tem
@@ -1580,6 +1745,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.L
+				End: Cliff.D
+				Points: 2,1, 1,1, 1,2
 	Template@169:
 		Id: 169
 		Images: s35.tem
@@ -1590,6 +1760,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.U
+				End: Cliff.L
+				Points: 1,2, 1,1, 0,1
 	Template@170:
 		Id: 170
 		Images: s36.tem
@@ -1600,6 +1775,11 @@ Templates:
 			1: Rock
 			2: Rock
 			3: Rock
+		Segments:
+			Segment:
+				Start: Cliff.R
+				End: Cliff.U
+				Points: 0,1, 1,1, 1,0
 	Template@171:
 		Id: 171
 		Images: s37.tem
