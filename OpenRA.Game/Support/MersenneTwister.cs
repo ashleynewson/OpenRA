@@ -10,6 +10,8 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace OpenRA.Support
 {
@@ -111,6 +113,57 @@ namespace OpenRA.Support
 		public double NextDoubleExclusive()
 		{
 			return (NextUlong() & 0xfffffffffffffL) / (double)0x10000000000000L;
+		}
+
+		// <summary>
+		// Pick a random an index from a list of weights.
+		// </summary>
+		public int PickWeighted(IReadOnlyList<float> weights)
+		{
+			var total = weights.Sum();
+			var spin = NextFloatExclusive() * total;
+			int i;
+			float acc = 0;
+			for (i = 0; i < weights.Count; i++)
+			{
+				acc += weights[i];
+				if (spin < acc)
+				{
+					return i;
+				}
+			}
+
+			// This might be possible due to floating point precision loss
+			// (in rare cases). Or we might have been given rubbish
+			// weights. Return anything > 0.
+			for (i = 0; i < weights.Count; i++)
+			{
+				if (weights[i] > 0)
+				{
+					return i;
+				}
+			}
+
+			// All <= 0!
+			return Next(0, weights.Count);
+		}
+
+		public void ShuffleInPlace<T>(IList<T> list)
+		{
+			ShuffleInPlace(list, 0, list.Count);
+		}
+
+		// <summary>
+		// Shuffle a list in place. Has minor biases.
+		// </summary>
+		public void ShuffleInPlace<T>(IList<T> list, int start, int len)
+		{
+			for (var i = len; i > 1; i--)
+			{
+				var swap = Next(i);
+				(list[start + i - 1], list[start + swap]) =
+					(list[start + swap], list[start + i - 1]);
+			}
 		}
 
 		void Generate()

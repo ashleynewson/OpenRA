@@ -13,6 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
@@ -125,6 +127,30 @@ namespace OpenRA.Mods.Common.Traits
 			new int2(0, -1)
 		});
 
+		static readonly ImmutableArray<(int2, int)> SPREAD4_D = ImmutableArray.Create(new[]
+		{
+			(new int2(1, 0), DIRECTION_R),
+			(new int2(0, 1), DIRECTION_D),
+			(new int2(-1, 0), DIRECTION_L),
+			(new int2(0, -1), DIRECTION_U)
+		});
+
+		enum Replaceability
+		{
+
+			// Area cannot be replaced by a tile or obstructing entity.
+			None = 0,
+
+			// Area must be replaced by a different tile, and may optionally be given an entity.
+			Tile = 1,
+
+			// Area must be given an entity, but the underlying tile must not change.
+			Entity = 2,
+
+			// Area can be replaced by a tile and/or entity.
+			Any = 3,
+		}
+
 		static int CalculateDirection(int dx, int dy)
 		{
 			if (dx > 0)
@@ -193,7 +219,22 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		static int2 MirrorXY(Mirror mirror, int2 original, int2 size)
+		// <summary>
+		// Mirrors a grid square within an area of given size.
+		// </summary>
+		static int2 MirrorGridSquare(Mirror mirror, int2 original, int2 size)
+			=> MirrorPoint(mirror, original, size - new int2(1, 1));
+
+		// <summary>
+		// Mirrors a grid square within an area of given size.
+		// </summary>
+		static float2 MirrorGridSquare(Mirror mirror, float2 original, float2 size)
+			=> MirrorPoint(mirror, original, size - new float2(1.0f, 1.0f));
+
+		// <summary>
+		// Mirrors a (zero-area) point within an area of given size.
+		// </summary>
+		static int2 MirrorPoint(Mirror mirror, int2 original, int2 size)
 		{
 			if (size.X != size.Y)
 			{
@@ -206,19 +247,22 @@ namespace OpenRA.Mods.Common.Traits
 				case Mirror.None:
 					throw new ArgumentException("Mirror.None has no transformed point");
 				case Mirror.LeftMatchesRight:
-					return new int2(original.X, size.Y - 1 - original.Y);
+					return new int2(original.X, size.Y - original.Y);
 				case Mirror.TopLeftMatchesBottomRight:
 					return new int2(original.Y, original.X);
 				case Mirror.TopMatchesBottom:
-					return new int2(size.X - 1 - original.X, original.Y);
+					return new int2(size.X - original.X, original.Y);
 				case Mirror.TopRightMatchesBottomLeft:
-					return new int2(size.Y - 1 - original.Y, size.X - 1 - original.X);
+					return new int2(size.Y - original.Y, size.X - original.X);
 				default:
 					throw new ArgumentException("Bad mirror");
 			}
 		}
 
-		static float2 MirrorXY(Mirror mirror, float2 original, float2 size)
+		// <summary>
+		// Mirrors a (zero-area) point within an area of given size.
+		// </summary>
+		static float2 MirrorPoint(Mirror mirror, float2 original, float2 size)
 		{
 			if (size.X != size.Y)
 			{
@@ -231,16 +275,69 @@ namespace OpenRA.Mods.Common.Traits
 				case Mirror.None:
 					throw new ArgumentException("Mirror.None has no transformed point");
 				case Mirror.LeftMatchesRight:
-					return new float2(original.X, size.Y - 1.0f - original.Y);
+					return new float2(original.X, size.Y - original.Y);
 				case Mirror.TopLeftMatchesBottomRight:
 					return new float2(original.Y, original.X);
 				case Mirror.TopMatchesBottom:
-					return new float2(size.X - 1.0f - original.X, original.Y);
+					return new float2(size.X - original.X, original.Y);
 				case Mirror.TopRightMatchesBottomLeft:
-					return new float2(size.Y - 1.0f - original.Y, size.X - 1.0f - original.X);
+					return new float2(size.Y - original.Y, size.X - original.X);
 				default:
 					throw new ArgumentException("Bad mirror");
 			}
+		}
+
+		static int RotateAndMirrorProjectionCount(int rotations, Mirror mirror)
+			=> mirror == Mirror.None ? rotations : rotations * 2;
+
+		// <summary>
+		// Duplicate an original grid square into an array of projected grid
+		// squares according to a rotation and mirror specification. Projected
+		// grid squares may lie outside of the bounds implied by size.
+		//
+		// Do not use this for points (which don't have area).
+		// </summary>
+		static int2[] RotateAndMirrorGridSquare(int2 original, int2 size, int rotations, Mirror mirror)
+		{
+			var floatProjections = RotateAndMirrorPoint(original, size - new int2(1, 1), rotations, mirror);
+			var intProjections = new int2[floatProjections.Length];
+			for (var i = 0; i < floatProjections.Length; i++)
+			{
+				intProjections[i] = new int2((int)MathF.Round(floatProjections[i].X), (int)MathF.Round(floatProjections[i].Y));
+			}
+
+			return intProjections;
+		}
+
+		// <summary>
+		// Duplicate an original point into an array of projected points
+		// according to a rotation and mirror specification. Projected points
+		// may lie outside of the bounds implied by size.
+		//
+		// Do not use this for qrid squares (which have area).
+		// </summary>
+		static float2[] RotateAndMirrorPoint(float2 original, int2 size, int rotations, Mirror mirror)
+		{
+			var projections = new float2[RotateAndMirrorProjectionCount(rotations, mirror)];
+			var projectionIndex = 0;
+
+			var center = new float2(size.X / 2.0f, size.X / 2.0f);
+			for (var rotation = 0; rotation < rotations; rotation++)
+			{
+				var angle = rotation * MathF.Tau / rotations;
+				var cosAngle = CosSnapF(angle);
+				var sinAngle = SinSnapF(angle);
+				var relOrig = original - center;
+				var projX = relOrig.X * cosAngle - relOrig.Y * sinAngle + center.X;
+				var projY = relOrig.X * sinAngle + relOrig.Y * cosAngle + center.Y;
+				var projection = new float2(projX, projY);
+				projections[projectionIndex++] = projection;
+
+				if (mirror != Mirror.None)
+					projections[projectionIndex++] = MirrorPoint(mirror, projection, size);
+			}
+
+			return projections;
 		}
 
 		// <summary>
@@ -264,10 +361,20 @@ namespace OpenRA.Mods.Common.Traits
 				: this(new int2(x, y))
 			{ }
 
-			int Index(int x, int y)
+			public int Index(int2 xy)
+				=> Index(xy.X, xy.Y);
+
+			public int Index(int x, int y)
 			{
 				Debug.Assert(ContainsXY(x, y), $"({x}, {y}) is out of bounds for a matrix of size ({Size.X}, {Size.Y})");
 				return y * Size.X + x;
+			}
+
+			public int2 XY(int index)
+			{
+				var y = index / Size.X;
+				var x = index % Size.X;
+				return new int2(x, y);
 			}
 
 			public T this[int x, int y]
@@ -427,6 +534,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// <summary>
 			// Simple constructor for paths
+			// </summary>
 			public Path(int2[] points, string startType, string endType, PermittedTemplates permittedTemplates)
 			{
 				Points = points;
@@ -527,6 +635,244 @@ namespace OpenRA.Mods.Common.Traits
 					return (float)SIN_240;
 				default:
 					return MathF.Sin(angle);
+			}
+		}
+
+		sealed class ActorPlan
+		{
+			public readonly Map Map;
+			public readonly ActorInfo Info;
+			public readonly ActorReference Reference;
+			public CPos Location
+			{
+				get => Reference.Get<LocationInit>().Value;
+				set
+				{
+					Reference.RemoveAll<LocationInit>();
+					Reference.Add(new LocationInit(value));
+				}
+			}
+
+			public ActorPlan(Map map, ActorReference reference)
+			{
+				Map = map;
+				Reference = reference;
+				if (!map.Rules.Actors.TryGetValue(Reference.Type.ToLowerInvariant(), out Info))
+					throw new ArgumentException($"Actor of unknown type {Reference.Type.ToLowerInvariant()}");
+			}
+
+			public ActorPlan(Map map, string type)
+				: this(map, ActorFromType(type))
+			{ }
+
+			public ActorPlan Clone()
+			{
+				return new ActorPlan(Map, Reference.Clone());
+			}
+
+			static ActorReference ActorFromType(string type)
+			{
+				return new ActorReference(type)
+				{
+					new LocationInit(default),
+					new OwnerInit("Neutral"),
+				};
+			}
+
+			public IReadOnlyDictionary<CPos, SubCell> Footprint()
+			{
+				var location = Location;
+				var ios = Info.TraitInfoOrDefault<IOccupySpaceInfo>();
+				var subCellInit = Reference.GetOrDefault<SubCellInit>();
+				var subCell = subCellInit != null ? subCellInit.Value : SubCell.Any;
+
+				var occupiedCells = ios?.OccupiedCells(Info, location, subCell);
+				if (occupiedCells == null || occupiedCells.Count == 0)
+					return new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
+				else
+					return occupiedCells;
+			}
+		}
+
+		// TODO: Rename to something more generic like "painting template".
+		sealed class Obstacle
+		{
+			public float Weight;
+			public readonly Map map;
+			public readonly ModData modData;
+			readonly List<(int2, TerrainTile)> tiles;
+			readonly List<ActorPlan> entities;
+			int2[] shape;
+
+			public IEnumerable<(int2 XY, TerrainTile Tile)> Tiles => tiles;
+			public IEnumerable<ActorPlan> Entities => entities;
+			public bool HasTiles => tiles.Count != 0;
+			public bool HasEntities => entities.Count != 0;
+			public IEnumerable<int2> Shape => shape;
+			public int Area => shape.Length;
+			public Replaceability Contract()
+			{
+				var hasTiles = tiles.Count != 0;
+				var hasEntities = entities.Count != 0;
+				if (hasTiles && hasEntities)
+					return Replaceability.Any;
+				else if (hasTiles && !hasEntities)
+					return Replaceability.Tile;
+				else if (!hasTiles && hasEntities)
+					return Replaceability.Entity;
+				else
+					throw new ArgumentException("Obstacle has no tiles or entities");
+			}
+
+			public Obstacle(Map map, ModData modData)
+			{
+				Weight = 1.0f;
+				this.map = map;
+				this.modData = modData;
+				tiles = new List<(int2, TerrainTile)>();
+				entities = new List<ActorPlan>();
+				shape = Array.Empty<int2>();
+			}
+
+			Obstacle(Obstacle other)
+			{
+				Weight = other.Weight;
+				map = other.map;
+				modData = other.modData;
+				tiles = other.tiles.ToList();
+				entities = other.entities.ToList();
+				shape = other.shape.ToArray();
+			}
+
+			public Obstacle Clone()
+			{
+				return new Obstacle(this);
+			}
+
+			void UpdateShape()
+			{
+				var xys = new HashSet<int2>();
+
+				foreach (var (xy, _) in tiles)
+				{
+					xys.Add(xy);
+				}
+
+				foreach (var entity in entities)
+				{
+					foreach (var cpos in entity.Footprint())
+					{
+						var mpos = cpos.Key.ToMPos(map);
+						xys.Add(new int2(mpos.U, mpos.V));
+					}
+				}
+
+				shape = xys.OrderBy(xy => (xy.Y, xy.X)).ToArray();
+			}
+
+			public Obstacle WithTemplate(ushort templateId)
+			{
+				var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
+				var templateInfo = tileset.Templates[templateId];
+				if (templateInfo.PickAny)
+					throw new ArgumentException("PickAny not supported - create separate obstacles instead.");
+				for (var y = 0; y < templateInfo.Size.Y; y++)
+				{
+					for (var x = 0; x < templateInfo.Size.X; x++)
+					{
+						var i = y * templateInfo.Size.X + x;
+						if (templateInfo[i] != null)
+						{
+							var tile = new TerrainTile(templateId, (byte)i);
+							tiles.Add((new int2(x, y), tile));
+						}
+					}
+				}
+
+				UpdateShape();
+				return this;
+			}
+
+			public Obstacle WithTile(TerrainTile tile)
+			{
+				tiles.Add((new int2(0, 0), tile));
+				UpdateShape();
+				return this;
+			}
+
+			public Obstacle WithEntity(ActorPlan entity)
+			{
+				entities.Add(entity);
+				UpdateShape();
+				return this;
+			}
+
+			public Obstacle WithBackingTile(TerrainTile tile)
+			{
+				if (Area == 0)
+					throw new InvalidOperationException("No entities");
+				foreach (var xy in shape)
+				{
+					tiles.Add((xy, tile));
+				}
+
+				return this;
+			}
+
+			public Obstacle WithWeight(float weight)
+			{
+				Weight = weight;
+				return this;
+			}
+
+			public void Paint(List<ActorPlan> actorPlans, int2 paintXY, Replaceability contract)
+			{
+				switch (contract)
+				{
+					case Replaceability.None:
+						throw new ArgumentException("Cannot paint: Replaceability.None");
+					case Replaceability.Any:
+						if (entities.Count > 0)
+							PaintEntities(actorPlans, paintXY);
+						else if (tiles.Count > 0)
+							PaintTiles(paintXY);
+						else
+							throw new ArgumentException("Cannot paint: no tiles or entities");
+						break;
+					case Replaceability.Tile:
+						if (tiles.Count == 0)
+							throw new ArgumentException("Cannot paint: no tiles");
+						PaintTiles(paintXY);
+						PaintEntities(actorPlans, paintXY);
+						break;
+					case Replaceability.Entity:
+						if (entities.Count == 0)
+							throw new ArgumentException("Cannot paint: no entities");
+						PaintEntities(actorPlans, paintXY);
+						break;
+				}
+			}
+
+			void PaintTiles(int2 paintXY)
+			{
+				foreach (var (xy, tile) in tiles)
+				{
+					var mpos = new MPos(paintXY.X + xy.X, paintXY.Y + xy.Y);
+					if (map.Contains(mpos))
+						map.Tiles[mpos] = tile;
+				}
+			}
+
+			void PaintEntities(List<ActorPlan> actorPlans, int2 paintXY)
+			{
+				foreach (var entity in entities)
+				{
+					var plan = entity.Clone();
+					var paintUV = new MPos(paintXY.X, paintXY.Y);
+					var offset = plan.Location;
+					plan.Location = paintUV.ToCPos(map) + new CVec(offset.X, offset.Y);
+					actorPlans.Add(plan);
+				}
 			}
 		}
 
@@ -645,6 +991,8 @@ namespace OpenRA.Mods.Common.Traits
 			var minSpan = Math.Min(size.X, size.Y);
 			var maxSpan = Math.Max(size.X, size.Y);
 
+			var actorPlans = new List<ActorPlan>();
+
 			var rotations = settings["Rotations"].Get<int>();
 			var mirror = (Mirror)settings["Mirror"].Get<int>();
 			var wavelengthScale = settings["WavelengthScale"].Get<float>();
@@ -656,12 +1004,26 @@ namespace OpenRA.Mods.Common.Traits
 			var water = settings["Water"].Get<float>();
 			var forests = settings["Forests"].Get<float>();
 			var forestClumpiness = settings["ForestClumpiness"].Get<float>();
+			var forestCutout = settings["ForestCutout"].Get<int>();
 			var mountains = settings["Mountains"].Get<float>();
 			var roughness = settings["Roughness"].Get<float>();
 			var roughnessRadius = settings["RoughnessRadius"].Get<int>();
 			var maximumAltitude = settings["MaximumAltitude"].Get<int>();
 			var minimumTerrainContourSpacing = settings["MinimumTerrainContourSpacing"].Get<int>();
 			var minimumCliffLength = settings["MinimumCliffLength"].Get<int>();
+
+			bool trivialRotate;
+			switch (rotations)
+			{
+				case 1:
+				case 2:
+				case 4:
+					trivialRotate = true;
+					break;
+				default:
+					trivialRotate = false;
+					break;
+			}
 
 			if (water < 0.0f || water > 1.0f)
 				throw new MapGenerationException("water setting must be between 0 and 1 inclusive");
@@ -695,6 +1057,7 @@ namespace OpenRA.Mods.Common.Traits
 			var beachTilingRandom = new MersenneTwister(random.Next());
 			var cliffTilingRandom = new MersenneTwister(random.Next());
 			var forestRandom = new MersenneTwister(random.Next());
+			var forestTilingRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
 
 			TerrainTile PickTile(ushort tileType)
@@ -786,23 +1149,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			Matrix<float> forestNoise = null;
-			if (forests > 0.0f)
-			{
-				Log.Write("debug", "forests: generating noise");
-				forestNoise = FractalNoise2dWithSymmetry(
-					forestRandom,
-					size,
-					rotations,
-					mirror,
-					wavelengthScale,
-					wavelength => MathF.Pow(wavelength, forestClumpiness));
-				CalibrateHeightInPlace(
-					forestNoise,
-					0.0f,
-					1.0f - forests);
-			}
-
 			Log.Write("debug", "ORE: generating noise");
 			var orePattern = FractalNoise2dWithSymmetry(
 				resourceRandom,
@@ -850,7 +1196,7 @@ namespace OpenRA.Mods.Common.Traits
 					roughnessMatrix,
 					0.0f,
 					1.0f - roughness);
-				var cliffMask = roughnessMatrix.Map(v => v >= 0);
+				var cliffMask = roughnessMatrix.Map(v => v >= 0.0f);
 				var mountainElevation = elevation.Clone();
 				var cliffPlan = landPlan;
 				if (externalCircularBias > 0)
@@ -886,7 +1232,7 @@ namespace OpenRA.Mods.Common.Traits
 						total++;
 					}
 
-					var availableFraction = (float)available / (float)total;
+					var availableFraction = (float)available / total;
 					CalibrateHeightInPlace(
 						mountainElevation,
 						0.0f,
@@ -915,6 +1261,125 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
+			if (forests > 0.0f)
+			{
+				Log.Write("debug", "forests: generating noise");
+				var forestNoise = FractalNoise2dWithSymmetry(
+					forestRandom,
+					size,
+					rotations,
+					mirror,
+					wavelengthScale,
+					wavelength => MathF.Pow(wavelength, forestClumpiness));
+				CalibrateHeightInPlace(
+					forestNoise,
+					0.0f,
+					1.0f - forests);
+
+				var forestPlan = forestNoise.Map(v => v >= 0.0f);
+
+				Log.Write("debug", "forests: planting trees");
+				var clearTerrainIndex = tileset.GetTerrainIndex("Clear");
+				for (var y = 0; y < size.Y; y++)
+				{
+					for (var x = 0; x < size.X; x++)
+					{
+						var mpos = new MPos(x, y);
+						if (map.GetTerrainIndex(mpos) != clearTerrainIndex)
+							forestPlan[x, y] = false;
+					}
+				}
+
+				if (forestCutout > 0)
+				{
+					var space = new Matrix<bool>(size);
+					for (var y = 0; y < size.Y; y++)
+					{
+						for (var x = 0; x < size.X; x++)
+						{
+							var mpos = new MPos(x, y);
+							space[x, y] = map.GetTerrainIndex(mpos) == clearTerrainIndex;
+						}
+					}
+
+					if (trivialRotate)
+					{
+						// Improve symmetry.
+						var newSpace = new Matrix<bool>(size);
+						RotateAndMirrorMatrix(
+							size,
+							rotations,
+							mirror,
+							(sources, destination)
+								=> newSpace[destination] = sources.All(source => space[source]));
+						space = newSpace;
+					}
+
+					// This is grid points, not squares. Has a size of `size + 1`.
+					var deflated = DeflateSpace(space, true);
+					var kernel = new Matrix<bool>(2 * forestCutout, 2 * forestCutout).Fill(true);
+					var inflated = KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout, forestCutout), true);
+					for (var y = 0; y < size.Y; y++)
+					{
+						for (var x = 0; x < size.X; x++)
+						{
+							if (inflated[x, y])
+								forestPlan[x, y] = false;
+						}
+					}
+				}
+
+				var basic = new Obstacle(map, modData).WithWeight(1.0f);
+				var husk = basic.Clone().WithWeight(0.1f);
+				var forestObstacles = ImmutableArray.Create(
+					basic.Clone().WithEntity(new ActorPlan(map, "t01")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t02")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t03")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t05")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t06")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t07")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t08")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t10")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t11")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t12")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t13")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t14")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t15")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t16")),
+					basic.Clone().WithEntity(new ActorPlan(map, "t01")),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc01")),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc02")),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc03")),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc04")),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t02.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t03.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t05.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t06.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t07.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t08.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t10.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t11.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t12.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t13.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t14.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t15.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t16.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc01.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc02.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc03.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc04.husk")),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk")));
+
+				var forestReplace = Matrix<Replaceability>.Zip(
+					forestPlan,
+					IdentifyReplaceableTiles(map, tileset),
+					(a, b) => a ? b : Replaceability.None);
+				ObstructArea(map, actorPlans, forestReplace, forestObstacles, forestTilingRandom);
+			}
+
 			// Makeshift map assembly
 
 			foreach (var cell in map.AllCells)
@@ -925,7 +1390,9 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			map.PlayerDefinitions = new MapPlayers(map.Rules, 0).ToMiniYaml();
-			map.ActorDefinitions = ImmutableArray<MiniYamlNode>.Empty;
+			map.ActorDefinitions = actorPlans
+				.Select((plan, i) => new MiniYamlNode($"Actor{i}", plan.Reference.Save()))
+				.ToImmutableArray();
 		}
 
 		static Matrix<float> FractalNoise2dWithSymmetry(MersenneTwister random, int2 size, int rotations, Mirror mirror, float wavelengthScale, AmplitudeFunction ampFunc)
@@ -982,7 +1449,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				for (var x = 0; x < size.X; x++)
 				{
-					var txy = MirrorXY(mirror, new int2(x, y), size);
+					var txy = MirrorGridSquare(mirror, new int2(x, y), size);
 					mirrored[x, y] = unmirrored[x, y] + unmirrored[txy];
 				}
 			}
@@ -2196,7 +2663,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		private Matrix<sbyte> PointsChirality(int2 size, int2[][] pointArrayArray)
+		static Matrix<sbyte> PointsChirality(int2 size, int2[][] pointArrayArray)
 		{
 			var chirality = new Matrix<sbyte>(size);
 			var next = new List<int2>();
@@ -2451,6 +2918,432 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return newPointArrayArray.ToArray();
+		}
+
+		// <summary>
+		// Calls action(sources, destination) over all possible destination
+		// matrix cells, where each source in sources is a mirrored/rotated
+		// point. For non-trivial rotations, sources may be outside the matrix.
+		// </summary>
+		static void RotateAndMirrorMatrix(int2 size, int rotations, Mirror mirror, Action<int2[], int2> action)
+		{
+			for (var y = 0; y < size.Y; y++)
+			{
+				for (var x = 0; x < size.X; x++)
+				{
+					var destination = new int2(x, y);
+					var sources = RotateAndMirrorGridSquare(destination, size, rotations, mirror);
+					action(sources, destination);
+				}
+			}
+		}
+
+		// Perform a generic flood fill starting at seeds [(xy, prop, d), ...].
+		//
+		// The prop (propagation value) and d (propagation direction) values of
+		// the seed are optional.
+		//
+		// For each point being considered for fill, filler(xy, prop, d) is
+		// called with the current position (xy), propagation value (prop),
+		// and propagation direction (d). filler should return the value to be
+		// propagated or null if not to be propagated. Propagation happens to
+		// all non-diagonally adjacent neighbours, regardless of whether they
+		// have previously been visited, so filler is responsible for
+		// terminating propagation.
+		//
+		// The spread argument is optional an defines the propagation pattern
+		// from a point. Usually, SPREAD4_D is appropriate.
+		//
+		// filler should capture and manipulate any necessary input and output
+		// arrays.
+		//
+		// Each call to filler will have either an equal or greater
+		// growth/propagation distance from their seed value than all calls
+		// before it. (You can think of this as them being called in ordered
+		// growth layers.)
+		//
+		// Note that filler may be called multiple times for the same spot,
+		// perhaps with different propagation values. Within the same
+		// growth/propagation distance, filler will be called from values
+		// propagated from earlier seeds before values propagated from later
+		// seeds.
+		//
+		// filler is not called for positions outside of the bounds defined by
+		// size EXCEPT for points being processed as seed values.
+		static void FloodFill<T>(int2 size, IEnumerable<(int2 XY, T Prop, int D)> seeds, Func<int2, T, int, T?> filler, ImmutableArray<(int2 Offset, int Direction)> spread) where T : struct
+		{
+			var next = seeds.ToList();
+			while (next.Count != 0)
+			{
+				var current = next;
+				next = new List<(int2, T, int)>();
+				foreach (var (source, prop, d) in current)
+				{
+					var newProp = filler(source, prop, d);
+					if (newProp != null)
+					{
+						foreach (var (offset, direction) in spread)
+						{
+							var destination = source + offset;
+							if (destination.X < 0 || destination.X >= size.X || destination.Y < 0 || destination.Y >= size.Y)
+								continue;
+
+							next.Add((destination, (T)newProp, direction));
+						}
+					}
+				}
+			}
+		}
+
+		// <summary>
+		// Shrinkwraps true space to be as far away from false space as
+		// possible, preserving topology.
+		// </summary>
+		static Matrix<byte> DeflateSpace(Matrix<bool> space, bool outsideIsHole)
+		{
+			var size = space.Size;
+			var holes = new Matrix<int>(size);
+			var holeCount = 0;
+			for (var y = 0; y < space.Size.Y; y++)
+			{
+				for (var x = 0; x < space.Size.X; x++)
+				{
+					if (space[x, y] && holes[x, y] != 0)
+					{
+						holeCount++;
+						int? Filler(int2 xy, int holeId, int direction)
+						{
+							if (space[xy] && holes[xy] == 0)
+							{
+								holes[xy] = holeId;
+								return holeId;
+							}
+							else
+							{
+								return null;
+							}
+						}
+
+						FloodFill(space.Size, new[] { (new int2(x, y), holeCount, DIRECTION_NONE) }, Filler, SPREAD4_D);
+					}
+				}
+			}
+
+			const int UNASSIGNED = int.MaxValue;
+			var voronoi = new Matrix<int>(size);
+			var distances = new Matrix<int>(size).Fill(UNASSIGNED);
+			var closestN = new Matrix<int>(size).Fill(UNASSIGNED);
+			var midN = (size.X * size.Y + 1) / 2;
+			var seeds = new List<(int2, (int, int2, int), int)>();
+			for (var y = 0; y < size.Y; y++)
+			{
+				for (var x = 0; x < size.X; x++)
+				{
+					var xy = new int2(x, y);
+					if (holes[xy] != 0)
+						seeds.Add((xy, (holes[xy], xy, closestN.Index(x, y)), DIRECTION_NONE));
+				}
+			}
+
+			if (outsideIsHole)
+			{
+				holeCount++;
+				for (var x = 0; x < size.X; x++)
+				{
+					// Hack: closestN is actually inside, but starting x, y are outside.
+					seeds.Add((new int2(x, 0), (holeCount, new int2(x, -1), closestN.Index(x, 0)), DIRECTION_NONE));
+					seeds.Add((new int2(x, size.Y - 1), (holeCount, new int2(x, size.Y), closestN.Index(x, size.Y - 1)), DIRECTION_NONE));
+				}
+
+				for (var y = 0; y < size.Y; y++)
+				{
+					// Hack: closestN is actually inside, but starting x, y are outside.
+					seeds.Add((new int2(0, y), (holeCount, new int2(-1, y), closestN.Index(0, y)), DIRECTION_NONE));
+					seeds.Add((new int2(size.X - 1, y), (holeCount, new int2(size.X, y), closestN.Index(size.X - 1, y)), DIRECTION_NONE));
+				}
+			}
+
+			{
+				(int HoleId, int2 StartXY, int StartN)? Filler(int2 xy, (int HoleId, int2 StartXY, int StartN) prop, int direction)
+				{
+					var n = closestN.Index(xy);
+					var distance = (xy - prop.StartXY).LengthSquared;
+					if (distance < distances[n])
+					{
+						voronoi[n] = prop.HoleId;
+						distances[n] = distance;
+						closestN[n] = prop.StartN;
+						return (prop.HoleId, prop.StartXY, prop.StartN);
+					}
+					else if (distance == distances[n])
+					{
+						if (closestN[n] == prop.StartN)
+						{
+							return null;
+						}
+						else if (n <= midN == prop.StartN < closestN[n])
+						{
+							// For the first half of the map, lower seed indexes are preferred.
+							// For the second half of the map, higher seed indexes are preferred.
+							voronoi[n] = prop.HoleId;
+							closestN[n] = prop.StartN;
+							return (prop.HoleId, prop.StartXY, prop.StartN);
+						}
+						else
+						{
+							return null;
+						}
+					}
+					else
+					{
+						return null;
+					}
+				}
+
+				FloodFill(size, seeds, Filler, SPREAD4_D);
+			}
+
+			var deflatedSize = size + new int2(1, 1);
+			var deflated = new Matrix<byte>(deflatedSize);
+			var neighborhood = new int[4];
+			var scan = new int2[]
+			{
+				new(-1, -1),
+				new(0, -1),
+				new(-1, 0),
+				new(0, 0)
+			};
+			for (var cy = 0; cy < deflatedSize.Y; cy++)
+			{
+				for (var cx = 0; cx < deflatedSize.X; cx++)
+				{
+					for (var neighbor = 0; neighbor < 4; neighbor++)
+					{
+						var x = Math.Clamp(cx + scan[neighbor].X, 0, size.X - 1);
+						var y = Math.Clamp(cy + scan[neighbor].Y, 0, size.Y - 1);
+						neighborhood[neighbor] = voronoi[x, y];
+					}
+
+					deflated[cx, cy] = (byte)(
+						(neighborhood[0] != neighborhood[1] ? DIRECTION_M_U : 0) |
+						(neighborhood[1] != neighborhood[3] ? DIRECTION_M_R : 0) |
+						(neighborhood[3] != neighborhood[2] ? DIRECTION_M_D : 0) |
+						(neighborhood[2] != neighborhood[0] ? DIRECTION_M_L : 0));
+				}
+			}
+
+			return deflated;
+		}
+
+		static Matrix<bool> KernelDilateOrErode(Matrix<bool> input, Matrix<bool> kernel, int2 kernelOffset, bool dilate)
+		{
+			var output = new Matrix<bool>(input.Size).Fill(!dilate);
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					void InnerLoop()
+					{
+						for (var ky = 0; ky < kernel.Size.Y; ky++)
+						{
+							for (var kx = 0; kx < kernel.Size.X; kx++)
+							{
+								var x = cx + kx - kernelOffset.X;
+								var y = cy + ky - kernelOffset.Y;
+								if (!input.ContainsXY(x, y))
+									continue;
+								if (kernel[kx, ky] && input[x, y] == dilate)
+								{
+									output[cx, cy] = dilate;
+									return;
+								}
+							}
+						}
+					}
+
+					InnerLoop();
+				}
+			}
+
+			return output;
+		}
+
+		static void ObstructArea(Map map, List<ActorPlan> actorPlans, Matrix<Replaceability> replace, IReadOnlyList<Obstacle> permittedObstacles, MersenneTwister random)
+		{
+			var obstaclesByAreaDict = new Dictionary<int, List<Obstacle>>();
+			foreach (var obstacle in permittedObstacles)
+			{
+				if (!obstaclesByAreaDict.ContainsKey(obstacle.Area))
+					obstaclesByAreaDict.Add(obstacle.Area, new List<Obstacle>());
+				obstaclesByAreaDict[obstacle.Area].Add(obstacle);
+			}
+
+			var obstaclesByArea = obstaclesByAreaDict
+				.OrderBy(kv => -kv.Key)
+				.ToList();
+			var obstacleTotalArea = permittedObstacles.Sum(t => t.Area);
+			var obstacleTotalWeight = permittedObstacles.Sum(t => t.Weight);
+
+			// Give 1-by-1 entities the final pass, as they are most flexible.
+			obstaclesByArea.Add(
+				new KeyValuePair<int, List<Obstacle>>(
+					1,
+					permittedObstacles.Where(o => o.HasEntities && o.Area == 1).ToList()));
+			var size = map.MapSize;
+			var replaceIndices = new int[replace.Data.Length];
+			var remaining = new Matrix<bool>(size);
+			var replaceArea = 0;
+			for (var n = 0; n < replace.Data.Length; n++)
+			{
+				if (replace[n] != Replaceability.None)
+				{
+					remaining[n] = true;
+					replaceIndices[replaceArea] = n;
+					replaceArea++;
+				}
+				else
+				{
+					remaining[n] = false;
+				}
+			}
+
+			var indices = new int[replace.Data.Length];
+			int indexCount;
+
+			void RefreshIndices()
+			{
+				indexCount = 0;
+				// TODO: Why is this array not truncated? Why is it even done this way?
+				foreach (var n in replaceIndices)
+				{
+					if (remaining[n])
+					{
+						indices[indexCount] = n;
+						indexCount++;
+					}
+				}
+
+				random.ShuffleInPlace(indices, 0, indexCount);
+			}
+
+			Replaceability ReserveShape(int2 paintXY, IEnumerable<int2> shape, Replaceability contract)
+			{
+				foreach (var shapeXY in shape)
+				{
+					var xy = paintXY + shapeXY;
+					if (!replace.ContainsXY(xy))
+						continue;
+					if (!remaining[xy])
+					{
+						// Can't reserve - not the right shape
+						return Replaceability.None;
+					}
+
+					contract &= replace[xy];
+					if (contract == Replaceability.None)
+					{
+						// Can't reserve - obstruction choice doesn't comply
+						// with replaceability of original tiles.
+						return Replaceability.None;
+					}
+				}
+
+				// Can reserve. Commit.
+				foreach (var shapeXY in shape)
+				{
+					var xy = paintXY + shapeXY;
+					if (!replace.ContainsXY(xy))
+						continue;
+
+					remaining[xy] = false;
+				}
+
+				return contract;
+			}
+
+			foreach (var obstaclesKv in obstaclesByArea)
+			{
+				var obstacles = obstaclesKv.Value;
+				if (obstacles.Count == 0)
+					continue;
+
+				var obstacleArea = obstacles[0].Area;
+				var obstacleWeights = obstacles.Select(o => o.Weight).ToArray();
+				var obstacleWeightForArea = obstacleWeights.Sum();
+				var remainingQuota =
+					obstacleArea == 1
+						? int.MaxValue
+						: (replaceArea * obstacleWeightForArea / obstacleTotalWeight);
+				RefreshIndices();
+				foreach (var n in indices)
+				{
+					var obstacle = obstacles[random.PickWeighted(obstacleWeights)];
+					var paintXY = replace.XY(n);
+					var contract = ReserveShape(paintXY, obstacle.Shape, obstacle.Contract());
+					if (contract != Replaceability.None)
+					{
+						obstacle.Paint(actorPlans, paintXY, contract);
+					}
+
+					remainingQuota -= obstacleArea;
+					if (remainingQuota <= 0)
+						break;
+				}
+			}
+		}
+
+		static Matrix<Replaceability> IdentifyReplaceableTiles(Map map, ITemplatedTerrainInfo tileset)
+		{
+			var output = new Matrix<Replaceability>(map.MapSize);
+			var replaceabilityMap = new Dictionary<TerrainTile, Replaceability>();
+
+			// Category-based behavior overrides
+			replaceabilityMap.Add(new TerrainTile(1, 0), Replaceability.Tile);
+
+			var rockType = tileset.GetTerrainIndex("Rock");
+
+			foreach (var kv in tileset.Templates)
+			{
+				var id = kv.Key;
+				var template = kv.Value;
+				for (var ty = 0; ty < template.Size.Y; ty++)
+				{
+					for (var tx = 0; tx < template.Size.X; tx++)
+					{
+						var ti = ty * template.Size.X + tx;
+						if (template[ti] == null) continue;
+						var tile = new TerrainTile(id, (byte)ti);
+						var type = tileset.GetTerrainIndex(tile);
+						if (template.Categories.Contains("Cliffs"))
+						{
+							if (type == rockType)
+								replaceabilityMap[tile] = Replaceability.None;
+							else
+								replaceabilityMap[tile] = Replaceability.Entity;
+						}
+						else if (template.Categories.Contains("Beach") || template.Categories.Contains("Road"))
+						{
+							replaceabilityMap[tile] = Replaceability.Tile;
+							// TODO: Lift replaceability and playability computations
+							//   if (info.playabilityMap[tile] == PLAYABILITY_UNPLAYABLE) {
+							// 	   info.playabilityMap[tile] = PLAYABILITY_PARTIAL;
+							//   }
+						}
+					}
+				}
+			}
+
+			foreach (var cell in map.AllCells)
+			{
+				var mpos = cell.ToMPos(map);
+				var tile = map.Tiles[mpos];
+				var replaceability = Replaceability.Any;
+				if (replaceabilityMap.TryGetValue(tile, out var value))
+					replaceability = value;
+				output[mpos.U, mpos.V] = replaceability;
+			}
+
+			return output;
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
