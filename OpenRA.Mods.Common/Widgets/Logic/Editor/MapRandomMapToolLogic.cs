@@ -335,7 +335,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var previews = new Dictionary<string, EditorActorPreview>();
 			var players = generatedMap.PlayerDefinitions.Select(pr => new PlayerReference(new MiniYaml(pr.Key, pr.Value.Nodes)))
 				.ToDictionary(player => player.Name);
-			foreach (var kv in world.Map.ActorDefinitions)
+			foreach (var kv in generatedMap.ActorDefinitions)
 			{
 				var actorReference = new ActorReference(kv.Value.Value, kv.Value.ToDictionary());
 				var ownerInit = actorReference.Get<OwnerInit>();
