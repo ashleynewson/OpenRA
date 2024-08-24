@@ -692,6 +692,18 @@ namespace OpenRA.Mods.Common.Traits
 				else
 					return occupiedCells;
 			}
+
+			// <summary>
+			// Re-locates the actor such that the top-most, left-most footprint
+			// square is at (0, 0).
+			// </summary>
+			public ActorPlan AlignFootprint()
+			{
+				var footprint = Footprint();
+				var first = footprint.Select(kv => kv.Key).OrderBy(cpos => (cpos.Y, cpos.X)).First();
+				Location -= new CVec(first.X, first.Y);
+				return this;
+			}
 		}
 
 		// TODO: Rename to something more generic like "painting template".
@@ -1332,46 +1344,46 @@ namespace OpenRA.Mods.Common.Traits
 				var basic = new Obstacle(map, modData).WithWeight(1.0f);
 				var husk = basic.Clone().WithWeight(0.1f);
 				var forestObstacles = ImmutableArray.Create(
-					basic.Clone().WithEntity(new ActorPlan(map, "t01")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t02")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t03")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t05")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t06")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t07")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t08")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t10")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t11")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t12")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t13")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t14")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t15")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t16")),
-					basic.Clone().WithEntity(new ActorPlan(map, "t01")),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc01")),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc02")),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc03")),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc04")),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t02.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t03.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t05.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t06.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t07.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t08.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t10.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t11.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t12.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t13.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t14.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t15.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t16.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc01.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc02.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc03.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc04.husk")),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk")));
+					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t02").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t03").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t05").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t06").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t07").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t08").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t10").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t11").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t12").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t13").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t14").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t15").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t16").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc01").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc02").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc03").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc04").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t02.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t03.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t05.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t06.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t07.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t08.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t10.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t11.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t12.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t13.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t14.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t15.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t16.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc01.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc02.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc03.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc04.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()));
 
 				var forestReplace = Matrix<Replaceability>.Zip(
 					forestPlan,
@@ -3273,7 +3285,7 @@ namespace OpenRA.Mods.Common.Traits
 				var remainingQuota =
 					obstacleArea == 1
 						? int.MaxValue
-						: (replaceArea * obstacleWeightForArea / obstacleTotalWeight);
+						: (int)Math.Ceiling(replaceArea * obstacleWeightForArea / obstacleTotalWeight);
 				RefreshIndices();
 				foreach (var n in indices)
 				{
