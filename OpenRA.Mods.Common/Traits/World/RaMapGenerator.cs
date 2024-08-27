@@ -13,8 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
-using System.Diagnostics.Tracing;
+using System.Globalization;
 using System.Linq;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
@@ -321,7 +320,7 @@ namespace OpenRA.Mods.Common.Traits
 			var projections = new float2[RotateAndMirrorProjectionCount(rotations, mirror)];
 			var projectionIndex = 0;
 
-			var center = new float2(size.X / 2.0f, size.X / 2.0f);
+			var center = new float2(size.X / 2.0f, size.Y / 2.0f);
 			for (var rotation = 0; rotation < rotations; rotation++)
 			{
 				var angle = rotation * MathF.Tau / rotations;
@@ -470,6 +469,73 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		static void Dump2d(string label, Matrix<bool> matrix)
+		{
+			Console.Error.WriteLine($"{label}:");
+			for (var y = 0; y < matrix.Size.Y; y++)
+			{
+				for (var x = 0; x < matrix.Size.X; x++)
+				{
+					Console.Error.Write(matrix[x, y] ? "\u001b[0;42m .\u001b[m" : "\u001b[m .");
+				}
+
+				Console.Error.Write("\n");
+			}
+
+			Console.Error.WriteLine("");
+			Console.Error.Flush();
+		}
+
+		static void Dump2d(string label, Matrix<int> matrix)
+		{
+			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
+			for (var y = 0; y < matrix.Size.Y; y++)
+			{
+				for (var x = 0; x < matrix.Size.X; x++)
+				{
+					var v = matrix[x, y];
+					string formatted;
+					if (v > 0)
+						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;42m{0:X8}\u001b[m ", v);
+					else if (v < 0)
+						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;41m{0:X8}\u001b[m ", v);
+					else
+						formatted = "\u001b[m       0 ";
+					Console.Error.Write(formatted);
+				}
+
+				Console.Error.Write("\n");
+			}
+
+			Console.Error.WriteLine("");
+			Console.Error.Flush();
+		}
+
+		static void Dump2d(string label, Matrix<byte> matrix)
+		{
+			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
+			for (var y = 0; y < matrix.Size.Y; y++)
+			{
+				for (var x = 0; x < matrix.Size.X; x++)
+				{
+					var v = matrix[x, y];
+					string formatted;
+					if (v > 0 && v < 0x80)
+						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;42m{0:X2}\u001b[m ", v);
+					else if (v >= 0x80)
+						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;41m{0:X2}\u001b[m ", v);
+					else
+						formatted = "\u001b[m 0 ";
+					Console.Error.Write(formatted);
+				}
+
+				Console.Error.Write("\n");
+			}
+
+			Console.Error.WriteLine("");
+			Console.Error.Flush();
+		}
+
 		readonly struct PathTerminal
 		{
 			public readonly string Type;
@@ -546,7 +612,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		static double SinSnap(double angle)
+		static double CosSnap(double angle)
 		{
 			switch (angle)
 			{
@@ -569,7 +635,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		static double CosSnap(double angle)
+		static double SinSnap(double angle)
 		{
 			switch (angle)
 			{
@@ -592,7 +658,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		static float SinSnapF(float angle)
+		static float CosSnapF(float angle)
 		{
 			switch (angle)
 			{
@@ -615,7 +681,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		static float CosSnapF(float angle)
+		static float SinSnapF(float angle)
 		{
 			switch (angle)
 			{
@@ -1327,10 +1393,13 @@ namespace OpenRA.Mods.Common.Traits
 						space = newSpace;
 					}
 
+					Dump2d("space", space);
 					// This is grid points, not squares. Has a size of `size + 1`.
 					var deflated = DeflateSpace(space, true);
+					Dump2d("deflated", deflated);
 					var kernel = new Matrix<bool>(2 * forestCutout, 2 * forestCutout).Fill(true);
 					var inflated = KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout, forestCutout), true);
+					Dump2d("inflated", deflated);
 					for (var y = 0; y < size.Y; y++)
 					{
 						for (var x = 0; x < size.X; x++)
@@ -3020,12 +3089,12 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				for (var x = 0; x < space.Size.X; x++)
 				{
-					if (space[x, y] && holes[x, y] != 0)
+					if (!space[x, y] && holes[x, y] == 0)
 					{
 						holeCount++;
 						int? Filler(int2 xy, int holeId, int direction)
 						{
-							if (space[xy] && holes[xy] == 0)
+							if (!space[xy] && holes[xy] == 0)
 							{
 								holes[xy] = holeId;
 								return holeId;
@@ -3309,9 +3378,6 @@ namespace OpenRA.Mods.Common.Traits
 			var output = new Matrix<Replaceability>(map.MapSize);
 			var replaceabilityMap = new Dictionary<TerrainTile, Replaceability>();
 
-			// Category-based behavior overrides
-			replaceabilityMap.Add(new TerrainTile(1, 0), Replaceability.Tile);
-
 			var rockType = tileset.GetTerrainIndex("Rock");
 
 			foreach (var kv in tileset.Templates)
@@ -3326,7 +3392,11 @@ namespace OpenRA.Mods.Common.Traits
 						if (template[ti] == null) continue;
 						var tile = new TerrainTile(id, (byte)ti);
 						var type = tileset.GetTerrainIndex(tile);
-						if (template.Categories.Contains("Cliffs"))
+						if (id == WATER_TILE)
+						{
+							replaceabilityMap[tile] = Replaceability.Tile;
+						}
+						else if (template.Categories.Contains("Cliffs"))
 						{
 							if (type == rockType)
 								replaceabilityMap[tile] = Replaceability.None;
