@@ -1398,8 +1398,8 @@ namespace OpenRA.Mods.Common.Traits
 					var deflated = DeflateSpace(space, true);
 					Dump2d("deflated", deflated);
 					var kernel = new Matrix<bool>(2 * forestCutout, 2 * forestCutout).Fill(true);
-					var inflated = KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout, forestCutout), true);
-					Dump2d("inflated", deflated);
+					var inflated = KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout - 1, forestCutout - 1), true);
+					Dump2d("inflated", inflated);
 					for (var y = 0; y < size.Y; y++)
 					{
 						for (var x = 0; x < size.X; x++)
