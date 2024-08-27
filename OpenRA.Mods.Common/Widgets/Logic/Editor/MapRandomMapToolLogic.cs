@@ -314,6 +314,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var map = world.Map;
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 			var generatedMap = new Map(modData, tileset, map.MapSize.X, map.MapSize.Y);
+			var bounds = map.Bounds;
+			generatedMap.SetBounds(new PPos(bounds.Left, bounds.Top), new PPos(bounds.Right - 1, bounds.Bottom - 1));
 			var settings = generatorsToSettings[selectedGenerator];
 
 			// Run main generator logic. May throw
