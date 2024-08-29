@@ -357,7 +357,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				new CPos(0, 0),
 				map,
 				blitSource,
-				editorActorLayer);
+				editorActorLayer,
+				false);
 			// TODO: translate
 			// TranslationProvider.GetString(GeneratedRandomMap)
 			var description = $"Generate {selectedGenerator.Info.Name} map ({seed})";
