@@ -69,6 +69,7 @@ namespace OpenRA.Mods.Common.EditorBrushes
 		readonly EditorBlitSource undoBlitSource;
 		readonly CPos blitPosition;
 		readonly Map map;
+		readonly bool strictBounds;
 
 		public EditorBlit(
 			MapBlitFilters blitFilters,
@@ -76,7 +77,8 @@ namespace OpenRA.Mods.Common.EditorBrushes
 			CPos blitPosition,
 			Map map,
 			EditorBlitSource blitSource,
-			EditorActorLayer editorActorLayer)
+			EditorActorLayer editorActorLayer,
+			bool strictBounds)
 		{
 			this.blitFilters = blitFilters;
 			this.resourceLayer = resourceLayer;
@@ -84,6 +86,7 @@ namespace OpenRA.Mods.Common.EditorBrushes
 			this.blitPosition = blitPosition;
 			this.editorActorLayer = editorActorLayer;
 			this.map = map;
+			this.strictBounds = strictBounds;
 
 			undoBlitSource = CopySelectionContents();
 		}
@@ -107,7 +110,7 @@ namespace OpenRA.Mods.Common.EditorBrushes
 
 			foreach (var cell in source)
 			{
-				if (!mapTiles.Contains(cell))
+				if (strictBounds && !mapTiles.Contains(cell))
 					continue;
 
 				var resourceLayerContents = resourceLayer?.GetResource(cell);
@@ -138,7 +141,7 @@ namespace OpenRA.Mods.Common.EditorBrushes
 			foreach (var tileKeyValuePair in blitSource.Tiles)
 			{
 				var position = tileKeyValuePair.Key + blitVec;
-				if (!map.Contains(position))
+				if (strictBounds && !map.Contains(position))
 					continue;
 
 				// Clear any existing resources.
@@ -171,7 +174,7 @@ namespace OpenRA.Mods.Common.EditorBrushes
 					if (locationInit != null)
 					{
 						var actorPosition = locationInit.Value + new CVec(blitPosition.X - selection.TopLeft.X, blitPosition.Y - selection.TopLeft.Y);
-						if (!map.Contains(actorPosition))
+						if (strictBounds && !map.Contains(actorPosition))
 							continue;
 
 						copy.RemoveAll<LocationInit>();
@@ -222,7 +225,8 @@ namespace OpenRA.Mods.Common.EditorBrushes
 			}
 		}
 
-		public int TileCount() {
+		public int TileCount()
+		{
 			return blitSource.Tiles.Count;
 		}
 	}
