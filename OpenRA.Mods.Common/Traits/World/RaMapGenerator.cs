@@ -1089,6 +1089,61 @@ namespace OpenRA.Mods.Common.Traits
 			var maximumAltitude = settings["MaximumAltitude"].Get<int>();
 			var minimumTerrainContourSpacing = settings["MinimumTerrainContourSpacing"].Get<int>();
 			var minimumCliffLength = settings["MinimumCliffLength"].Get<int>();
+			var enforceSymmetry = settings["EnforceSymmetry"].Get<int>();
+
+			var beachIndex = tileset.GetTerrainIndex("Beach");
+			var clearIndex = tileset.GetTerrainIndex("Clear");
+			var riverIndex = tileset.GetTerrainIndex("River");
+			var rockIndex = tileset.GetTerrainIndex("Rock");
+			var roughIndex = tileset.GetTerrainIndex("Rough");
+			var waterIndex = tileset.GetTerrainIndex("Water");
+
+			ImmutableArray<Obstacle> forestObstacles;
+			{
+				var basic = new Obstacle(map, modData).WithWeight(1.0f);
+				var husk = basic.Clone().WithWeight(0.1f);
+				forestObstacles = ImmutableArray.Create(
+					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t02").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t03").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t05").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t06").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t07").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t08").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t10").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t11").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t12").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t13").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t14").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t15").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t16").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc01").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc02").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc03").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc04").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t02.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t03.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t05.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t06.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t07.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t08.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t10.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t11.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t12.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t13.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t14.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t15.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t16.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc01.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc02.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc03.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc04.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()));
+			}
 
 			bool trivialRotate;
 			switch (rotations)
@@ -1357,13 +1412,12 @@ namespace OpenRA.Mods.Common.Traits
 				var forestPlan = forestNoise.Map(v => v >= 0.0f);
 
 				Log.Write("debug", "forests: planting trees");
-				var clearTerrainIndex = tileset.GetTerrainIndex("Clear");
 				for (var y = 0; y < size.Y; y++)
 				{
 					for (var x = 0; x < size.X; x++)
 					{
 						var mpos = new MPos(x, y);
-						if (map.GetTerrainIndex(mpos) != clearTerrainIndex)
+						if (map.GetTerrainIndex(mpos) != clearIndex)
 							forestPlan[x, y] = false;
 					}
 				}
@@ -1376,7 +1430,7 @@ namespace OpenRA.Mods.Common.Traits
 						for (var x = 0; x < size.X; x++)
 						{
 							var mpos = new MPos(x, y);
-							space[x, y] = map.GetTerrainIndex(mpos) == clearTerrainIndex;
+							space[x, y] = map.GetTerrainIndex(mpos) == clearIndex;
 						}
 					}
 
@@ -1393,13 +1447,10 @@ namespace OpenRA.Mods.Common.Traits
 						space = newSpace;
 					}
 
-					Dump2d("space", space);
 					// This is grid points, not squares. Has a size of `size + 1`.
 					var deflated = DeflateSpace(space, true);
-					Dump2d("deflated", deflated);
 					var kernel = new Matrix<bool>(2 * forestCutout, 2 * forestCutout).Fill(true);
 					var inflated = KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout - 1, forestCutout - 1), true);
-					Dump2d("inflated", inflated);
 					for (var y = 0; y < size.Y; y++)
 					{
 						for (var x = 0; x < size.X; x++)
@@ -1410,55 +1461,50 @@ namespace OpenRA.Mods.Common.Traits
 					}
 				}
 
-				var basic = new Obstacle(map, modData).WithWeight(1.0f);
-				var husk = basic.Clone().WithWeight(0.1f);
-				var forestObstacles = ImmutableArray.Create(
-					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t02").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t03").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t05").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t06").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t07").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t08").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t10").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t11").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t12").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t13").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t14").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t15").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t16").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc01").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc02").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc03").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc04").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t02.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t03.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t05.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t06.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t07.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t08.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t10.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t11.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t12.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t13.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t14.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t15.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t16.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc01.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc02.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc03.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc04.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()));
-
 				var forestReplace = Matrix<Replaceability>.Zip(
 					forestPlan,
 					IdentifyReplaceableTiles(map, tileset),
 					(a, b) => a ? b : Replaceability.None);
 				ObstructArea(map, actorPlans, forestReplace, forestObstacles, forestTilingRandom);
+			}
+
+			if (enforceSymmetry != 0) {
+				Log.Write("debug", "symmatry enforcement: analysing");
+				if (!trivialRotate)
+					throw new MapGenerationException("cannot use symmetry enforcement on non-trivial rotations");
+				bool CheckCompatibility(byte main, byte other)
+				{
+					if (main == other)
+						return true;
+					if (main == riverIndex || main == rockIndex || main == waterIndex)
+						return true;
+					else if (main == beachIndex || main == clearIndex || main == roughIndex)
+					{
+						if (other == riverIndex || other == rockIndex || other == waterIndex)
+							return false;
+						if (other == beachIndex || other == clearIndex || other == roughIndex)
+							return enforceSymmetry < 2;
+						else
+							throw new MapGenerationException("ambiguous symmetry policy");
+					}
+					else
+						throw new MapGenerationException("ambiguous symmetry policy");
+				}
+
+				var obstructionMask = new Matrix<Replaceability>(size);
+				RotateAndMirrorMatrix(size, rotations, mirror,
+					(int2[] sources, int2 destination) =>
+					{
+						var main = tileset.GetTerrainIndex(map.Tiles[new MPos(destination.X, destination.Y)]);
+						var compatible = sources
+							.Where(obstructionMask.ContainsXY)
+							.Select(source => tileset.GetTerrainIndex(map.Tiles[new MPos(source.X, source.Y)]))
+							.All(source => CheckCompatibility(main, source));
+						obstructionMask[destination] = compatible ? Replaceability.None : Replaceability.Entity;
+					});
+				Log.Write("debug", "symmatry enforcement: obstructing");
+
+				ObstructArea(map, actorPlans, obstructionMask, forestObstacles, random);
 			}
 
 			// Makeshift map assembly
