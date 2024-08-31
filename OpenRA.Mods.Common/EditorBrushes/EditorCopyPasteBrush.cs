@@ -74,7 +74,8 @@ namespace OpenRA.Mods.Common.Widgets
 					pastePosition,
 					worldRenderer.World.Map,
 					clipboard,
-					editorActorLayer);
+					editorActorLayer,
+					true);
 				var action = new CopyPasteEditorAction(editorBlit);
 
 				editorActionManager.Add(action);
