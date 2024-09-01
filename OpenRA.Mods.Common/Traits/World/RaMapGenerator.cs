@@ -150,6 +150,20 @@ namespace OpenRA.Mods.Common.Traits
 			Any = 3,
 		}
 
+		enum Playability
+		{
+			// Area is unplayable by land/naval units.
+			Unplayable = 0,
+
+			// Area is unplayable by land/naval units, but should count as
+			// being "within" a playable region. This usually applies to random
+			// rock or river tiles in largely passable templates.
+			Partial = 1,
+
+			// Area is playable by either land or naval units.
+			Playable = 2,
+		}
+
 		static int CalculateDirection(int dx, int dy)
 		{
 			if (dx > 0)
@@ -848,7 +862,12 @@ namespace OpenRA.Mods.Common.Traits
 				shape = xys.OrderBy(xy => (xy.Y, xy.X)).ToArray();
 			}
 
-			public Obstacle WithTemplate(ushort templateId)
+			// <summary>
+			// Add tiles from a template, optionally with a given offset. By
+			// default, it will be auto-offset such that the first tile is
+			// under (0, 0).
+			// </summary>
+			public Obstacle WithTemplate(ushort templateId, int2? offset = null)
 			{
 				var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
 				var templateInfo = tileset.Templates[templateId];
@@ -861,8 +880,10 @@ namespace OpenRA.Mods.Common.Traits
 						var i = y * templateInfo.Size.X + x;
 						if (templateInfo[i] != null)
 						{
+							if (offset == null)
+								offset = new int2(-x, -y);
 							var tile = new TerrainTile(templateId, (byte)i);
-							tiles.Add((new int2(x, y), tile));
+							tiles.Add((new int2(x, y) + (int2)offset, tile));
 						}
 					}
 				}
@@ -952,6 +973,14 @@ namespace OpenRA.Mods.Common.Traits
 					actorPlans.Add(plan);
 				}
 			}
+		}
+
+		sealed class Region
+		{
+			public int Area;
+			public int PlayableArea;
+			public int Id;
+			public bool ExternalCircle;
 		}
 
 		public IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData)
@@ -1090,15 +1119,20 @@ namespace OpenRA.Mods.Common.Traits
 			var minimumTerrainContourSpacing = settings["MinimumTerrainContourSpacing"].Get<int>();
 			var minimumCliffLength = settings["MinimumCliffLength"].Get<int>();
 			var enforceSymmetry = settings["EnforceSymmetry"].Get<int>();
+			var denyWalledAreas = settings["DenyWalledAreas"].Get<bool>();
 
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
+			var gemsIndex = tileset.GetTerrainIndex("Gems");
+			var oreIndex = tileset.GetTerrainIndex("Ore");
 			var riverIndex = tileset.GetTerrainIndex("River");
+			var roadIndex = tileset.GetTerrainIndex("Road");
 			var rockIndex = tileset.GetTerrainIndex("Rock");
 			var roughIndex = tileset.GetTerrainIndex("Rough");
 			var waterIndex = tileset.GetTerrainIndex("Water");
 
 			ImmutableArray<Obstacle> forestObstacles;
+			ImmutableArray<Obstacle> unplayableObstacles;
 			{
 				var basic = new Obstacle(map, modData).WithWeight(1.0f);
 				var husk = basic.Clone().WithWeight(0.1f);
@@ -1117,7 +1151,7 @@ namespace OpenRA.Mods.Common.Traits
 					basic.Clone().WithEntity(new ActorPlan(map, "t14").AlignFootprint()),
 					basic.Clone().WithEntity(new ActorPlan(map, "t15").AlignFootprint()),
 					basic.Clone().WithEntity(new ActorPlan(map, "t16").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "t17").AlignFootprint()),
 					basic.Clone().WithEntity(new ActorPlan(map, "tc01").AlignFootprint()),
 					basic.Clone().WithEntity(new ActorPlan(map, "tc02").AlignFootprint()),
 					basic.Clone().WithEntity(new ActorPlan(map, "tc03").AlignFootprint()),
@@ -1137,12 +1171,105 @@ namespace OpenRA.Mods.Common.Traits
 					husk.Clone().WithEntity(new ActorPlan(map, "t14.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "t15.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "t16.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
+					husk.Clone().WithEntity(new ActorPlan(map, "t17.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "tc01.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "tc02.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "tc03.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "tc04.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()));
+
+				var clear = new TerrainTile(LAND_TILE, 0);
+				unplayableObstacles = ImmutableArray.Create(
+					basic.Clone().WithTemplate(97),
+					basic.Clone().WithTemplate(98),
+					basic.Clone().WithTemplate(99),
+					basic.Clone().WithTemplate(217),
+					basic.Clone().WithTemplate(218),
+					basic.Clone().WithTemplate(219),
+					basic.Clone().WithTemplate(220),
+					basic.Clone().WithTemplate(221),
+					basic.Clone().WithTemplate(222),
+					basic.Clone().WithTemplate(223),
+					basic.Clone().WithTemplate(224),
+					basic.Clone().WithTemplate(225),
+					basic.Clone().WithTemplate(226),
+					basic.Clone().WithTemplate(103),
+					basic.Clone().WithTemplate(104),
+					basic.Clone().WithTemplate(105).WithWeight(0.05f),
+					basic.Clone().WithTemplate(106).WithWeight(0.05f),
+					basic.Clone().WithTemplate(109),
+					basic.Clone().WithTemplate(110),
+					basic.Clone().WithTemplate(580).WithWeight(0.1f),
+					basic.Clone().WithTemplate(581).WithWeight(0.1f),
+					basic.Clone().WithTemplate(582).WithWeight(0.1f),
+					basic.Clone().WithTemplate(583).WithWeight(0.1f),
+					basic.Clone().WithTemplate(584).WithWeight(0.1f),
+					basic.Clone().WithTemplate(585).WithWeight(0.1f),
+					basic.Clone().WithTemplate(586).WithWeight(0.1f),
+					basic.Clone().WithTemplate(587).WithWeight(0.1f),
+					basic.Clone().WithTemplate(588).WithWeight(0.1f),
+					basic.Clone().WithTemplate(400).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t02").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t03").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t05").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t06").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t07").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t08").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t10").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t11").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t12").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t13").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t14").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t15").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t16").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t17").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f));
+			}
+
+			var replaceabilityMap = new Dictionary<TerrainTile, Replaceability>();
+			var playabilityMap = new Dictionary<TerrainTile, Playability>();
+			foreach (var kv in tileset.Templates)
+			{
+				var id = kv.Key;
+				var template = kv.Value;
+				for (var ti = 0; ti < template.TilesCount; ti++)
+				{
+					if (template[ti] == null) continue;
+					var tile = new TerrainTile(id, (byte)ti);
+					var type = tileset.GetTerrainIndex(tile);
+
+					if (type == beachIndex ||
+						type == clearIndex ||
+						type == gemsIndex ||
+						type == oreIndex ||
+						type == roadIndex ||
+						type == roughIndex ||
+						type == waterIndex)
+					{
+						playabilityMap[tile] = Playability.Playable;
+					}
+					else
+					{
+						playabilityMap[tile] = Playability.Unplayable;
+					}
+
+					if (id == WATER_TILE)
+					{
+						replaceabilityMap[tile] = Replaceability.Tile;
+					}
+					else if (template.Categories.Contains("Cliffs"))
+					{
+						if (type == rockIndex)
+							replaceabilityMap[tile] = Replaceability.None;
+						else
+							replaceabilityMap[tile] = Replaceability.Entity;
+					}
+					else if (template.Categories.Contains("Beach") || template.Categories.Contains("Road"))
+					{
+						replaceabilityMap[tile] = Replaceability.Tile;
+						if (playabilityMap[tile] == Playability.Unplayable)
+							playabilityMap[tile] = Playability.Partial;
+					}
+				}
 			}
 
 			bool trivialRotate;
@@ -1463,12 +1590,13 @@ namespace OpenRA.Mods.Common.Traits
 
 				var forestReplace = Matrix<Replaceability>.Zip(
 					forestPlan,
-					IdentifyReplaceableTiles(map, tileset),
+					IdentifyReplaceableTiles(map, tileset, replaceabilityMap),
 					(a, b) => a ? b : Replaceability.None);
 				ObstructArea(map, actorPlans, forestReplace, forestObstacles, forestTilingRandom);
 			}
 
-			if (enforceSymmetry != 0) {
+			if (enforceSymmetry != 0)
+			{
 				Log.Write("debug", "symmatry enforcement: analysing");
 				if (!trivialRotate)
 					throw new MapGenerationException("cannot use symmetry enforcement on non-trivial rotations");
@@ -1491,20 +1619,51 @@ namespace OpenRA.Mods.Common.Traits
 						throw new MapGenerationException("ambiguous symmetry policy");
 				}
 
-				var obstructionMask = new Matrix<Replaceability>(size);
+				var replace = new Matrix<Replaceability>(size);
 				RotateAndMirrorMatrix(size, rotations, mirror,
 					(int2[] sources, int2 destination) =>
 					{
 						var main = tileset.GetTerrainIndex(map.Tiles[new MPos(destination.X, destination.Y)]);
 						var compatible = sources
-							.Where(obstructionMask.ContainsXY)
+							.Where(replace.ContainsXY)
 							.Select(source => tileset.GetTerrainIndex(map.Tiles[new MPos(source.X, source.Y)]))
 							.All(source => CheckCompatibility(main, source));
-						obstructionMask[destination] = compatible ? Replaceability.None : Replaceability.Entity;
+						replace[destination] = compatible ? Replaceability.None : Replaceability.Entity;
 					});
 				Log.Write("debug", "symmatry enforcement: obstructing");
+				ObstructArea(map, actorPlans, replace, forestObstacles, random);
+			}
 
-				ObstructArea(map, actorPlans, obstructionMask, forestObstacles, random);
+			var playableArea = new Matrix<bool>(size);
+			{
+				Log.Write("debug", "determining playable regions");
+				var (regionMask, regions, playability) = FindPlayableRegions(map, actorPlans, playabilityMap);
+				Region largest = null;
+				foreach (var region in regions)
+				{
+					if (externalCircularBias > 0 && region.ExternalCircle)
+						continue;
+					if (largest == null || region.PlayableArea > largest.PlayableArea)
+						largest = region;
+				}
+
+				if (largest == null)
+					throw new MapGenerationException("could not find a playable region");
+				if (denyWalledAreas)
+				{
+					Log.Write("debug", "obstructing semi-unreachable areas");
+					// TODO: use land obstruction
+					var replace = Matrix<Replaceability>.Zip(
+						regionMask,
+						IdentifyReplaceableTiles(map, tileset, replaceabilityMap),
+						(a, b) => a == largest.Id ? Replaceability.None : b);
+					ObstructArea(map, actorPlans, replace, unplayableObstacles, random);
+				}
+
+				for (var n = 0; n < playableArea.Data.Length; n++)
+				{
+					playableArea[n] = playability[n] == Playability.Playable && regionMask[n] == largest.Id;
+				}
 			}
 
 			// Makeshift map assembly
@@ -3419,47 +3578,9 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		static Matrix<Replaceability> IdentifyReplaceableTiles(Map map, ITemplatedTerrainInfo tileset)
+		static Matrix<Replaceability> IdentifyReplaceableTiles(Map map, ITemplatedTerrainInfo tileset, Dictionary<TerrainTile, Replaceability> replaceabilityMap)
 		{
 			var output = new Matrix<Replaceability>(map.MapSize);
-			var replaceabilityMap = new Dictionary<TerrainTile, Replaceability>();
-
-			var rockType = tileset.GetTerrainIndex("Rock");
-
-			foreach (var kv in tileset.Templates)
-			{
-				var id = kv.Key;
-				var template = kv.Value;
-				for (var ty = 0; ty < template.Size.Y; ty++)
-				{
-					for (var tx = 0; tx < template.Size.X; tx++)
-					{
-						var ti = ty * template.Size.X + tx;
-						if (template[ti] == null) continue;
-						var tile = new TerrainTile(id, (byte)ti);
-						var type = tileset.GetTerrainIndex(tile);
-						if (id == WATER_TILE)
-						{
-							replaceabilityMap[tile] = Replaceability.Tile;
-						}
-						else if (template.Categories.Contains("Cliffs"))
-						{
-							if (type == rockType)
-								replaceabilityMap[tile] = Replaceability.None;
-							else
-								replaceabilityMap[tile] = Replaceability.Entity;
-						}
-						else if (template.Categories.Contains("Beach") || template.Categories.Contains("Road"))
-						{
-							replaceabilityMap[tile] = Replaceability.Tile;
-							// TODO: Lift replaceability and playability computations
-							//   if (info.playabilityMap[tile] == PLAYABILITY_UNPLAYABLE) {
-							// 	   info.playabilityMap[tile] = PLAYABILITY_PARTIAL;
-							//   }
-						}
-					}
-				}
-			}
 
 			foreach (var cell in map.AllCells)
 			{
@@ -3472,6 +3593,104 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return output;
+		}
+
+
+		static (Matrix<int> RegionMask, Region[] Regions, Matrix<Playability> Playable) FindPlayableRegions(Map map, List<ActorPlan> actorPlans, Dictionary<TerrainTile, Playability> playabilityMap)
+		{
+			var size = map.MapSize;
+			var regions = new List<Region>();
+			var regionMask = new Matrix<int>(size);
+			var playable = new Matrix<Playability>(size);
+			for (var y = 0; y < size.Y; y++)
+			{
+				for (var x = 0; x < size.X; x++)
+				{
+					playable[x, y] = playabilityMap[map.Tiles[new MPos(x, y)]];
+				}
+			}
+
+			var externalCircle = new Matrix<bool>(size);
+			var externalCircleCenter = (size - new float2(1.0f, 1.0f)) / 2.0f;
+			var minSpan = Math.Min(size.X, size.Y);
+			ReserveCircleInPlace(
+				externalCircle,
+				externalCircleCenter,
+				minSpan / 2.0f - 1.0f,
+				(_, _) => true,
+				/*invert=*/true);
+			ReserveForEntitiesInPlace(playable, actorPlans,
+				(old) => old == Playability.Playable ? Playability.Partial : old);
+			void Fill(Region region, int2 start)
+			{
+				void AddToRegion(int2 xy, bool fullyPlayable)
+				{
+					regionMask[xy] = region.Id;
+					region.Area++;
+					if (fullyPlayable)
+						region.PlayableArea++;
+					if (externalCircle[xy])
+						region.ExternalCircle = true;
+				}
+
+				bool? Filler(int2 xy, bool fullyPlayable, int _)
+				{
+					if (regionMask[xy] == 0)
+					{
+						if (fullyPlayable && playable[xy] == Playability.Playable)
+						{
+							AddToRegion(xy, true);
+							return true;
+						}
+						else if (playable[xy] == Playability.Partial)
+						{
+							AddToRegion(xy, false);
+							return false;
+						}
+					}
+
+					return null;
+				}
+
+				FloodFill(size, new[] { (start, true, DIRECTION_NONE) }, Filler, SPREAD4_D);
+			}
+
+			for (var y = 0; y < size.Y; y++)
+			{
+				for (var x = 0; x < size.X; x++)
+				{
+					var start = new int2(x, y);
+					if (regionMask[start] == 0 && playable[start] == Playability.Playable)
+					{
+						var region = new Region()
+						{
+							Area = 0,
+							PlayableArea = 0,
+							Id = regions.Count + 1,
+							ExternalCircle = false,
+						};
+						regions.Add(region);
+						Fill(region, start);
+					}
+				}
+			}
+			return (regionMask, regions.ToArray(), playable);
+		}
+
+
+		// Set positions occupied by entities to a given value
+		static void ReserveForEntitiesInPlace<T>(Matrix<T> matrix, IEnumerable<ActorPlan> actorPlans, Func<T, T> setTo)
+		{
+			foreach (var actorPlan in actorPlans)
+			{
+				foreach (var (cpos, _) in actorPlan.Footprint())
+				{
+					var mpos = cpos.ToMPos(actorPlan.Map);
+					var xy = new int2(mpos.U, mpos.V);
+					if (matrix.ContainsXY(xy))
+						matrix[xy] = setTo(matrix[xy]);
+				}
+			}
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
