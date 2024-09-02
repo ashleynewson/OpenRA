@@ -134,6 +134,30 @@ namespace OpenRA.Mods.Common.Traits
 			(new int2(0, -1), DIRECTION_U)
 		});
 
+		static readonly ImmutableArray<int2> SPREAD8 = ImmutableArray.Create(new[]
+		{
+			new int2(1, 0),
+			new int2(1, 1),
+			new int2(0, 1),
+			new int2(-1, 1),
+			new int2(-1, 0),
+			new int2(-1, -1),
+			new int2(0, -1),
+			new int2(1, -1)
+		});
+
+		static readonly ImmutableArray<(int2, int)> SPREAD8_D = ImmutableArray.Create(new[]
+		{
+			(new int2(1, 0), DIRECTION_R),
+			(new int2(1, 1), DIRECTION_RD),
+			(new int2(0, 1), DIRECTION_D),
+			(new int2(-1, 1), DIRECTION_LD),
+			(new int2(-1, 0), DIRECTION_L),
+			(new int2(-1, -1), DIRECTION_LU),
+			(new int2(0, -1), DIRECTION_U),
+			(new int2(1, -1), DIRECTION_RU)
+		});
+
 		enum Replaceability
 		{
 
@@ -163,6 +187,8 @@ namespace OpenRA.Mods.Common.Traits
 			// Area is playable by either land or naval units.
 			Playable = 2,
 		}
+
+		static int2 DirectionToXY(int d) => SPREAD8[d];
 
 		static int CalculateDirection(int dx, int dy)
 		{
@@ -198,6 +224,22 @@ namespace OpenRA.Mods.Common.Traits
 		static int CalculateDirection(int2 delta)
 			=> CalculateDirection(delta.X, delta.Y);
 
+		static int CalculateNonDiagonalDirection(int dx, int dy)
+		{
+			if (dx - dy > 0 && dx + dy >= 0)
+				return DIRECTION_R;
+			if (dy + dx > 0 && dy - dx >= 0)
+				return DIRECTION_D;
+			if (-dx + dy > 0 && -dx - dy >= 0)
+				return DIRECTION_L;
+			if (-dy - dx > 0 && -dy + dx >= 0)
+				return DIRECTION_U;
+			throw new ArgumentException("bad direction");
+		}
+
+		static int CalculateNonDiagonalDirection(int2 delta)
+			=> CalculateNonDiagonalDirection(delta.X, delta.Y);
+
 		static int ReverseDirection(int direction)
 		{
 			if (direction == DIRECTION_NONE)
@@ -231,6 +273,35 @@ namespace OpenRA.Mods.Common.Traits
 					throw new ArgumentException("bad direction");
 			}
 		}
+
+		static int CountDirections(int dm)
+		{
+			var count = 0;
+			for (var m = dm; m != 0; m >>= 1)
+			{
+				if ((m & 1) == 1)
+					count++;
+			}
+
+			return count;
+		}
+
+		static int MaskToDirection(int mask)
+		{
+			switch (mask)
+			{
+				case DIRECTION_M_R: return DIRECTION_R;
+				case DIRECTION_M_RD: return DIRECTION_RD;
+				case DIRECTION_M_D: return DIRECTION_D;
+				case DIRECTION_M_LD: return DIRECTION_LD;
+				case DIRECTION_M_L: return DIRECTION_L;
+				case DIRECTION_M_LU: return DIRECTION_LU;
+				case DIRECTION_M_U: return DIRECTION_U;
+				case DIRECTION_M_RU: return DIRECTION_RU;
+				default: return DIRECTION_NONE;
+			}
+		}
+
 
 		// <summary>
 		// Mirrors a grid square within an area of given size.
@@ -1120,6 +1191,8 @@ namespace OpenRA.Mods.Common.Traits
 			var minimumCliffLength = settings["MinimumCliffLength"].Get<int>();
 			var enforceSymmetry = settings["EnforceSymmetry"].Get<int>();
 			var denyWalledAreas = settings["DenyWalledAreas"].Get<bool>();
+			var roads = settings["Roads"].Get<bool>();
+			var roadSpacing = settings["RoadSpacing"].Get<int>();
 
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
@@ -1319,6 +1392,7 @@ namespace OpenRA.Mods.Common.Traits
 			var forestRandom = new MersenneTwister(random.Next());
 			var forestTilingRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
+			var roadTilingRandom = new MersenneTwister(random.Next());
 
 			TerrainTile PickTile(ushort tileType)
 			{
@@ -1663,6 +1737,82 @@ namespace OpenRA.Mods.Common.Traits
 				for (var n = 0; n < playableArea.Data.Length; n++)
 				{
 					playableArea[n] = playability[n] == Playability.Playable && regionMask[n] == largest.Id;
+				}
+			}
+
+			if (roads)
+			{
+				// TODO: merge with roads
+				var space = new Matrix<bool>(size);
+				for (var y = 0; y < size.Y; y++)
+				{
+					for (var x = 0; x < size.X; x++)
+					{
+						space[x, y] = playableArea[x, y] && tileset.GetTerrainIndex(map.Tiles[new MPos(x, y)]) == clearIndex;
+					}
+				}
+				Dump2d("space1", space);
+
+				if (trivialRotate)
+				{
+					// Improve symmetry.
+					var newSpace = new Matrix<bool>(size);
+					RotateAndMirrorMatrix(
+						size,
+						rotations,
+						mirror,
+						(sources, destination)
+							=> newSpace[destination] = sources.All(source => space[source]));
+					space = newSpace;
+				}
+				Dump2d("space2", space);
+
+				{
+					var kernel = new Matrix<bool>(roadSpacing * 2 + 1, roadSpacing * 2 + 1);
+					ReserveCircleInPlace(
+						kernel,
+						new float2(roadSpacing, roadSpacing),
+						roadSpacing,
+						(_, _) => true,
+						/*invert=*/false);
+					space = KernelDilateOrErode(
+						space,
+						kernel,
+						new int2(roadSpacing, roadSpacing),
+						false);
+				}
+				Dump2d("space3", space);
+
+				var deflated = DeflateSpace(space, true);
+				var noJunctions = RemoveJunctionsFromDirectionMap(deflated);
+				var pointArrays = DeduplicateAndNormalizePointArrays(DirectionMapToPointArrays(noJunctions), size);
+
+				var roadPermittedTemplates = new PermittedTemplates(
+					PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Road", "RoadIn", "RoadOut" }),
+					PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }),
+					PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" }));
+
+				foreach (var pointArray in pointArrays)
+				{
+					var shrunk = ShrinkPointArray(pointArray, 4, 12);
+					if (shrunk == null)
+						continue;
+					var extended = InertiallyExtendPathInPlace(shrunk, 2, 8);
+					var tweaked = TweakPathPoints(extended, size);
+
+					// Roads that are _almost_ vertical or horizontal tile badly.
+					// Filter them out.
+					var minX = tweaked.Min((p) => p.X);
+					var minY = tweaked.Min((p) => p.Y);
+					var maxX = tweaked.Max((p) => p.X);
+					var maxY = tweaked.Max((p) => p.Y);
+					if (maxX - minX < 6 || maxY - minY < 6)
+						continue;
+
+					// Currently, never looped.
+					var path = new Path(tweaked, "Clear", "Clear", roadPermittedTemplates);
+
+					TilePath(map, path, roadTilingRandom, roadSpacing * 2);
 				}
 			}
 
@@ -3691,6 +3841,171 @@ namespace OpenRA.Mods.Common.Traits
 						matrix[xy] = setTo(matrix[xy]);
 				}
 			}
+		}
+
+		static Matrix<byte> RemoveJunctionsFromDirectionMap(Matrix<byte> input)
+		{
+			var output = input.Clone();
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					var dm = input[cx, cy];
+					if (CountDirections(dm) > 2)
+					{
+						output[cx, cy] = 0;
+						foreach (var (offset, d) in SPREAD8_D)
+						{
+							var xy = new int2(cx + offset.X, cy + offset.Y);
+							if (!input.ContainsXY(xy))
+								continue;
+							var dr = ReverseDirection(d);
+							output[xy] = (byte)(output[xy] & ~(1 << dr));
+						}
+					}
+				}
+			}
+
+			for (var x = 0; x < input.Size.X; x++)
+			{
+				output[x, 0] = (byte)(output[x, 0] & ~(DIRECTION_M_LU | DIRECTION_M_U | DIRECTION_M_RU));
+				output[x, input.Size.Y - 1] = (byte)(output[x, input.Size.Y - 1] & ~(DIRECTION_M_RD | DIRECTION_M_D | DIRECTION_M_LD));
+			}
+
+			for (var y = 0; y < input.Size.Y; y++)
+			{
+				output[0, y] = (byte)(output[0, y] & ~(DIRECTION_M_LD | DIRECTION_M_L | DIRECTION_M_LU));
+				output[input.Size.X - 1, y] &= (byte)(output[input.Size.X - 1, y] & ~(DIRECTION_M_RU | DIRECTION_M_R | DIRECTION_M_RD));
+			}
+
+			return output;
+		}
+
+		static int2[][] DirectionMapToPointArrays(Matrix<byte> input)
+		{
+			// Loops not handled, but these would be extremely rare anyway.
+			var pointArrays = new List<int2[]>();
+			for (var sy = 0; sy < input.Size.Y; sy++)
+			{
+				for (var sx = 0; sx < input.Size.X; sx++)
+				{
+					var sdm = input[sx, sy];
+					if (MaskToDirection(sdm) != DIRECTION_NONE)
+					{
+						var points = new List<int2>();
+						var xy = new int2(sx, sy);
+						var reverseDm = 0;
+
+						bool AddPoint()
+						{
+							points.Add(xy);
+							var dm = input[xy] & ~reverseDm;
+							foreach (var (offset, d) in SPREAD8_D)
+							{
+								if ((dm & (1 << d)) != 0)
+								{
+									xy += offset;
+									if (!input.ContainsXY(xy))
+										throw new ArgumentException("input should not link out of bounds");
+									reverseDm = 1 << ReverseDirection(d);
+									return true;
+								}
+							}
+
+							return false;
+						}
+
+						while (AddPoint())
+						{
+						}
+
+						pointArrays.Add(points.ToArray());
+					}
+				}
+			}
+
+			return pointArrays.ToArray();
+		}
+
+		// Assumes that inputs do not have overlapping end points.
+		// No loop support.
+		static int2[][] DeduplicateAndNormalizePointArrays(int2[][] inputs, int2 size)
+		{
+			bool ShouldReverse(int2[] points)
+			{
+				// This could be converted to integer math, but there's little motive.
+				var midX = (size.X - 1) / 2.0f;
+				var midY = (size.Y - 1) / 2.0f;
+				var v1x = points[0].X - midX;
+				var v1y = points[0].Y - midY;
+				var v2x = points[^1].X - midX;
+				var v2y = points[^1].Y - midY;
+
+				// Rotation around center?
+				var crossProd = v1x * v2y - v2x * v1y;
+				if (crossProd != 0)
+					return crossProd < 0;
+
+				// Distance from center?
+				var r1 = v1x * v1x + v1y * v1y;
+				var r2 = v2x * v2x + v2y * v2y;
+				if (r1 != r2)
+					return r1 < r2;
+
+				// Absolute angle
+				return v1y == v2y ? v1x > v2x : v1y > v2y;
+			}
+
+			var outputs = new List<int2[]>();
+			var lookup = new Matrix<bool>(size + new int2(1, 1));
+			foreach (var points in inputs)
+			{
+				var normalized = (int2[])points.Clone();
+				if (ShouldReverse(points))
+					Array.Reverse(normalized);
+				var xy = new int2(normalized[0].X, normalized[0].Y);
+				if (!lookup[xy])
+				{
+					outputs.Add(normalized);
+					lookup[xy] = true;
+				}
+			}
+
+			return outputs.ToArray();
+		}
+
+		// No loop support.
+		// May return null.
+		static int2[] ShrinkPointArray(int2[] points, int shrinkBy, int minimumLength)
+		{
+			if (minimumLength <= 1)
+				throw new ArgumentException("minimumLength must be greater than 1");
+			if (points.Length < shrinkBy * 2 + minimumLength)
+				return null;
+			return points[shrinkBy..(points.Length - shrinkBy)];
+		}
+
+		static int2[] InertiallyExtendPathInPlace(int2[] points, int extension, int inertialRange)
+		{
+			if (inertialRange > points.Length - 1)
+				inertialRange = points.Length - 1;
+			var sd = CalculateNonDiagonalDirection(points[inertialRange] - points[0]);
+			var ed = CalculateNonDiagonalDirection(points[^1] - points[^(inertialRange + 1)]);
+			var newPoints = new int2[points.Length + extension * 2];
+
+			for (var i = 0; i < extension; i++)
+			{
+				newPoints[i] = points[0] - DirectionToXY(sd) * (extension - i);
+			}
+
+			Array.Copy(points, 0, newPoints, extension, points.Length);
+
+			for (var i = 0; i < extension; i++)
+			{
+				newPoints[extension + points.Length + i] = points[^1] + DirectionToXY(ed) * (i + 1);
+			}
+
+			return newPoints;
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
