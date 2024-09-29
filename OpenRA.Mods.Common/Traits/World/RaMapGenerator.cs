@@ -15,6 +15,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using OpenRA;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -394,6 +395,30 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		// <summary>
+		// Determine the shortest distance between projected grid squares
+		// </summary>
+		static int RotateAndMirrorProjectionProximity(int2 original, int2 size, int rotations, Mirror mirror)
+		{
+			if (RotateAndMirrorProjectionCount(rotations, mirror) == 1)
+				return int.MaxValue;
+			var projections = RotateAndMirrorGridSquare(original, size, rotations, mirror);
+			var worstSpacingSq = int.MaxValue;
+			for (var i1 = 0; i1 < projections.Length; i1++)
+			{
+				for (var i2 = 0; i2 < projections.Length; i2++)
+				{
+					if (i1 == i2)
+						continue;
+					var spacingSq = (projections[i1] - projections[i2]).LengthSquared;
+					if (spacingSq < worstSpacingSq)
+						worstSpacingSq = spacingSq;
+				}
+			}
+
+			return (int)MathF.Sqrt(worstSpacingSq);
+		}
+
+		// <summary>
 		// Duplicate an original point into an array of projected points
 		// according to a rotation and mirror specification. Projected points
 		// may lie outside of the bounds implied by size.
@@ -422,6 +447,33 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return projections;
+		}
+
+		// <summary>
+		// Rotate and mirror multiple actor plans. See RotateAndMirrorActorPlan.
+		// </summary>
+		static void RotateAndMirrorActorPlans(IList<ActorPlan> accumulator, IReadOnlyList<ActorPlan> originals, int rotations, Mirror mirror)
+		{
+			foreach (var original in originals)
+			{
+				RotateAndMirrorActorPlan(accumulator, original, rotations, mirror);
+			}
+		}
+
+		// <summary>
+		// Rotate and mirror a single actor plan, adding to an accumulator list.
+		// Locations are snapped to grid.
+		// </summary>
+		static void RotateAndMirrorActorPlan(IList<ActorPlan> accumulator, ActorPlan original, int rotations, Mirror mirror)
+		{
+			var size = original.Map.MapSize;
+			var points = RotateAndMirrorPoint(original.CenterLocation, size, rotations, mirror);
+			foreach (var point in points)
+			{
+				var plan = original.Clone();
+				plan.CenterLocation = point;
+				accumulator.Add(plan);
+			}
 		}
 
 		// <summary>
@@ -789,6 +841,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
+		// TODO: Sort out CPos, MPos, WPos, PPos?, int2, float2, *Vec, etc.
 		sealed class ActorPlan
 		{
 			public readonly Map Map;
@@ -804,6 +857,36 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
+			// <summary>
+			// Int2 MPos-like representation of location.
+			// </summary>
+			public int2 Int2Location
+			{
+				get
+				{
+					var cpos = Reference.Get<LocationInit>().Value;
+					var mpos = cpos.ToMPos(Map);
+					return new int2(mpos.U, mpos.V);
+				}
+				set => Location = new MPos(value.X, value.Y).ToCPos(Map);
+			}
+
+			// <summary>
+			// Float2 MPos-like representation of actor's center.
+			// For example, A 1x4 actor will have +(0.5,2.0) offset to its Int2Location.
+			// </summary>
+			public float2 CenterLocation
+			{
+				get => Int2Location + CenterOffset();
+				set
+				{
+					var float2Location = value - CenterOffset();
+					Int2Location = new int2((int)MathF.Round(float2Location.X), (int)MathF.Round(float2Location.Y));
+				}
+			}
+
+			public float ZoningRadius;
+
 			public ActorPlan(Map map, ActorReference reference)
 			{
 				Map = map;
@@ -818,7 +901,10 @@ namespace OpenRA.Mods.Common.Traits
 
 			public ActorPlan Clone()
 			{
-				return new ActorPlan(Map, Reference.Clone());
+				return new ActorPlan(Map, Reference.Clone())
+				{
+					ZoningRadius = ZoningRadius,
+				};
 			}
 
 			static ActorReference ActorFromType(string type)
@@ -854,6 +940,33 @@ namespace OpenRA.Mods.Common.Traits
 				var first = footprint.Select(kv => kv.Key).OrderBy(cpos => (cpos.Y, cpos.X)).First();
 				Location -= new CVec(first.X, first.Y);
 				return this;
+			}
+
+			// <summary>
+			// Return an MPos-like center offset for the actor.
+			// <summary>
+			public float2 CenterOffset()
+			{
+				var bi = Info.TraitInfoOrDefault<BuildingInfo>();
+				if (bi == null)
+					return new float2(0.5f, 0.5f);
+
+				var left = int.MaxValue;
+				var right = int.MinValue;
+				var top = int.MaxValue;
+				var bottom = int.MinValue;
+				foreach (var (cvec, type) in bi.Footprint)
+				{
+					if (type == FootprintCellType.Empty)
+						continue;
+					var mpos = (new CPos(0, 0) + cvec).ToMPos(Map);
+					left = Math.Min(left, mpos.U);
+					top = Math.Min(top, mpos.V);
+					right = Math.Max(right, mpos.U);
+					bottom = Math.Max(bottom, mpos.V);
+				}
+
+				return new float2((left + right + 1) / 2.0f, (top + bottom + 1) / 2.0f);
 			}
 		}
 
@@ -1193,6 +1306,15 @@ namespace OpenRA.Mods.Common.Traits
 			var denyWalledAreas = settings["DenyWalledAreas"].Get<bool>();
 			var roads = settings["Roads"].Get<bool>();
 			var roadSpacing = settings["RoadSpacing"].Get<int>();
+			var createEntities = settings["CreateEntities"].Get<bool>();
+			var players = settings["Players"].Get<int>();
+			var centralSpawnReservationFraction = settings["CentralSpawnReservationFraction"].Get<float>();
+			var spawnRegionSize = settings["SpawnRegionSize"].Get<int>();
+			var spawnReservation = settings["SpawnReservation"].Get<int>();
+			var spawnBuildSize = settings["SpawnBuildSize"].Get<int>();
+			var spawnMines = settings["SpawnMines"].Get<int>();
+			var gemUpgrade = settings["GemUpgrade"].Get<float>();
+			var mineReservation = settings["MineReservation"].Get<int>();
 
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
@@ -1229,7 +1351,7 @@ namespace OpenRA.Mods.Common.Traits
 					basic.Clone().WithEntity(new ActorPlan(map, "tc02").AlignFootprint()),
 					basic.Clone().WithEntity(new ActorPlan(map, "tc03").AlignFootprint()),
 					basic.Clone().WithEntity(new ActorPlan(map, "tc04").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()),
+					basic.Clone().WithEntity(new ActorPlan(map, "tc05").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "t02.husk").AlignFootprint()),
 					husk.Clone().WithEntity(new ActorPlan(map, "t03.husk").AlignFootprint()),
@@ -1282,6 +1404,7 @@ namespace OpenRA.Mods.Common.Traits
 					basic.Clone().WithTemplate(587).WithWeight(0.1f),
 					basic.Clone().WithTemplate(588).WithWeight(0.1f),
 					basic.Clone().WithTemplate(400).WithWeight(0.1f),
+					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
 					basic.Clone().WithEntity(new ActorPlan(map, "t02").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
 					basic.Clone().WithEntity(new ActorPlan(map, "t03").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
 					basic.Clone().WithEntity(new ActorPlan(map, "t05").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
@@ -1366,14 +1489,10 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (forestClumpiness < 0.0f)
 				throw new MapGenerationException("forestClumpiness setting must be >= 0");
-
-			// TODO
-			// if (params.mountain < 0.0 || params.mountain > 1.0) {
-			//     die("mountain fraction must be between 0 and 1 inclusive");
-			// }
-			// if (params.water + params.mountain > 1.0) {
-			//     die("water and mountain fractions combined must not exceed 1");
-			// }
+			if (mountains < 0.0 || mountains > 1.0)
+				throw new MapGenerationException("mountains fraction must be between 0 and 1 inclusive");
+			if (water + mountains > 1.0)
+				throw new MapGenerationException("water and mountains fractions combined must not exceed 1");
 
 			Log.Write("debug", "deriving random generators");
 
@@ -1393,6 +1512,7 @@ namespace OpenRA.Mods.Common.Traits
 			var forestTilingRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
 			var roadTilingRandom = new MersenneTwister(random.Next());
+			var playerRandom = new MersenneTwister(random.Next());
 
 			TerrainTile PickTile(ushort tileType)
 			{
@@ -1726,7 +1846,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (denyWalledAreas)
 				{
 					Log.Write("debug", "obstructing semi-unreachable areas");
-					// TODO: use land obstruction
+
 					var replace = Matrix<Replaceability>.Zip(
 						regionMask,
 						IdentifyReplaceableTiles(map, tileset, replaceabilityMap),
@@ -1751,7 +1871,6 @@ namespace OpenRA.Mods.Common.Traits
 						space[x, y] = playableArea[x, y] && tileset.GetTerrainIndex(map.Tiles[new MPos(x, y)]) == clearIndex;
 					}
 				}
-				Dump2d("space1", space);
 
 				if (trivialRotate)
 				{
@@ -1765,7 +1884,6 @@ namespace OpenRA.Mods.Common.Traits
 							=> newSpace[destination] = sources.All(source => space[source]));
 					space = newSpace;
 				}
-				Dump2d("space2", space);
 
 				{
 					var kernel = new Matrix<bool>(roadSpacing * 2 + 1, roadSpacing * 2 + 1);
@@ -1781,7 +1899,6 @@ namespace OpenRA.Mods.Common.Traits
 						new int2(roadSpacing, roadSpacing),
 						false);
 				}
-				Dump2d("space3", space);
 
 				var deflated = DeflateSpace(space, true);
 				var noJunctions = RemoveJunctionsFromDirectionMap(deflated);
@@ -1813,6 +1930,121 @@ namespace OpenRA.Mods.Common.Traits
 					var path = new Path(tweaked, "Clear", "Clear", roadPermittedTemplates);
 
 					TilePath(map, path, roadTilingRandom, roadSpacing * 2);
+				}
+			}
+
+			if (createEntities)
+			{
+				Log.Write("debug", "entities: determining eligible space");
+
+				// TODO: remove map cordon from zoneable.
+				var zoneable = new Matrix<bool>(size);
+				for (var y = 0; y < size.Y; y++)
+				{
+					for (var x = 0; x < size.X; x++)
+					{
+						zoneable[x, y] = playableArea[x, y] && tileset.GetTerrainIndex(map.Tiles[new MPos(x, y)]) == clearIndex;
+					}
+				}
+
+				ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+				if (trivialRotate)
+				{
+					// Improve symmetry.
+					var newZoneable = new Matrix<bool>(size);
+					RotateAndMirrorMatrix(
+						size,
+						rotations,
+						mirror,
+						(sources, destination)
+							=> newZoneable[destination] = sources.All(source => zoneable[source]));
+					zoneable = newZoneable;
+				}
+				else
+				{
+					// Non 1, 2, 4 rotations need entity placement confined to a circle, regardless of externalCircularBias
+					ReserveCircleInPlace(
+						zoneable,
+						externalCircleCenter,
+						minSpan / 2.0f - 1.0f,
+						(_, _) => false,
+						/*invert=*/true);
+				}
+
+				if (rotations > 1 || mirror != 0)
+				{
+					// TODO: Change externalCircleCenter to mapCenter
+					ReserveCircleInPlace(
+						zoneable,
+						externalCircleCenter,
+						1.0f,
+						(_, _) => false,
+						/*invert=*/false);
+
+					// // Reserve the center of the map - otherwise it will mess with rotations
+					// const midPoint = (size >> 1) * (size + 1);
+					// zoneable[midPoint] = -1;
+					// if ((size & 1) === 0) {
+					// 	zoneable[midPoint - 1] = -1;
+					// 	zoneable[midPoint - size] = -1;
+					// 	zoneable[midPoint - size - 1] = -1;
+					// }
+				}
+
+				// var roominess = CalculateRoominess(zoneable, false);
+
+				// Spawn generation
+				Log.Write("debug", "entities: zoning for spawns");
+				for (var iteration = 0; iteration < players; iteration++)
+				{
+					var roominess = CalculateRoominess(zoneable, false);
+					var spawnPreference = CalculateSpawnPreferences(roominess, minSpan * centralSpawnReservationFraction, spawnRegionSize, rotations, mirror);
+					var (chosenXY, chosenValue) = FindRandomMax(random, spawnPreference, spawnRegionSize);
+					if (chosenValue <= 1)
+					{
+						Log.Write("debug", "No ideal spawn location. Ignoring central reservation constraint.");
+						(chosenXY, chosenValue) = FindRandomMax(random, roominess, spawnRegionSize);
+					}
+
+					var room = chosenValue - 1;
+					var templatePlayer = new ActorPlan(map, "mpspawn")
+					{
+						ZoningRadius = spawnReservation,
+						Int2Location = chosenXY,
+					};
+					var spawnActorPlans = new List<ActorPlan>
+					{
+						templatePlayer
+					};
+
+					var radius2 = MathF.Min(spawnRegionSize, room);
+					var radius1 = MathF.Min(MathF.Min(spawnBuildSize, room), radius2 - 2);
+					if (radius1 >= 2.0f)
+					{
+						var mineWeights = new Matrix<float>(size);
+						var radius1Sq = radius1 * radius1;
+						ReserveCircleInPlace(
+							mineWeights,
+							chosenXY,
+							radius2,
+							(rSq, _) => rSq >= radius1Sq ? (1.0f * rSq) : 0.0f,
+							/*invert=*/false);
+						for (var mine = 0; mine < spawnMines; mine++)
+						{
+							var xy = mineWeights.XY(playerRandom.PickWeighted(mineWeights.Data));
+							var minePlan =
+								playerRandom.NextFloat() < gemUpgrade
+									? new ActorPlan(map, "gmine")
+									: new ActorPlan(map, "mine");
+							minePlan.ZoningRadius = mineReservation;
+							minePlan.Int2Location = xy;
+							spawnActorPlans.Add(minePlan);
+							ReserveCircleInPlace(mineWeights, minePlan.Int2Location, 1.0f, (_, _) => 0.0f, /*invert=*/false);
+						}
+					}
+
+					RotateAndMirrorActorPlans(actorPlans, spawnActorPlans, rotations, mirror);
+					ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
 				}
 			}
 
@@ -3840,6 +4072,14 @@ namespace OpenRA.Mods.Common.Traits
 					if (matrix.ContainsXY(xy))
 						matrix[xy] = setTo(matrix[xy]);
 				}
+
+				if (actorPlan.ZoningRadius > 0.0f)
+					ReserveCircleInPlace(
+						matrix,
+						actorPlan.Int2Location,
+						actorPlan.ZoningRadius,
+						(_, v) => setTo(v),
+						/*invert=*/false);
 			}
 		}
 
@@ -4006,6 +4246,86 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return newPoints;
+		}
+
+		static Matrix<int> CalculateSpawnPreferences(Matrix<int> roominess, float centralReservation, int spawnRegionSize, int rotations, Mirror mirror)
+		{
+			var preferences = roominess.Map(r => Math.Min(r, spawnRegionSize));
+			var centralReservationSq = centralReservation * centralReservation;
+			var spawnRegionSize2Sq = 4 * spawnRegionSize * spawnRegionSize;
+			var size = roominess.Size;
+
+			// This -0.5 is required to compensate for the top-left vs the center of a grid square.
+			var center = new float2(size) / 2.0f - new float2(0.5f, 0.5f);
+
+			// Mark areas close to the center or mirror lines as last resort.
+			for (var y = 0; y < size.Y; y++)
+			{
+				for (var x = 0; x < size.X; x++)
+				{
+					if (preferences[x, y] <= 1)
+						continue;
+					// TODO: These seem wrong. 98286777 TL=BR
+					switch (mirror)
+					{
+						case Mirror.None:
+							var r = new float2(x, y) - center;
+							if (r.LengthSquared <= centralReservationSq)
+								preferences[x, y] = 1;
+							break;
+						case Mirror.LeftMatchesRight:
+							if (MathF.Abs(x - center.X) <= centralReservation)
+								preferences[x, y] = 1;
+							break;
+						case Mirror.TopLeftMatchesBottomRight:
+							if (MathF.Abs((x - center.X) + (y - center.Y)) <= centralReservation * SQRT2)
+								preferences[x, y] = 1;
+							break;
+						case Mirror.TopMatchesBottom:
+							if (MathF.Abs(y - center.Y) <= centralReservation)
+								preferences[x, y] = 1;
+							break;
+						case Mirror.TopRightMatchesBottomLeft:
+							if (MathF.Abs((x - center.X) - (y - center.Y)) <= centralReservation * SQRT2)
+								preferences[x, y] = 1;
+							break;
+						default:
+							throw new ArgumentException("bad mirror direction");
+					}
+
+					if (preferences[x, y] <= 1)
+						continue;
+
+					var worstSpacing = RotateAndMirrorProjectionProximity(new int2(x, y), size, rotations, mirror) / 2;
+					if (worstSpacing < preferences[x, y])
+						preferences[x, y] = worstSpacing;
+				}
+			}
+
+			return preferences;
+		}
+
+		static (int2 XY, int Value) FindRandomMax(MersenneTwister random, Matrix<int> matrix, int cap)
+		{
+			var candidates = new List<int>();
+			var best = int.MinValue;
+			for (var n = 0; n < matrix.Data.Length; n++)
+			{
+				if (best < cap && matrix[n] > best)
+				{
+					if (matrix[n] >= cap)
+						best = cap;
+					else
+						best = matrix[n];
+					candidates.Clear();
+				}
+
+				if (matrix[n] == best)
+					candidates.Add(n);
+			}
+			var choice = candidates[random.Next(candidates.Count)];
+			var xy = matrix.XY(choice);
+			return (xy, best);
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
