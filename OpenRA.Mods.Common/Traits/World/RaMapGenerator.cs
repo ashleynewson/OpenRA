@@ -1309,12 +1309,19 @@ namespace OpenRA.Mods.Common.Traits
 			var createEntities = settings["CreateEntities"].Get<bool>();
 			var players = settings["Players"].Get<int>();
 			var centralSpawnReservationFraction = settings["CentralSpawnReservationFraction"].Get<float>();
+			var centralExpansionReservationFraction = settings["CentralExpansionReservationFraction"].Get<float>();
 			var spawnRegionSize = settings["SpawnRegionSize"].Get<int>();
 			var spawnReservation = settings["SpawnReservation"].Get<int>();
 			var spawnBuildSize = settings["SpawnBuildSize"].Get<int>();
 			var spawnMines = settings["SpawnMines"].Get<int>();
 			var gemUpgrade = settings["GemUpgrade"].Get<float>();
 			var mineReservation = settings["MineReservation"].Get<int>();
+			var maximumExpansionMines = settings["MaximumExpansionMines"].Get<int>();
+			var maximumExpansionSize = settings["MaximumExpansionSize"].Get<int>();
+			var minimumExpansionSize = settings["MinimumExpansionSize"].Get<int>();
+			var expansionBorder = settings["ExpansionBorder"].Get<int>();
+			var expansionInner = settings["ExpansionInner"].Get<int>();
+			var maximumMinesPerExpansion = settings["MaximumMinesPerExpansion"].Get<int>();
 
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
@@ -1513,6 +1520,7 @@ namespace OpenRA.Mods.Common.Traits
 			var resourceRandom = new MersenneTwister(random.Next());
 			var roadTilingRandom = new MersenneTwister(random.Next());
 			var playerRandom = new MersenneTwister(random.Next());
+			var expansionRandom = new MersenneTwister(random.Next());
 
 			TerrainTile PickTile(ushort tileType)
 			{
@@ -1973,6 +1981,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				if (rotations > 1 || mirror != 0)
 				{
+					// Reserve the center of the map - otherwise it will mess with rotations
 					// TODO: Change externalCircleCenter to mapCenter
 					ReserveCircleInPlace(
 						zoneable,
@@ -1980,18 +1989,7 @@ namespace OpenRA.Mods.Common.Traits
 						1.0f,
 						(_, _) => false,
 						/*invert=*/false);
-
-					// // Reserve the center of the map - otherwise it will mess with rotations
-					// const midPoint = (size >> 1) * (size + 1);
-					// zoneable[midPoint] = -1;
-					// if ((size & 1) === 0) {
-					// 	zoneable[midPoint - 1] = -1;
-					// 	zoneable[midPoint - size] = -1;
-					// 	zoneable[midPoint - size - 1] = -1;
-					// }
 				}
-
-				// var roominess = CalculateRoominess(zoneable, false);
 
 				// Spawn generation
 				Log.Write("debug", "entities: zoning for spawns");
@@ -2045,6 +2043,68 @@ namespace OpenRA.Mods.Common.Traits
 
 					RotateAndMirrorActorPlans(actorPlans, spawnActorPlans, rotations, mirror);
 					ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+				}
+
+				// Expansions
+				Log.Write("debug", "entities: zoning for expansions");
+				{
+					var minesRemaining = maximumExpansionMines;
+					while (minesRemaining > 0)
+					{
+						var expansionZoneable = zoneable.Clone();
+						if (centralExpansionReservationFraction > 0)
+						{
+							ReserveCircleInPlace(
+								expansionZoneable,
+								externalCircleCenter,
+								minSpan * centralExpansionReservationFraction,
+								(_, _) => false,
+								/*invert=*/false);
+						}
+
+						var expansionRoominess = CalculateRoominess(expansionZoneable, false);
+						var (chosenXY, chosenValue) = FindRandomMax(
+							random,
+							expansionRoominess,
+							maximumExpansionSize + expansionBorder);
+						var room = chosenValue - 1;
+						var radius2 = room - expansionBorder;
+						if (radius2 < minimumExpansionSize)
+							break;
+						if (radius2 > maximumExpansionSize)
+							radius2 = maximumExpansionSize;
+						var radius1 = Math.Min(Math.Min(expansionInner, room), radius2);
+						var mineCount = Math.Min(minesRemaining, random.Next(maximumMinesPerExpansion) + 1);
+						minesRemaining -= mineCount;
+
+						if (radius1 < 1.0f)
+							break;
+
+						var expansionActorPlans = new List<ActorPlan>();
+						var mineWeights = new Matrix<float>(size);
+						var radius1Sq = radius1 * radius1;
+						ReserveCircleInPlace(
+							mineWeights,
+							chosenXY,
+							radius2,
+							(rSq, _) => rSq >= radius1Sq ? (1.0f * rSq) : 0.0f,
+							/*invert=*/false);
+						for (var mine = 0; mine < mineCount; mine++)
+						{
+							var xy = mineWeights.XY(playerRandom.PickWeighted(mineWeights.Data));
+							var minePlan =
+								playerRandom.NextFloat() < gemUpgrade
+									? new ActorPlan(map, "gmine")
+									: new ActorPlan(map, "mine");
+							minePlan.ZoningRadius = mineReservation;
+							minePlan.Int2Location = xy;
+							expansionActorPlans.Add(minePlan);
+							ReserveCircleInPlace(mineWeights, minePlan.Int2Location, 1.0f, (_, _) => 0.0f, /*invert=*/false);
+						}
+
+						RotateAndMirrorActorPlans(actorPlans, expansionActorPlans, rotations, mirror);
+						ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+					}
 				}
 			}
 
@@ -4265,7 +4325,6 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					if (preferences[x, y] <= 1)
 						continue;
-					// TODO: These seem wrong. 98286777 TL=BR
 					switch (mirror)
 					{
 						case Mirror.None:
