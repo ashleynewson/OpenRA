@@ -1244,9 +1244,9 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("MaximumBuildings", "Maximum building count per symmetry", new MapGeneratorSetting.IntegerValue(3)),
 				new MapGeneratorSetting("WeightFcom", "Building weight: Forward Command", new MapGeneratorSetting.FloatValue(1)),
 				new MapGeneratorSetting("WeightHosp", "Building weight: Hospital", new MapGeneratorSetting.FloatValue(2)),
-				new MapGeneratorSetting("WeightMiss", "Building weight: Communications Center", new MapGeneratorSetting.FloatValue(2)),
+				new MapGeneratorSetting("WeightMiss", "Building weight: Communications Center", new MapGeneratorSetting.FloatValue(1)),
 				new MapGeneratorSetting("WeightBio", "Building weight: Biological Lab", new MapGeneratorSetting.FloatValue(0)),
-				new MapGeneratorSetting("WeightOilb", "Building weight: Oil Derrick", new MapGeneratorSetting.FloatValue(8))
+				new MapGeneratorSetting("WeightOilb", "Building weight: Oil Derrick", new MapGeneratorSetting.FloatValue(9))
 			);
 		}
 
@@ -1322,6 +1322,13 @@ namespace OpenRA.Mods.Common.Traits
 			var expansionBorder = settings["ExpansionBorder"].Get<int>();
 			var expansionInner = settings["ExpansionInner"].Get<int>();
 			var maximumMinesPerExpansion = settings["MaximumMinesPerExpansion"].Get<int>();
+			var minimumBuildings = settings["MinimumBuildings"].Get<int>();
+			var maximumBuildings = settings["MaximumBuildings"].Get<int>();
+			var weightFcom = settings["WeightFcom"].Get<float>();
+			var weightHosp = settings["WeightHosp"].Get<float>();
+			var weightMiss = settings["WeightMiss"].Get<float>();
+			var weightBio = settings["WeightBio"].Get<float>();
+			var weightOilb = settings["WeightOilb"].Get<float>();
 
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
@@ -1521,6 +1528,7 @@ namespace OpenRA.Mods.Common.Traits
 			var roadTilingRandom = new MersenneTwister(random.Next());
 			var playerRandom = new MersenneTwister(random.Next());
 			var expansionRandom = new MersenneTwister(random.Next());
+			var buildingRandom = new MersenneTwister(random.Next());
 
 			TerrainTile PickTile(ushort tileType)
 			{
@@ -1997,11 +2005,11 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					var roominess = CalculateRoominess(zoneable, false);
 					var spawnPreference = CalculateSpawnPreferences(roominess, minSpan * centralSpawnReservationFraction, spawnRegionSize, rotations, mirror);
-					var (chosenXY, chosenValue) = FindRandomMax(random, spawnPreference, spawnRegionSize);
+					var (chosenXY, chosenValue) = FindRandomMax(playerRandom, spawnPreference, spawnRegionSize);
 					if (chosenValue <= 1)
 					{
 						Log.Write("debug", "No ideal spawn location. Ignoring central reservation constraint.");
-						(chosenXY, chosenValue) = FindRandomMax(random, roominess, spawnRegionSize);
+						(chosenXY, chosenValue) = FindRandomMax(playerRandom, roominess, spawnRegionSize);
 					}
 
 					var room = chosenValue - 1;
@@ -2064,7 +2072,7 @@ namespace OpenRA.Mods.Common.Traits
 
 						var expansionRoominess = CalculateRoominess(expansionZoneable, false);
 						var (chosenXY, chosenValue) = FindRandomMax(
-							random,
+							expansionRandom,
 							expansionRoominess,
 							maximumExpansionSize + expansionBorder);
 						var room = chosenValue - 1;
@@ -2074,7 +2082,7 @@ namespace OpenRA.Mods.Common.Traits
 						if (radius2 > maximumExpansionSize)
 							radius2 = maximumExpansionSize;
 						var radius1 = Math.Min(Math.Min(expansionInner, room), radius2);
-						var mineCount = Math.Min(minesRemaining, random.Next(maximumMinesPerExpansion) + 1);
+						var mineCount = Math.Min(minesRemaining, expansionRandom.Next(maximumMinesPerExpansion) + 1);
 						minesRemaining -= mineCount;
 
 						if (radius1 < 1.0f)
@@ -2091,9 +2099,9 @@ namespace OpenRA.Mods.Common.Traits
 							/*invert=*/false);
 						for (var mine = 0; mine < mineCount; mine++)
 						{
-							var xy = mineWeights.XY(playerRandom.PickWeighted(mineWeights.Data));
+							var xy = mineWeights.XY(expansionRandom.PickWeighted(mineWeights.Data));
 							var minePlan =
-								playerRandom.NextFloat() < gemUpgrade
+								expansionRandom.NextFloat() < gemUpgrade
 									? new ActorPlan(map, "gmine")
 									: new ActorPlan(map, "mine");
 							minePlan.ZoningRadius = mineReservation;
@@ -2103,6 +2111,48 @@ namespace OpenRA.Mods.Common.Traits
 						}
 
 						RotateAndMirrorActorPlans(actorPlans, expansionActorPlans, rotations, mirror);
+						ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+					}
+				}
+
+				// Neutral buildings
+				Log.Write("debug", "entities: zoning for tech structures");
+				{
+					var targetBuildingCount =
+						(maximumBuildings != 0)
+							? expansionRandom.Next(minimumBuildings, maximumBuildings + 1)
+							: 0;
+					for (var i = 0; i < targetBuildingCount; i++)
+					{
+						var roominess = CalculateRoominess(zoneable, false);
+						var (chosenXY, chosenValue) = FindRandomMax(buildingRandom, roominess, 3);
+						if (chosenValue < 3)
+							break;
+						var types = new string[]
+							{
+								"fcom",
+								"hosp",
+								"miss",
+								"bio",
+								"oilb",
+							};
+						var typeChoice = random.PickWeighted(
+							new float[]
+							{
+								weightFcom,
+								weightHosp,
+								weightMiss,
+								weightBio,
+								weightOilb,
+							});
+						var type = types[typeChoice];
+						var actorPlan = new ActorPlan(map, type)
+						{
+							ZoningRadius = 2.0f,
+							CenterLocation = new float2(chosenXY.X + 0.5f, chosenXY.Y + 0.5f),
+						};
+
+						RotateAndMirrorActorPlan(actorPlans, actorPlan, rotations, mirror);
 						ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
 					}
 				}
