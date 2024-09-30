@@ -11,10 +11,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.Traits;
@@ -327,11 +325,19 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			var resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
 
+			// Hack, hack, hack.
+			var resourceTypesByIndex = (resourceLayer.Info as EditorResourceLayerInfo).ResourceTypes.ToDictionary(
+				kv => kv.Value.ResourceIndex,
+				kv => kv.Key);
+
 			var tiles = new Dictionary<CPos, BlitTile>();
 			foreach (var cell in generatedMap.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
-				tiles.Add(cell, new BlitTile(generatedMap.Tiles[mpos], generatedMap.Resources[mpos], null, generatedMap.Height[mpos]));
+				var resourceTile = generatedMap.Resources[mpos];
+				resourceTypesByIndex.TryGetValue(resourceTile.Type, out var resourceType);
+				var resourceLayerContents = new ResourceLayerContents(resourceType, resourceTile.Index);
+				tiles.Add(cell, new BlitTile(generatedMap.Tiles[mpos], resourceTile, resourceLayerContents, generatedMap.Height[mpos]));
 			}
 
 			var previews = new Dictionary<string, EditorActorPreview>();
