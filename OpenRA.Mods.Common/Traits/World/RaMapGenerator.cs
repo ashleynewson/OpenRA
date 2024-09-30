@@ -1230,7 +1230,7 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("SpawnMines", "Spawn mine count", new MapGeneratorSetting.IntegerValue(3)),
 				new MapGeneratorSetting("SpawnReservation", "Spawn reservation size", new MapGeneratorSetting.IntegerValue(20)),
 				new MapGeneratorSetting("SpawnResourceBias", "Spawn resource placement bais", new MapGeneratorSetting.FloatValue(1.25)),
-				new MapGeneratorSetting("ResourcesPerPlace", "Starting resource value per player", new MapGeneratorSetting.IntegerValue(50000)),
+				new MapGeneratorSetting("ResourcesPerPlayer", "Starting resource value per player", new MapGeneratorSetting.IntegerValue(50000)),
 				new MapGeneratorSetting("GemUpgrade", "Ore to gem upgrade probability", new MapGeneratorSetting.FloatValue(0.05)),
 				new MapGeneratorSetting("OreUniformity", "Ore uniformity", new MapGeneratorSetting.FloatValue(0.25)),
 				new MapGeneratorSetting("OreClumpiness", "Ore clumpiness", new MapGeneratorSetting.FloatValue(0.25)),
@@ -1329,6 +1329,10 @@ namespace OpenRA.Mods.Common.Traits
 			var weightMiss = settings["WeightMiss"].Get<float>();
 			var weightBio = settings["WeightBio"].Get<float>();
 			var weightOilb = settings["WeightOilb"].Get<float>();
+			var spawnResourceBias = settings["SpawnResourceBias"].Get<float>();
+			var resourcesPerPlayer = settings["ResourcesPerPlayer"].Get<int>();
+			var oreUniformity = settings["OreUniformity"].Get<float>();
+			var oreClumpiness = settings["OreClumpiness"].Get<float>();
 
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
@@ -1618,15 +1622,6 @@ namespace OpenRA.Mods.Common.Traits
 					map.Tiles[mpos] = PickTile(tileType);
 				}
 			}
-
-			Log.Write("debug", "ORE: generating noise");
-			var orePattern = FractalNoise2dWithSymmetry(
-				resourceRandom,
-				size,
-				rotations,
-				mirror,
-				wavelengthScale,
-				wavelength => MathF.Pow(wavelength, forestClumpiness));
 
 			var nonLoopedCliffPermittedTemplates = new PermittedTemplates(
 				PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Cliff" }),
@@ -2156,15 +2151,219 @@ namespace OpenRA.Mods.Common.Traits
 						ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
 					}
 				}
-			}
 
-			// Makeshift map assembly
+				// Grow resources
+				{
+					Log.Write("debug", "ore: generating noise");
+					var orePattern = FractalNoise2dWithSymmetry(
+						resourceRandom,
+						size,
+						rotations,
+						mirror,
+						wavelengthScale,
+						wavelength => MathF.Pow(wavelength, oreClumpiness));
+					{
+						CalibrateHeightInPlace(
+							orePattern,
+							0.0f,
+							0.0f);
+						var max = orePattern.Data.Max();
+						for (var n = 0; n < orePattern.Data.Length; n++)
+						{
+							orePattern[n] /= max;
+							orePattern[n] += oreUniformity;
+						}
+					}
 
-			foreach (var cell in map.AllCells)
-			{
-				var mpos = cell.ToMPos(map);
-				map.Resources[mpos] = new ResourceTile(0, 0);
-				map.Height[mpos] = 0;
+					Log.Write("debug", "ore: planning ore");
+					var oreStrength = new Matrix<float>(size);
+					var gemStrength = new Matrix<float>(size);
+					foreach (var actorPlan in actorPlans)
+					{
+						switch (actorPlan.Reference.Type)
+						{
+							case "mine":
+								ReserveCircleInPlace(
+									oreStrength,
+									actorPlan.Int2Location,
+									16,
+									(rSq, v) => v + 1.0f / (1.0f + MathF.Sqrt(rSq)),
+									/*invert=*/false);
+								break;
+							case "gmine":
+								ReserveCircleInPlace(
+									gemStrength,
+									actorPlan.Int2Location,
+									16,
+									(rSq, v) => v + 1.0f / (1.0f + MathF.Sqrt(rSq)),
+									/*invert=*/false);
+								break;
+							default:
+								break;
+						}
+					}
+
+					var orePlan = new Matrix<float>(size);
+					for (var y = 0; y < size.Y; y++)
+					{
+						for (var x = 0; x < size.X; x++)
+						{
+							if (playableArea[x, y] && map.GetTerrainIndex(new MPos(x, y)) == clearIndex)
+								orePlan[x, y] = orePattern[x, y] * MathF.Max(oreStrength[x, y], gemStrength[x, y]);
+							else
+								orePlan[x, y] = float.NegativeInfinity;
+						}
+					}
+
+					foreach (var actorPlan in actorPlans)
+					{
+						if (actorPlan.Reference.Type == "mpspawn")
+							ReserveCircleInPlace(
+								orePlan,
+								actorPlan.Int2Location,
+								32,
+								(rSq, v) => v * (1.0f + spawnResourceBias / rSq),
+								/*invert=*/false);
+					}
+
+					foreach (var actorPlan in actorPlans)
+					{
+						if (actorPlan.Reference.Type == "mpspawn")
+							ReserveCircleInPlace(
+								orePlan,
+								actorPlan.Int2Location,
+								3,
+								(_, _) => float.NegativeInfinity,
+								/*invert=*/false);
+					}
+
+					foreach (var actorPlan in actorPlans)
+					{
+						foreach (var (cpos, _) in actorPlan.Footprint())
+						{
+							var mpos = cpos.ToMPos(map);
+							orePlan[mpos.U, mpos.V] = float.NegativeInfinity;
+						}
+					}
+
+					if (trivialRotate)
+					{
+						// Improve symmetry
+						RotateAndMirrorMatrix(
+							size,
+							rotations,
+							mirror,
+							(sources, destination)
+								=> orePlan[destination] = sources.Min(source => orePlan[source]));
+					}
+
+					var remaining = resourcesPerPlayer * players * RotateAndMirrorProjectionCount(rotations, mirror);
+					var priorities = new PriorityArray<float>(orePlan.Data.Length, float.PositiveInfinity);
+					for (var n = 0; n < orePlan.Data.Length; n++)
+					{
+						priorities[n] = -orePlan[n];
+					}
+
+					// TODO: Reuse EditorResourceLayer logic.
+					const byte ORE_RESOURCE = 1;
+					const byte GEM_RESOURCE = 2;
+					const byte ORE_DENSITY = 12;
+					const byte GEM_DENSITY = 3;
+					var resources = new Matrix<byte>(size);
+					var densities = new Matrix<byte>(size);
+
+					// Return resource value of a given square.
+					// See https://github.com/OpenRA/OpenRA/blob/9302bac6199fbc925a85fd7a08fc2ba4b9317d16/OpenRA.Mods.Common/Traits/World/ResourceLayer.cs#L144-L166
+					// https://github.com/OpenRA/OpenRA/blob/9302bac6199fbc925a85fd7a08fc2ba4b9317d16/OpenRA.Mods.Common/Traits/World/EditorResourceLayer.cs#L175-L183
+					int CheckValue(int2 c)
+					{
+						if (!resources.ContainsXY(c))
+							return 0;
+						var resource = resources[c];
+						if (resource == 0)
+							return 0;
+						var adjacent = 0;
+						for (var y = c.Y - 1; y <= c.Y + 1; y++)
+						{
+							for (var x = c.X - 1; x <= c.X + 1; x++)
+							{
+								if (!resources.ContainsXY(x, y))
+									continue;
+								if (resources[x, y] == resource)
+									adjacent++;
+							}
+						}
+
+						var maxDensity =
+							resource == ORE_RESOURCE ? 12 : 3;
+						var valuePerDensity =
+							resource == ORE_RESOURCE ? 25 : 50;
+						var density = Math.Max(maxDensity * adjacent / /*maxAdjacent=*/9, 1);
+
+						// density + 1 to mirror a bug that got ossified due to balancing.
+						return valuePerDensity * (density + 1);
+					}
+
+					int CheckValue3By3(int2 c)
+					{
+						var total = 0;
+						for (var y = c.Y - 1; y <= c.Y + 1; y++)
+						{
+							for (var x = c.X - 1; x <= c.X + 1; x++)
+							{
+								total += CheckValue(new int2(x, y));
+							}
+						}
+
+						return total;
+					}
+
+					// Set and return change in overall value.
+					int AddResource(int2 c, byte resource, byte density)
+					{
+						var n = resources.Index(c);
+						priorities[n] = float.PositiveInfinity;
+						if (resources[n] != 0)
+						{
+							// Generally shouldn't happen, but perhaps a rotation/mirror related inaccuracy.
+							return 0;
+						}
+
+						var oldValue = CheckValue3By3(c);
+						resources[n] = resource;
+						densities[n] = density;
+						var newValue = CheckValue3By3(c);
+						return newValue - oldValue;
+					}
+
+					Log.Write("debug", "ore: placing ore");
+					while (remaining > 0)
+					{
+						var n = priorities.GetMinIndex();
+						if (priorities[n] == float.PositiveInfinity)
+						{
+							Log.Write("debug", "Could not meet resource target");
+							break;
+						}
+
+						var chosenXY = resources.XY(n);
+						foreach (var square in RotateAndMirrorGridSquare(chosenXY, size, rotations, mirror))
+						{
+							if (oreStrength[n] >= gemStrength[n])
+								remaining -= AddResource(square, ORE_RESOURCE, ORE_DENSITY);
+							else
+								remaining -= AddResource(square, GEM_RESOURCE, GEM_DENSITY);
+						}
+					}
+
+					for (var y = 0; y < size.Y; y++)
+					{
+						for (var x = 0; x < size.X; x++)
+						{
+							map.Resources[new MPos(x, y)] = new ResourceTile(resources[x, y], densities[x, y]);
+						}
+					}
+				}
 			}
 
 			map.PlayerDefinitions = new MapPlayers(map.Rules, 0).ToMiniYaml();
