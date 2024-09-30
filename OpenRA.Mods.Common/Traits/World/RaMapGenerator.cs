@@ -2242,7 +2242,9 @@ namespace OpenRA.Mods.Common.Traits
 						foreach (var (cpos, _) in actorPlan.Footprint())
 						{
 							var mpos = cpos.ToMPos(map);
-							orePlan[mpos.U, mpos.V] = float.NegativeInfinity;
+							var xy = new int2(mpos.U, mpos.V);
+							if (orePlan.ContainsXY(xy))
+								orePlan[xy] = float.NegativeInfinity;
 						}
 					}
 
