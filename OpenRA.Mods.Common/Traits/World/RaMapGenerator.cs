@@ -332,13 +332,13 @@ namespace OpenRA.Mods.Common.Traits
 				case Mirror.None:
 					throw new ArgumentException("Mirror.None has no transformed point");
 				case Mirror.LeftMatchesRight:
-					return new int2(original.X, size.Y - original.Y);
-				case Mirror.TopLeftMatchesBottomRight:
-					return new int2(original.Y, original.X);
-				case Mirror.TopMatchesBottom:
 					return new int2(size.X - original.X, original.Y);
-				case Mirror.TopRightMatchesBottomLeft:
+				case Mirror.TopLeftMatchesBottomRight:
 					return new int2(size.Y - original.Y, size.X - original.X);
+				case Mirror.TopMatchesBottom:
+					return new int2(original.X, size.Y - original.Y);
+				case Mirror.TopRightMatchesBottomLeft:
+					return new int2(original.Y, original.X);
 				default:
 					throw new ArgumentException("Bad mirror");
 			}
@@ -360,13 +360,13 @@ namespace OpenRA.Mods.Common.Traits
 				case Mirror.None:
 					throw new ArgumentException("Mirror.None has no transformed point");
 				case Mirror.LeftMatchesRight:
-					return new float2(original.X, size.Y - original.Y);
-				case Mirror.TopLeftMatchesBottomRight:
-					return new float2(original.Y, original.X);
-				case Mirror.TopMatchesBottom:
 					return new float2(size.X - original.X, original.Y);
-				case Mirror.TopRightMatchesBottomLeft:
+				case Mirror.TopLeftMatchesBottomRight:
 					return new float2(size.Y - original.Y, size.X - original.X);
+				case Mirror.TopMatchesBottom:
+					return new float2(original.X, size.Y - original.Y);
+				case Mirror.TopRightMatchesBottomLeft:
+					return new float2(original.Y, original.X);
 				default:
 					throw new ArgumentException("Bad mirror");
 			}
