@@ -21,6 +21,7 @@ using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
 
+// TODO: Sort out CPos, MPos, WPos, PPos?, int2, float2, *Vec, etc.
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Map generator for Red Alert maps.")]
@@ -46,38 +47,6 @@ namespace OpenRA.Mods.Common.Traits
 		const ushort LAND_TILE = 255;
 		const ushort WATER_TILE = 1;
 
-		const double DEGREES_0   = 0.0;
-		const double DEGREES_90  = Math.Tau * 0.25;
-		const double DEGREES_180 = Math.Tau * 0.5;
-		const double DEGREES_270 = Math.Tau * 0.75;
-		const double DEGREES_360 = Math.Tau * 1.0;
-		const double DEGREES_120 = Math.Tau * (1.0 / 3.0);
-		const double DEGREES_240 = Math.Tau * (2.0 / 3.0);
-
-		const float DEGREESF_0   = 0.0f;
-		const float DEGREESF_90  = MathF.Tau * 0.25f;
-		const float DEGREESF_180 = MathF.Tau * 0.5f;
-		const float DEGREESF_270 = MathF.Tau * 0.75f;
-		const float DEGREESF_360 = MathF.Tau * 1.0f;
-		const float DEGREESF_120 = MathF.Tau * (1.0f / 3.0f);
-		const float DEGREESF_240 = MathF.Tau * (2.0f / 3.0f);
-
-		const double COS_0   = 1.0;
-		const double COS_90  = 0.0;
-		const double COS_180 = -1.0;
-		const double COS_270 = 0.0;
-		const double COS_360 = 1.0;
-		const double COS_120 = -0.5;
-		const double COS_240 = -0.5;
-
-		const double SIN_0   = 0.0;
-		const double SIN_90  = 1.0;
-		const double SIN_180 = 0.0;
-		const double SIN_270 = -1.0;
-		const double SIN_360 = 0.0;
-		const double SIN_120 = 0.86602540378443864676;
-		const double SIN_240 = -0.86602540378443864676;
-
 		const double SQRT2 = 1.4142135623730951;
 
 		const float EXTERNAL_BIAS = 1000000.0f;
@@ -89,15 +58,6 @@ namespace OpenRA.Mods.Common.Traits
 		public RaMapGenerator(RaMapGeneratorInfo info)
 		{
 			this.info = info;
-		}
-
-		enum Mirror
-		{
-			None = 0,
-			LeftMatchesRight = 1,
-			TopLeftMatchesBottomRight = 2,
-			TopMatchesBottom = 3,
-			TopRightMatchesBottomLeft = 4,
 		}
 
 		enum Replaceability
@@ -128,178 +88,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Area is playable by either land or naval units.
 			Playable = 2,
-		}
-
-		// <summary>
-		// Mirrors a grid square within an area of given size.
-		// </summary>
-		static int2 MirrorGridSquare(Mirror mirror, int2 original, int2 size)
-			=> MirrorPoint(mirror, original, size - new int2(1, 1));
-
-		// <summary>
-		// Mirrors a grid square within an area of given size.
-		// </summary>
-		static float2 MirrorGridSquare(Mirror mirror, float2 original, float2 size)
-			=> MirrorPoint(mirror, original, size - new float2(1.0f, 1.0f));
-
-		// <summary>
-		// Mirrors a (zero-area) point within an area of given size.
-		// </summary>
-		static int2 MirrorPoint(Mirror mirror, int2 original, int2 size)
-		{
-			if (size.X != size.Y)
-			{
-				throw new NotImplementedException("Size.X must match Size.Y for now");
-			}
-
-			// THESE LOOK WRONG!
-			switch (mirror)
-			{
-				case Mirror.None:
-					throw new ArgumentException("Mirror.None has no transformed point");
-				case Mirror.LeftMatchesRight:
-					return new int2(size.X - original.X, original.Y);
-				case Mirror.TopLeftMatchesBottomRight:
-					return new int2(size.Y - original.Y, size.X - original.X);
-				case Mirror.TopMatchesBottom:
-					return new int2(original.X, size.Y - original.Y);
-				case Mirror.TopRightMatchesBottomLeft:
-					return new int2(original.Y, original.X);
-				default:
-					throw new ArgumentException("Bad mirror");
-			}
-		}
-
-		// <summary>
-		// Mirrors a (zero-area) point within an area of given size.
-		// </summary>
-		static float2 MirrorPoint(Mirror mirror, float2 original, float2 size)
-		{
-			if (size.X != size.Y)
-			{
-				throw new NotImplementedException("Size.X must match Size.Y for now");
-			}
-
-			// THESE LOOK WRONG!
-			switch (mirror)
-			{
-				case Mirror.None:
-					throw new ArgumentException("Mirror.None has no transformed point");
-				case Mirror.LeftMatchesRight:
-					return new float2(size.X - original.X, original.Y);
-				case Mirror.TopLeftMatchesBottomRight:
-					return new float2(size.Y - original.Y, size.X - original.X);
-				case Mirror.TopMatchesBottom:
-					return new float2(original.X, size.Y - original.Y);
-				case Mirror.TopRightMatchesBottomLeft:
-					return new float2(original.Y, original.X);
-				default:
-					throw new ArgumentException("Bad mirror");
-			}
-		}
-
-		static int RotateAndMirrorProjectionCount(int rotations, Mirror mirror)
-			=> mirror == Mirror.None ? rotations : rotations * 2;
-
-		// <summary>
-		// Duplicate an original grid square into an array of projected grid
-		// squares according to a rotation and mirror specification. Projected
-		// grid squares may lie outside of the bounds implied by size.
-		//
-		// Do not use this for points (which don't have area).
-		// </summary>
-		static int2[] RotateAndMirrorGridSquare(int2 original, int2 size, int rotations, Mirror mirror)
-		{
-			var floatProjections = RotateAndMirrorPoint(original, size - new int2(1, 1), rotations, mirror);
-			var intProjections = new int2[floatProjections.Length];
-			for (var i = 0; i < floatProjections.Length; i++)
-			{
-				intProjections[i] = new int2((int)MathF.Round(floatProjections[i].X), (int)MathF.Round(floatProjections[i].Y));
-			}
-
-			return intProjections;
-		}
-
-		// <summary>
-		// Determine the shortest distance between projected grid squares
-		// </summary>
-		static int RotateAndMirrorProjectionProximity(int2 original, int2 size, int rotations, Mirror mirror)
-		{
-			if (RotateAndMirrorProjectionCount(rotations, mirror) == 1)
-				return int.MaxValue;
-			var projections = RotateAndMirrorGridSquare(original, size, rotations, mirror);
-			var worstSpacingSq = int.MaxValue;
-			for (var i1 = 0; i1 < projections.Length; i1++)
-			{
-				for (var i2 = 0; i2 < projections.Length; i2++)
-				{
-					if (i1 == i2)
-						continue;
-					var spacingSq = (projections[i1] - projections[i2]).LengthSquared;
-					if (spacingSq < worstSpacingSq)
-						worstSpacingSq = spacingSq;
-				}
-			}
-
-			return (int)MathF.Sqrt(worstSpacingSq);
-		}
-
-		// <summary>
-		// Duplicate an original point into an array of projected points
-		// according to a rotation and mirror specification. Projected points
-		// may lie outside of the bounds implied by size.
-		//
-		// Do not use this for qrid squares (which have area).
-		// </summary>
-		static float2[] RotateAndMirrorPoint(float2 original, int2 size, int rotations, Mirror mirror)
-		{
-			var projections = new float2[RotateAndMirrorProjectionCount(rotations, mirror)];
-			var projectionIndex = 0;
-
-			var center = new float2(size.X / 2.0f, size.Y / 2.0f);
-			for (var rotation = 0; rotation < rotations; rotation++)
-			{
-				var angle = rotation * MathF.Tau / rotations;
-				var cosAngle = CosSnapF(angle);
-				var sinAngle = SinSnapF(angle);
-				var relOrig = original - center;
-				var projX = relOrig.X * cosAngle - relOrig.Y * sinAngle + center.X;
-				var projY = relOrig.X * sinAngle + relOrig.Y * cosAngle + center.Y;
-				var projection = new float2(projX, projY);
-				projections[projectionIndex++] = projection;
-
-				if (mirror != Mirror.None)
-					projections[projectionIndex++] = MirrorPoint(mirror, projection, size);
-			}
-
-			return projections;
-		}
-
-		// <summary>
-		// Rotate and mirror multiple actor plans. See RotateAndMirrorActorPlan.
-		// </summary>
-		static void RotateAndMirrorActorPlans(IList<ActorPlan> accumulator, IReadOnlyList<ActorPlan> originals, int rotations, Mirror mirror)
-		{
-			foreach (var original in originals)
-			{
-				RotateAndMirrorActorPlan(accumulator, original, rotations, mirror);
-			}
-		}
-
-		// <summary>
-		// Rotate and mirror a single actor plan, adding to an accumulator list.
-		// Locations are snapped to grid.
-		// </summary>
-		static void RotateAndMirrorActorPlan(IList<ActorPlan> accumulator, ActorPlan original, int rotations, Mirror mirror)
-		{
-			var size = original.Map.MapSize;
-			var points = RotateAndMirrorPoint(original.CenterLocation, size, rotations, mirror);
-			foreach (var point in points)
-			{
-				var plan = original.Clone();
-				plan.CenterLocation = point;
-				accumulator.Add(plan);
-			}
 		}
 
 		readonly struct PathTerminal
@@ -375,227 +163,6 @@ namespace OpenRA.Mods.Common.Traits
 				var endDirection = Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
 				End = new PathTerminal(endType, endDirection);
 				PermittedTemplates = permittedTemplates;
-			}
-		}
-
-		static double CosSnap(double angle)
-		{
-			switch (angle)
-			{
-				case DEGREES_0:
-					return COS_0;
-				case DEGREES_90:
-					return COS_90;
-				case DEGREES_180:
-					return COS_180;
-				case DEGREES_270:
-					return COS_270;
-				case DEGREES_360:
-					return COS_360;
-				case DEGREES_120:
-					return COS_120;
-				case DEGREES_240:
-					return COS_240;
-				default:
-					return Math.Cos(angle);
-			}
-		}
-
-		static double SinSnap(double angle)
-		{
-			switch (angle)
-			{
-				case DEGREES_0:
-					return SIN_0;
-				case DEGREES_90:
-					return SIN_90;
-				case DEGREES_180:
-					return SIN_180;
-				case DEGREES_270:
-					return SIN_270;
-				case DEGREES_360:
-					return SIN_360;
-				case DEGREES_120:
-					return SIN_120;
-				case DEGREES_240:
-					return SIN_240;
-				default:
-					return Math.Sin(angle);
-			}
-		}
-
-		static float CosSnapF(float angle)
-		{
-			switch (angle)
-			{
-				case DEGREESF_0:
-					return (float)COS_0;
-				case DEGREESF_90:
-					return (float)COS_90;
-				case DEGREESF_180:
-					return (float)COS_180;
-				case DEGREESF_270:
-					return (float)COS_270;
-				case DEGREESF_360:
-					return (float)COS_360;
-				case DEGREESF_120:
-					return (float)COS_120;
-				case DEGREESF_240:
-					return (float)COS_240;
-				default:
-					return MathF.Cos(angle);
-			}
-		}
-
-		static float SinSnapF(float angle)
-		{
-			switch (angle)
-			{
-				case DEGREESF_0:
-					return (float)SIN_0;
-				case DEGREESF_90:
-					return (float)SIN_90;
-				case DEGREESF_180:
-					return (float)SIN_180;
-				case DEGREESF_270:
-					return (float)SIN_270;
-				case DEGREESF_360:
-					return (float)SIN_360;
-				case DEGREESF_120:
-					return (float)SIN_120;
-				case DEGREESF_240:
-					return (float)SIN_240;
-				default:
-					return MathF.Sin(angle);
-			}
-		}
-
-		// TODO: Sort out CPos, MPos, WPos, PPos?, int2, float2, *Vec, etc.
-		sealed class ActorPlan
-		{
-			public readonly Map Map;
-			public readonly ActorInfo Info;
-			public readonly ActorReference Reference;
-			public CPos Location
-			{
-				get => Reference.Get<LocationInit>().Value;
-				set
-				{
-					Reference.RemoveAll<LocationInit>();
-					Reference.Add(new LocationInit(value));
-				}
-			}
-
-			// <summary>
-			// Int2 MPos-like representation of location.
-			// </summary>
-			public int2 Int2Location
-			{
-				get
-				{
-					var cpos = Reference.Get<LocationInit>().Value;
-					var mpos = cpos.ToMPos(Map);
-					return new int2(mpos.U, mpos.V);
-				}
-				set => Location = new MPos(value.X, value.Y).ToCPos(Map);
-			}
-
-			// <summary>
-			// Float2 MPos-like representation of actor's center.
-			// For example, A 1x4 actor will have +(0.5,2.0) offset to its Int2Location.
-			// </summary>
-			public float2 CenterLocation
-			{
-				get => Int2Location + CenterOffset();
-				set
-				{
-					var float2Location = value - CenterOffset();
-					Int2Location = new int2((int)MathF.Round(float2Location.X), (int)MathF.Round(float2Location.Y));
-				}
-			}
-
-			public float ZoningRadius;
-
-			public ActorPlan(Map map, ActorReference reference)
-			{
-				Map = map;
-				Reference = reference;
-				if (!map.Rules.Actors.TryGetValue(Reference.Type.ToLowerInvariant(), out Info))
-					throw new ArgumentException($"Actor of unknown type {Reference.Type.ToLowerInvariant()}");
-			}
-
-			public ActorPlan(Map map, string type)
-				: this(map, ActorFromType(type))
-			{ }
-
-			public ActorPlan Clone()
-			{
-				return new ActorPlan(Map, Reference.Clone())
-				{
-					ZoningRadius = ZoningRadius,
-				};
-			}
-
-			static ActorReference ActorFromType(string type)
-			{
-				return new ActorReference(type)
-				{
-					new LocationInit(default),
-					new OwnerInit("Neutral"),
-				};
-			}
-
-			public IReadOnlyDictionary<CPos, SubCell> Footprint()
-			{
-				var location = Location;
-				var ios = Info.TraitInfoOrDefault<IOccupySpaceInfo>();
-				var subCellInit = Reference.GetOrDefault<SubCellInit>();
-				var subCell = subCellInit != null ? subCellInit.Value : SubCell.Any;
-
-				var occupiedCells = ios?.OccupiedCells(Info, location, subCell);
-				if (occupiedCells == null || occupiedCells.Count == 0)
-					return new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
-				else
-					return occupiedCells;
-			}
-
-			// <summary>
-			// Re-locates the actor such that the top-most, left-most footprint
-			// square is at (0, 0).
-			// </summary>
-			public ActorPlan AlignFootprint()
-			{
-				var footprint = Footprint();
-				var first = footprint.Select(kv => kv.Key).OrderBy(cpos => (cpos.Y, cpos.X)).First();
-				Location -= new CVec(first.X, first.Y);
-				return this;
-			}
-
-			// <summary>
-			// Return an MPos-like center offset for the actor.
-			// <summary>
-			public float2 CenterOffset()
-			{
-				var bi = Info.TraitInfoOrDefault<BuildingInfo>();
-				if (bi == null)
-					return new float2(0.5f, 0.5f);
-
-				var left = int.MaxValue;
-				var right = int.MinValue;
-				var top = int.MaxValue;
-				var bottom = int.MinValue;
-				foreach (var (cvec, type) in bi.Footprint)
-				{
-					if (type == FootprintCellType.Empty)
-						continue;
-					var mpos = (new CPos(0, 0) + cvec).ToMPos(Map);
-					left = Math.Min(left, mpos.U);
-					top = Math.Min(top, mpos.V);
-					right = Math.Max(right, mpos.U);
-					bottom = Math.Max(bottom, mpos.V);
-				}
-
-				return new float2((left + right + 1) / 2.0f, (top + bottom + 1) / 2.0f);
 			}
 		}
 
@@ -803,13 +370,13 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("Rotations", "Rotations", new MapGeneratorSetting.IntegerValue(2)),
 				new MapGeneratorSetting("Mirror", "Mirror", new MapGeneratorSetting.EnumValue(
 					ImmutableList.Create(
-						new KeyValuePair<int, string>((int)Mirror.None, "None"),
-						new KeyValuePair<int, string>((int)Mirror.LeftMatchesRight, "Left matches right"),
-						new KeyValuePair<int, string>((int)Mirror.TopLeftMatchesBottomRight, "Top-left matches bottom-right"),
-						new KeyValuePair<int, string>((int)Mirror.TopMatchesBottom, "Top matches bottom"),
-						new KeyValuePair<int, string>((int)Mirror.TopRightMatchesBottomLeft, "Top-right matches bottom-left")
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.None, "None"),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.LeftMatchesRight, "Left matches right"),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopLeftMatchesBottomRight, "Top-left matches bottom-right"),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopMatchesBottom, "Top matches bottom"),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopRightMatchesBottomLeft, "Top-right matches bottom-left")
 					),
-					(int)Mirror.None
+					(int)Symmetry.Mirror.None
 				)),
 				new MapGeneratorSetting("Players", "Players per symmetry", new MapGeneratorSetting.IntegerValue(1)),
 
@@ -914,7 +481,7 @@ namespace OpenRA.Mods.Common.Traits
 			var actorPlans = new List<ActorPlan>();
 
 			var rotations = settings["Rotations"].Get<int>();
-			var mirror = (Mirror)settings["Mirror"].Get<int>();
+			var mirror = (Symmetry.Mirror)settings["Mirror"].Get<int>();
 			var wavelengthScale = settings["WavelengthScale"].Get<float>();
 			var terrainSmoothing = settings["TerrainSmoothing"].Get<int>();
 			var smoothingThreshold = settings["SmoothingThreshold"].Get<float>();
@@ -1193,9 +760,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				Log.Write("debug", "elevation: applying gaussian blur");
 				var radius = terrainSmoothing;
-				var kernel = GaussianKernel1D(radius, /*standardDeviation=*/radius);
-				elevation = KernelBlur(elevation, kernel, new int2(radius, 0));
-				elevation = KernelBlur(elevation, kernel.Transpose(), new int2(0, radius));
+				elevation = MatrixUtils.GaussianBlur(elevation, radius, radius);
 			}
 
 			CalibrateHeightInPlace(
@@ -1283,7 +848,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (mountains > 0.0f || externalCircularBias == 1)
 			{
 				Log.Write("debug", "mountains: calculating elevation roughness");
-				var roughnessMatrix = GridVariance2d(elevation, roughnessRadius).Map(v => MathF.Sqrt(v));
+				var roughnessMatrix = MatrixUtils.GridVariance(elevation, roughnessRadius).Map(v => MathF.Sqrt(v));
 				CalibrateHeightInPlace(
 					roughnessMatrix,
 					0.0f,
@@ -1396,7 +961,7 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						// Improve symmetry.
 						var newSpace = new Matrix<bool>(size);
-						RotateAndMirrorMatrix(
+						Symmetry.RotateAndMirrorOverGridSquares(
 							size,
 							rotations,
 							mirror,
@@ -1451,7 +1016,7 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				var replace = new Matrix<Replaceability>(size);
-				RotateAndMirrorMatrix(size, rotations, mirror,
+				Symmetry.RotateAndMirrorOverGridSquares(size, rotations, mirror,
 					(int2[] sources, int2 destination) =>
 					{
 						var main = tileset.GetTerrainIndex(map.Tiles[new MPos(destination.X, destination.Y)]);
@@ -1513,7 +1078,7 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					// Improve symmetry.
 					var newSpace = new Matrix<bool>(size);
-					RotateAndMirrorMatrix(
+					Symmetry.RotateAndMirrorOverGridSquares(
 						size,
 						rotations,
 						mirror,
@@ -1583,12 +1148,12 @@ namespace OpenRA.Mods.Common.Traits
 					}
 				}
 
-				ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+				MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
 				if (trivialRotate)
 				{
 					// Improve symmetry.
 					var newZoneable = new Matrix<bool>(size);
-					RotateAndMirrorMatrix(
+					Symmetry.RotateAndMirrorOverGridSquares(
 						size,
 						rotations,
 						mirror,
@@ -1682,8 +1247,8 @@ namespace OpenRA.Mods.Common.Traits
 						}
 					}
 
-					RotateAndMirrorActorPlans(actorPlans, spawnActorPlans, rotations, mirror);
-					ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+					Symmetry.RotateAndMirrorActorPlans(actorPlans, spawnActorPlans, rotations, mirror);
+					MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
 				}
 
 				// Expansions
@@ -1745,8 +1310,8 @@ namespace OpenRA.Mods.Common.Traits
 								invert: false);
 						}
 
-						RotateAndMirrorActorPlans(actorPlans, expansionActorPlans, rotations, mirror);
-						ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+						Symmetry.RotateAndMirrorActorPlans(actorPlans, expansionActorPlans, rotations, mirror);
+						MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
 					}
 				}
 
@@ -1790,8 +1355,8 @@ namespace OpenRA.Mods.Common.Traits
 							CenterLocation = new float2(chosenXY.X + 0.5f, chosenXY.Y + 0.5f),
 						};
 
-						RotateAndMirrorActorPlan(actorPlans, actorPlan, rotations, mirror);
-						ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+						Symmetry.RotateAndMirrorActorPlan(actorPlans, actorPlan, rotations, mirror);
+						MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
 					}
 				}
 
@@ -1890,7 +1455,7 @@ namespace OpenRA.Mods.Common.Traits
 					if (trivialRotate)
 					{
 						// Improve symmetry
-						RotateAndMirrorMatrix(
+						Symmetry.RotateAndMirrorOverGridSquares(
 							size,
 							rotations,
 							mirror,
@@ -1898,7 +1463,7 @@ namespace OpenRA.Mods.Common.Traits
 								=> orePlan[destination] = sources.Min(source => orePlan[source]));
 					}
 
-					var remaining = resourcesPerPlayer * players * RotateAndMirrorProjectionCount(rotations, mirror);
+					var remaining = resourcesPerPlayer * players * Symmetry.RotateAndMirrorProjectionCount(rotations, mirror);
 					var priorities = new PriorityArray<float>(orePlan.Data.Length, float.PositiveInfinity);
 					for (var n = 0; n < orePlan.Data.Length; n++)
 					{
@@ -1988,7 +1553,7 @@ namespace OpenRA.Mods.Common.Traits
 						}
 
 						var chosenXY = resources.XY(n);
-						foreach (var square in RotateAndMirrorGridSquare(chosenXY, size, rotations, mirror))
+						foreach (var square in Symmetry.RotateAndMirrorGridSquare(chosenXY, size, rotations, mirror))
 						{
 							if (oreStrength[n] >= gemStrength[n])
 								remaining -= AddResource(square, ORE_RESOURCE, ORE_DENSITY);
@@ -2013,7 +1578,7 @@ namespace OpenRA.Mods.Common.Traits
 				.ToImmutableArray();
 		}
 
-		static Matrix<float> FractalNoise2dWithSymmetry(MersenneTwister random, int2 size, int rotations, Mirror mirror, float wavelengthScale, AmplitudeFunction ampFunc)
+		static Matrix<float> FractalNoise2dWithSymmetry(MersenneTwister random, int2 size, int rotations, Symmetry.Mirror mirror, float wavelengthScale, AmplitudeFunction ampFunc)
 		{
 			if (rotations < 1)
 			{
@@ -2032,8 +1597,8 @@ namespace OpenRA.Mods.Common.Traits
 			for (var rotation = 0; rotation < rotations; rotation++)
 			{
 				var angle = rotation * MathF.Tau / rotations;
-				var cosAngle = CosSnapF(angle);
-				var sinAngle = SinSnapF(angle);
+				var cosAngle = Symmetry.CosSnapF(angle);
+				var sinAngle = Symmetry.SinSnapF(angle);
 				for (var y = 0; y < size.Y; y++)
 				{
 					for (var x = 0; x < size.X; x++)
@@ -2057,7 +1622,7 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			if (mirror == Mirror.None)
+			if (mirror == Symmetry.Mirror.None)
 			{
 				return unmirrored;
 			}
@@ -2067,7 +1632,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				for (var x = 0; x < size.X; x++)
 				{
-					var txy = MirrorGridSquare(mirror, new int2(x, y), size);
+					var txy = Symmetry.MirrorGridSquare(mirror, new int2(x, y), size);
 					mirrored[x, y] = unmirrored[x, y] + unmirrored[txy];
 				}
 			}
@@ -2181,56 +1746,6 @@ namespace OpenRA.Mods.Common.Traits
 			return (naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw;
 		}
 
-		static Matrix<float> GaussianKernel1D(int radius, float standardDeviation)
-		{
-			var span = radius * 2 + 1;
-			var kernel = new Matrix<float>(new int2(span, 1));
-			var dsd2 = 2 * standardDeviation * standardDeviation;
-			var total = 0.0f;
-			for (var x = -radius; x <= radius; x++)
-			{
-				var value = MathF.Exp(-x * x / dsd2);
-				kernel[x + radius] = value;
-				total += value;
-			}
-
-			// Instead of dividing by sqrt(PI * dsd2), divide by the total.
-			for (var i = 0; i < span; i++)
-			{
-				kernel[i] /= total;
-			}
-
-			return kernel;
-		}
-
-		static Matrix<float> KernelBlur(Matrix<float> input, Matrix<float> kernel, int2 kernelOffset)
-		{
-			var output = new Matrix<float>(input.Size);
-			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < input.Size.X; cx++)
-				{
-					var total = 0.0f;
-					var samples = 0;
-					for (var ky = 0; ky < kernel.Size.Y; ky++)
-					{
-						for (var kx = 0; kx < kernel.Size.X; kx++)
-						{
-							var x = cx + kx - kernelOffset.X;
-							var y = cy + ky - kernelOffset.Y;
-							if (!input.ContainsXY(x, y)) continue;
-							total += input[x, y] * kernel[kx, ky];
-							samples++;
-						}
-					}
-
-					output[cx, cy] = total / samples;
-				}
-			}
-
-			return output;
-		}
-
 		static void CalibrateHeightInPlace(Matrix<float> matrix, float target, float fraction)
 		{
 			var sorted = (float[])matrix.Data.Clone();
@@ -2277,7 +1792,7 @@ namespace OpenRA.Mods.Common.Traits
 			var maxSpan = Math.Max(elevation.Size.X, elevation.Size.Y);
 			var landmass = elevation.Map(v => v >= 0);
 
-			(landmass, _) = BooleanBlur(landmass, terrainSmoothing, true, 0.0f);
+			(landmass, _) = MatrixUtils.BooleanBlur(landmass, terrainSmoothing, true, 0.0f);
 			for (var i1 = 0; i1 < /*max passes*/16; i1++)
 			{
 				for (var i2 = 0; i2 < maxSpan; i2++)
@@ -2286,7 +1801,7 @@ namespace OpenRA.Mods.Common.Traits
 					var changesAcc = 0;
 					for (var r = 1; r <= terrainSmoothing; r++)
 					{
-						(landmass, changes) = BooleanBlur(landmass, r, true, smoothingThreshold);
+						(landmass, changes) = MatrixUtils.BooleanBlur(landmass, r, true, smoothingThreshold);
 						changesAcc += changes;
 					}
 
@@ -2300,14 +1815,14 @@ namespace OpenRA.Mods.Common.Traits
 					var changesAcc = 0;
 					int changes;
 					int thinnest;
-					(landmass, changes) = ErodeAndDilate(landmass, true, minimumThickness);
+					(landmass, changes) = MatrixUtils.ErodeAndDilate(landmass, true, minimumThickness);
 					changesAcc += changes;
 					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, true, minimumThickness);
 					changesAcc += changes;
 
 					var midFixLandmass = landmass.Clone();
 
-					(landmass, changes) = ErodeAndDilate(landmass, false, minimumThickness);
+					(landmass, changes) = MatrixUtils.ErodeAndDilate(landmass, false, minimumThickness);
 					changesAcc += changes;
 					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, false, minimumThickness);
 					changesAcc += changes;
@@ -2336,113 +1851,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return landmass;
-		}
-
-		static (Matrix<bool> Output, int Changes) BooleanBlur(Matrix<bool> input, int radius, bool extendOut, float threshold)
-		{
-			// var halfThreshold = threshold / 2.0f;
-			var output = new Matrix<bool>(input.Size);
-			var changes = 0;
-
-			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < input.Size.X; cx++)
-				{
-					var falseCount = 0;
-					var trueCount = 0;
-					for (var oy = -radius; oy <= radius; oy++)
-					{
-						for (var ox = -radius; ox <= radius; ox++)
-						{
-							var x = cx + ox;
-							var y = cy + oy;
-							if (extendOut)
-							{
-								(x, y) = input.ClampXY(x, y);
-							}
-							else
-							{
-								if (!input.ContainsXY(x, y)) continue;
-							}
-
-							if (input[x, y])
-								trueCount++;
-							else
-								falseCount++;
-						}
-					}
-
-					var sampleCount = falseCount + trueCount;
-					var requirement = (int)(sampleCount * threshold);
-					var thisInput = input[cx, cy];
-					bool thisOutput;
-					if (trueCount - falseCount > requirement)
-						thisOutput = true;
-					else if (falseCount - trueCount > requirement)
-						thisOutput = false;
-					else
-						thisOutput = input[cx, cy];
-
-					output[cx, cy] = thisOutput;
-					if (thisOutput != thisInput)
-						changes++;
-				}
-			}
-
-			return (output, changes);
-		}
-
-		static (Matrix<bool> Output, int Changes) ErodeAndDilate(Matrix<bool> input, bool foreground, int amount)
-		{
-			var output = new Matrix<bool>(input.Size).Fill(!foreground);
-			for (var cy = 1 - amount; cy < input.Size.Y; cy++)
-			{
-				for (var cx = 1 - amount; cx < input.Size.X; cx++)
-				{
-					bool IsRetained()
-					{
-						for (var ry = 0; ry < amount; ry++)
-						{
-							for (var rx = 0; rx < amount; rx++)
-							{
-								var x = cx + rx;
-								var y = cy + ry;
-								if (!input.ContainsXY(x, y)) continue;
-
-								if (input[x, y] != foreground)
-								{
-									return false;
-								}
-							}
-						}
-
-						return true;
-					}
-
-					if (!IsRetained()) continue;
-
-					for (var ry = 0; ry < amount; ry++)
-					{
-						for (var rx = 0; rx < amount; rx++)
-						{
-							var x = cx + rx;
-							var y = cy + ry;
-							if (!input.ContainsXY(x, y)) continue;
-
-							output[x, y] = foreground;
-						}
-					}
-				}
-			}
-
-			var changes = 0;
-			for (var i = 0; i < input.Data.Length; i++)
-			{
-				if (input[i] != output[i])
-					changes++;
-			}
-
-			return (output, changes);
 		}
 
 		static (int Thinnest, int Changes) FixThinMassesInPlaceFull(Matrix<bool> input, bool dilate, int width)
@@ -3312,53 +2720,6 @@ namespace OpenRA.Mods.Common.Traits
 			return chirality;
 		}
 
-		// <summary>
-		// Finds the local variance of points in a 2d grid (using a square sample area).
-		// Sample areas are centered on data point corners, so output is (size + 1) * (size + 1).
-		// </summary>
-		static Matrix<float> GridVariance2d(Matrix<float> input, int radius)
-		{
-			var output = new Matrix<float>(input.Size + new int2(1, 1));
-			for (var cy = 0; cy < output.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < output.Size.X; cx++)
-				{
-					var total = 0.0f;
-					var samples = 0;
-					for (var ry = -radius; ry < radius; ry++)
-					{
-						for (var rx = -radius; rx < radius; rx++)
-						{
-							var y = cy + ry;
-							var x = cx + rx;
-							if (!input.ContainsXY(x, y))
-								continue;
-							total += input[x, y];
-							samples++;
-						}
-					}
-
-					var mean = total / samples;
-					var sumOfSquares = 0.0f;
-					for (var ry = -radius; ry < radius; ry++)
-					{
-						for (var rx = -radius; rx < radius; rx++)
-						{
-							var y = cy + ry;
-							var x = cx + rx;
-							if (!input.ContainsXY(x, y))
-								continue;
-							sumOfSquares += MathF.Pow(mean - input[x, y], 2);
-						}
-					}
-
-					output[cx, cy] = sumOfSquares / samples;
-				}
-			}
-
-			return output;
-		}
-
 		static Matrix<int> CalculateRoominess(Matrix<bool> elevations, bool roomyEdges)
 		{
 			var roominess = new Matrix<int>(elevations.Size);
@@ -3494,24 +2855,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return newPointArrayArray.ToArray();
-		}
-
-		// <summary>
-		// Calls action(sources, destination) over all possible destination
-		// matrix cells, where each source in sources is a mirrored/rotated
-		// point. For non-trivial rotations, sources may be outside the matrix.
-		// </summary>
-		static void RotateAndMirrorMatrix(int2 size, int rotations, Mirror mirror, Action<int2[], int2> action)
-		{
-			for (var y = 0; y < size.Y; y++)
-			{
-				for (var x = 0; x < size.X; x++)
-				{
-					var destination = new int2(x, y);
-					var sources = RotateAndMirrorGridSquare(destination, size, rotations, mirror);
-					action(sources, destination);
-				}
-			}
 		}
 
 		static void ObstructArea(Map map, List<ActorPlan> actorPlans, Matrix<Replaceability> replace, IReadOnlyList<Obstacle> permittedObstacles, MersenneTwister random)
@@ -3678,7 +3021,9 @@ namespace OpenRA.Mods.Common.Traits
 				radius: minSpan / 2.0f - 1.0f,
 				setTo: (_, _) => true,
 				invert: true);
-			ReserveForEntitiesInPlace(playable, actorPlans,
+			MatrixUtils.ReserveForEntitiesInPlace(
+				playable,
+				actorPlans,
 				(old) => old == Playability.Playable ? Playability.Partial : old);
 			void Fill(Region region, int2 start)
 			{
@@ -3734,29 +3079,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 			return (regionMask, regions.ToArray(), playable);
-		}
-
-
-		// Set positions occupied by entities to a given value
-		static void ReserveForEntitiesInPlace<T>(Matrix<T> matrix, IEnumerable<ActorPlan> actorPlans, Func<T, T> setTo)
-		{
-			foreach (var actorPlan in actorPlans)
-			{
-				foreach (var (cpos, _) in actorPlan.Footprint())
-				{
-					var mpos = cpos.ToMPos(actorPlan.Map);
-					var xy = new int2(mpos.U, mpos.V);
-					if (matrix.ContainsXY(xy))
-						matrix[xy] = setTo(matrix[xy]);
-				}
-
-				if (actorPlan.ZoningRadius > 0.0f)
-					matrix.DrawCircle(
-						center: actorPlan.Int2Location,
-						radius: actorPlan.ZoningRadius,
-						setTo: (_, v) => setTo(v),
-						invert: false);
-			}
 		}
 
 		static Matrix<byte> RemoveJunctionsFromDirectionMap(Matrix<byte> input)
@@ -3924,7 +3246,7 @@ namespace OpenRA.Mods.Common.Traits
 			return newPoints;
 		}
 
-		static Matrix<int> CalculateSpawnPreferences(Matrix<int> roominess, float centralReservation, int spawnRegionSize, int rotations, Mirror mirror)
+		static Matrix<int> CalculateSpawnPreferences(Matrix<int> roominess, float centralReservation, int spawnRegionSize, int rotations, Symmetry.Mirror mirror)
 		{
 			var preferences = roominess.Map(r => Math.Min(r, spawnRegionSize));
 			var centralReservationSq = centralReservation * centralReservation;
@@ -3943,24 +3265,24 @@ namespace OpenRA.Mods.Common.Traits
 						continue;
 					switch (mirror)
 					{
-						case Mirror.None:
+						case Symmetry.Mirror.None:
 							var r = new float2(x, y) - center;
 							if (r.LengthSquared <= centralReservationSq)
 								preferences[x, y] = 1;
 							break;
-						case Mirror.LeftMatchesRight:
+						case Symmetry.Mirror.LeftMatchesRight:
 							if (MathF.Abs(x - center.X) <= centralReservation)
 								preferences[x, y] = 1;
 							break;
-						case Mirror.TopLeftMatchesBottomRight:
+						case Symmetry.Mirror.TopLeftMatchesBottomRight:
 							if (MathF.Abs((x - center.X) + (y - center.Y)) <= centralReservation * SQRT2)
 								preferences[x, y] = 1;
 							break;
-						case Mirror.TopMatchesBottom:
+						case Symmetry.Mirror.TopMatchesBottom:
 							if (MathF.Abs(y - center.Y) <= centralReservation)
 								preferences[x, y] = 1;
 							break;
-						case Mirror.TopRightMatchesBottomLeft:
+						case Symmetry.Mirror.TopRightMatchesBottomLeft:
 							if (MathF.Abs((x - center.X) - (y - center.Y)) <= centralReservation * SQRT2)
 								preferences[x, y] = 1;
 							break;
@@ -3971,7 +3293,7 @@ namespace OpenRA.Mods.Common.Traits
 					if (preferences[x, y] <= 1)
 						continue;
 
-					var worstSpacing = RotateAndMirrorProjectionProximity(new int2(x, y), size, rotations, mirror) / 2;
+					var worstSpacing = Symmetry.RotateAndMirrorProjectionProximity(new int2(x, y), size, rotations, mirror) / 2;
 					if (worstSpacing < preferences[x, y])
 						preferences[x, y] = worstSpacing;
 				}
