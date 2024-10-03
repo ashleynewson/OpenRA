@@ -305,7 +305,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		// If dilating, the values specified by the kernel are logically OR-ed.
 		// If eroding, the values specified by the kernel are logically AND-ed.
 		// </summary>
-		public static Matrix<bool> KernelDilateOrErode(Matrix<bool> input, Matrix<bool> kernel, int2 kernelOffset, bool dilate)
+		public static Matrix<bool> KernelDilateOrErode(Matrix<bool> input, Matrix<bool> kernel, int2 kernelCenter, bool dilate)
 		{
 			var output = new Matrix<bool>(input.Size).Fill(!dilate);
 			for (var cy = 0; cy < input.Size.Y; cy++)
@@ -318,8 +318,8 @@ namespace OpenRA.Mods.Common.MapUtils
 						{
 							for (var kx = 0; kx < kernel.Size.X; kx++)
 							{
-								var x = cx + kx - kernelOffset.X;
-								var y = cy + ky - kernelOffset.Y;
+								var x = cx + kx - kernelCenter.X;
+								var y = cy + ky - kernelCenter.Y;
 								if (!input.ContainsXY(x, y))
 									continue;
 								if (kernel[kx, ky] && input[x, y] == dilate)
@@ -336,6 +336,275 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 
 			return output;
+		}
+
+		// TODO: Add a convenience method for doing a 2D gaussian blur.
+		// <summary>
+		// Create a one-dimensional gaussian kernel.
+		//
+		// This can be applied once, transposed, then applied again to perform a full gaussian blur.
+		// </summary>
+		public static Matrix<float> GaussianKernel1D(int radius, float standardDeviation)
+		{
+			var span = radius * 2 + 1;
+			var kernel = new Matrix<float>(new int2(span, 1));
+			var dsd2 = 2 * standardDeviation * standardDeviation;
+			var total = 0.0f;
+			for (var x = -radius; x <= radius; x++)
+			{
+				var value = MathF.Exp(-x * x / dsd2);
+				kernel[x + radius] = value;
+				total += value;
+			}
+
+			// Instead of dividing by sqrt(PI * dsd2), divide by the total.
+			for (var i = 0; i < span; i++)
+			{
+				kernel[i] /= total;
+			}
+
+			return kernel;
+		}
+
+		// <summary>
+		// Apply an arithmetic convolution of a kernel over an input matrix.
+		// </summary>
+		public static Matrix<float> KernelBlur(Matrix<float> input, Matrix<float> kernel, int2 kernelCenter)
+		{
+			var output = new Matrix<float>(input.Size);
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					var total = 0.0f;
+					var samples = 0;
+					for (var ky = 0; ky < kernel.Size.Y; ky++)
+					{
+						for (var kx = 0; kx < kernel.Size.X; kx++)
+						{
+							var x = cx + kx - kernelCenter.X;
+							var y = cy + ky - kernelCenter.Y;
+							if (!input.ContainsXY(x, y)) continue;
+							total += input[x, y] * kernel[kx, ky];
+							samples++;
+						}
+					}
+
+					output[cx, cy] = total / samples;
+				}
+			}
+
+			return output;
+		}
+
+		// <summary>
+		// Apply a square gaussian blur to a matrix, returning a new matrix.
+		// </summary>
+		public static Matrix<float> GaussianBlur(Matrix<float> input, int radius, float standardDeviation)
+		{
+			var kernel = MatrixUtils.GaussianKernel1D(radius, standardDeviation);
+			var stage1 = MatrixUtils.KernelBlur(input, kernel, new int2(radius, 0));
+			var stage2 = MatrixUtils.KernelBlur(stage1, kernel.Transpose(), new int2(0, radius));
+			return stage2;
+		}
+
+		// TODO: Refactor zoning radius out of this.
+		// <summary>
+		// Set positions occupied by entities to a given value, accounting for both their footprint
+		// and zoning radius.
+		// </summary>
+		public static void ReserveForEntitiesInPlace<T>(Matrix<T> matrix, IEnumerable<ActorPlan> actorPlans, Func<T, T> setTo)
+		{
+			foreach (var actorPlan in actorPlans)
+			{
+				foreach (var (cpos, _) in actorPlan.Footprint())
+				{
+					var mpos = cpos.ToMPos(actorPlan.Map);
+					var xy = new int2(mpos.U, mpos.V);
+					if (matrix.ContainsXY(xy))
+						matrix[xy] = setTo(matrix[xy]);
+				}
+
+				if (actorPlan.ZoningRadius > 0.0f)
+					matrix.DrawCircle(
+						center: actorPlan.Int2Location,
+						radius: actorPlan.ZoningRadius,
+						setTo: (_, v) => setTo(v),
+						invert: false);
+			}
+		}
+
+		// TODO: Improve documentation
+		// <summary>
+		// Finds the local variance of points in a grid (using a square sample area).
+		// Sample areas are centered on data point corners, so output is (size + 1) * (size + 1).
+		// </summary>
+		public static Matrix<float> GridVariance(Matrix<float> input, int radius)
+		{
+			var output = new Matrix<float>(input.Size + new int2(1, 1));
+			for (var cy = 0; cy < output.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < output.Size.X; cx++)
+				{
+					var total = 0.0f;
+					var samples = 0;
+					for (var ry = -radius; ry < radius; ry++)
+					{
+						for (var rx = -radius; rx < radius; rx++)
+						{
+							var y = cy + ry;
+							var x = cx + rx;
+							if (!input.ContainsXY(x, y))
+								continue;
+							total += input[x, y];
+							samples++;
+						}
+					}
+
+					var mean = total / samples;
+					var sumOfSquares = 0.0f;
+					for (var ry = -radius; ry < radius; ry++)
+					{
+						for (var rx = -radius; rx < radius; rx++)
+						{
+							var y = cy + ry;
+							var x = cx + rx;
+							if (!input.ContainsXY(x, y))
+								continue;
+							sumOfSquares += MathF.Pow(mean - input[x, y], 2);
+						}
+					}
+
+					output[cx, cy] = sumOfSquares / samples;
+				}
+			}
+
+			return output;
+		}
+
+		// TODO: Use circles rather than squares maybe?
+		// TODO: ExtendOut usage?
+		// <summary>
+		// Blur a boolean matrix using a square kernel, only changing the value
+		// if the neighborhood is significantly different based on a threshold.
+		//
+		// If extendOut is true, the space outside of the matrix is treated as
+		// if the border was extended out. Otherwise, the outside does not
+		// contribute any influence.
+		//
+		// Along with the blured matrix, the number of changes compared to the
+		// original is returned.
+		// </summary>
+		public static (Matrix<bool> Output, int Changes) BooleanBlur(Matrix<bool> input, int radius, bool extendOut, float threshold)
+		{
+			// var halfThreshold = threshold / 2.0f;
+			var output = new Matrix<bool>(input.Size);
+			var changes = 0;
+
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					var falseCount = 0;
+					var trueCount = 0;
+					for (var oy = -radius; oy <= radius; oy++)
+					{
+						for (var ox = -radius; ox <= radius; ox++)
+						{
+							var x = cx + ox;
+							var y = cy + oy;
+							if (extendOut)
+							{
+								(x, y) = input.ClampXY(x, y);
+							}
+							else
+							{
+								if (!input.ContainsXY(x, y)) continue;
+							}
+
+							if (input[x, y])
+								trueCount++;
+							else
+								falseCount++;
+						}
+					}
+
+					var sampleCount = falseCount + trueCount;
+					var requirement = (int)(sampleCount * threshold);
+					var thisInput = input[cx, cy];
+					bool thisOutput;
+					if (trueCount - falseCount > requirement)
+						thisOutput = true;
+					else if (falseCount - trueCount > requirement)
+						thisOutput = false;
+					else
+						thisOutput = input[cx, cy];
+
+					output[cx, cy] = thisOutput;
+					if (thisOutput != thisInput)
+						changes++;
+				}
+			}
+
+			return (output, changes);
+		}
+
+		// TODO: Maybe circles?
+		// <summary>
+		// Shrink then grow either the (foreground) true or false regions of an
+		// input matrix by a given amount.
+		// </summary>
+		public static (Matrix<bool> Output, int Changes) ErodeAndDilate(Matrix<bool> input, bool foreground, int amount)
+		{
+			var output = new Matrix<bool>(input.Size).Fill(!foreground);
+			for (var cy = 1 - amount; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 1 - amount; cx < input.Size.X; cx++)
+				{
+					bool IsRetained()
+					{
+						for (var ry = 0; ry < amount; ry++)
+						{
+							for (var rx = 0; rx < amount; rx++)
+							{
+								var x = cx + rx;
+								var y = cy + ry;
+								if (!input.ContainsXY(x, y)) continue;
+
+								if (input[x, y] != foreground)
+								{
+									return false;
+								}
+							}
+						}
+
+						return true;
+					}
+
+					if (!IsRetained()) continue;
+
+					for (var ry = 0; ry < amount; ry++)
+					{
+						for (var rx = 0; rx < amount; rx++)
+						{
+							var x = cx + rx;
+							var y = cy + ry;
+							if (!input.ContainsXY(x, y)) continue;
+
+							output[x, y] = foreground;
+						}
+					}
+				}
+			}
+
+			var changes = 0;
+			for (var i = 0; i < input.Data.Length; i++)
+			{
+				if (input[i] != output[i])
+					changes++;
+			}
+
+			return (output, changes);
 		}
 	}
 }
