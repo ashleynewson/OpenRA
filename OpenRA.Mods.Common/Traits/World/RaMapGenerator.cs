@@ -13,9 +13,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using OpenRA;
+using OpenRA.Mods.Common.MapUtils;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -100,65 +100,6 @@ namespace OpenRA.Mods.Common.Traits
 			TopRightMatchesBottomLeft = 4,
 		}
 
-		const int DIRECTION_NONE = -1;
-		const int DIRECTION_R = 0;
-		const int DIRECTION_RD = 1;
-		const int DIRECTION_D = 2;
-		const int DIRECTION_LD = 3;
-		const int DIRECTION_L = 4;
-		const int DIRECTION_LU = 5;
-		const int DIRECTION_U = 6;
-		const int DIRECTION_RU = 7;
-
-		const int DIRECTION_M_R = 1 << DIRECTION_R;
-		const int DIRECTION_M_RD = 1 << DIRECTION_RD;
-		const int DIRECTION_M_D = 1 << DIRECTION_D;
-		const int DIRECTION_M_LD = 1 << DIRECTION_LD;
-		const int DIRECTION_M_L = 1 << DIRECTION_L;
-		const int DIRECTION_M_LU = 1 << DIRECTION_LU;
-		const int DIRECTION_M_U = 1 << DIRECTION_U;
-		const int DIRECTION_M_RU = 1 << DIRECTION_RU;
-
-		static readonly ImmutableArray<int2> SPREAD4 = ImmutableArray.Create(new[]
-		{
-			new int2(1, 0),
-			new int2(0, 1),
-			new int2(-1, 0),
-			new int2(0, -1)
-		});
-
-		static readonly ImmutableArray<(int2, int)> SPREAD4_D = ImmutableArray.Create(new[]
-		{
-			(new int2(1, 0), DIRECTION_R),
-			(new int2(0, 1), DIRECTION_D),
-			(new int2(-1, 0), DIRECTION_L),
-			(new int2(0, -1), DIRECTION_U)
-		});
-
-		static readonly ImmutableArray<int2> SPREAD8 = ImmutableArray.Create(new[]
-		{
-			new int2(1, 0),
-			new int2(1, 1),
-			new int2(0, 1),
-			new int2(-1, 1),
-			new int2(-1, 0),
-			new int2(-1, -1),
-			new int2(0, -1),
-			new int2(1, -1)
-		});
-
-		static readonly ImmutableArray<(int2, int)> SPREAD8_D = ImmutableArray.Create(new[]
-		{
-			(new int2(1, 0), DIRECTION_R),
-			(new int2(1, 1), DIRECTION_RD),
-			(new int2(0, 1), DIRECTION_D),
-			(new int2(-1, 1), DIRECTION_LD),
-			(new int2(-1, 0), DIRECTION_L),
-			(new int2(-1, -1), DIRECTION_LU),
-			(new int2(0, -1), DIRECTION_U),
-			(new int2(1, -1), DIRECTION_RU)
-		});
-
 		enum Replaceability
 		{
 
@@ -188,121 +129,6 @@ namespace OpenRA.Mods.Common.Traits
 			// Area is playable by either land or naval units.
 			Playable = 2,
 		}
-
-		static int2 DirectionToXY(int d) => SPREAD8[d];
-
-		static int CalculateDirection(int dx, int dy)
-		{
-			if (dx > 0)
-			{
-				if (dy > 0)
-					return DIRECTION_RD;
-				else if (dy < 0)
-					return DIRECTION_RU;
-				else
-					return DIRECTION_R;
-			}
-			else if (dx < 0)
-			{
-				if (dy > 0)
-					return DIRECTION_LD;
-				else if (dy < 0)
-					return DIRECTION_LU;
-				else
-					return DIRECTION_L;
-			}
-			else
-			{
-				if (dy > 0)
-					return DIRECTION_D;
-				else if (dy < 0)
-					return DIRECTION_U;
-				else
-					throw new ArgumentException("Bad direction");
-			}
-		}
-
-		static int CalculateDirection(int2 delta)
-			=> CalculateDirection(delta.X, delta.Y);
-
-		static int CalculateNonDiagonalDirection(int dx, int dy)
-		{
-			if (dx - dy > 0 && dx + dy >= 0)
-				return DIRECTION_R;
-			if (dy + dx > 0 && dy - dx >= 0)
-				return DIRECTION_D;
-			if (-dx + dy > 0 && -dx - dy >= 0)
-				return DIRECTION_L;
-			if (-dy - dx > 0 && -dy + dx >= 0)
-				return DIRECTION_U;
-			throw new ArgumentException("bad direction");
-		}
-
-		static int CalculateNonDiagonalDirection(int2 delta)
-			=> CalculateNonDiagonalDirection(delta.X, delta.Y);
-
-		static int ReverseDirection(int direction)
-		{
-			if (direction == DIRECTION_NONE)
-				return DIRECTION_NONE;
-			return direction ^ 4;
-		}
-
-		static string DirectionToString(int direction)
-		{
-			switch (direction)
-			{
-				case DIRECTION_NONE:
-					return "None";
-				case DIRECTION_R:
-					return "R";
-				case DIRECTION_RD:
-					return "RD";
-				case DIRECTION_D:
-					return "D";
-				case DIRECTION_LD:
-					return "LD";
-				case DIRECTION_L:
-					return "L";
-				case DIRECTION_LU:
-					return "LU";
-				case DIRECTION_U:
-					return "U";
-				case DIRECTION_RU:
-					return "RU";
-				default:
-					throw new ArgumentException("bad direction");
-			}
-		}
-
-		static int CountDirections(int dm)
-		{
-			var count = 0;
-			for (var m = dm; m != 0; m >>= 1)
-			{
-				if ((m & 1) == 1)
-					count++;
-			}
-
-			return count;
-		}
-
-		static int MaskToDirection(int mask)
-		{
-			switch (mask)
-			{
-				case DIRECTION_M_R: return DIRECTION_R;
-				case DIRECTION_M_RD: return DIRECTION_RD;
-				case DIRECTION_M_D: return DIRECTION_D;
-				case DIRECTION_M_LD: return DIRECTION_LD;
-				case DIRECTION_M_L: return DIRECTION_L;
-				case DIRECTION_M_LU: return DIRECTION_LU;
-				case DIRECTION_M_U: return DIRECTION_U;
-				case DIRECTION_M_RU: return DIRECTION_RU;
-				default: return DIRECTION_NONE;
-			}
-		}
-
 
 		// <summary>
 		// Mirrors a grid square within an area of given size.
@@ -476,203 +302,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		// <summary>
-		// A fixed-size 2D array that can be indexed either linearly or by coordinates.
-		// </summary>
-		sealed class Matrix<T>
-		{
-			public readonly T[] Data;
-			public readonly int2 Size;
-			Matrix(int2 size, T[] data)
-			{
-				Data = data;
-				Size = size;
-			}
-
-			public Matrix(int2 size)
-				: this(size, new T[size.X * size.Y])
-			{ }
-
-			public Matrix(int x, int y)
-				: this(new int2(x, y))
-			{ }
-
-			public int Index(int2 xy)
-				=> Index(xy.X, xy.Y);
-
-			public int Index(int x, int y)
-			{
-				Debug.Assert(ContainsXY(x, y), $"({x}, {y}) is out of bounds for a matrix of size ({Size.X}, {Size.Y})");
-				return y * Size.X + x;
-			}
-
-			public int2 XY(int index)
-			{
-				var y = index / Size.X;
-				var x = index % Size.X;
-				return new int2(x, y);
-			}
-
-			public T this[int x, int y]
-			{
-				get => Data[Index(x, y)];
-				set => Data[Index(x, y)] = value;
-			}
-
-			public T this[int2 xy]
-			{
-				get => Data[Index(xy.X, xy.Y)];
-				set => Data[Index(xy.X, xy.Y)] = value;
-			}
-
-			public T this[int i]
-			{
-				get => Data[i];
-				set => Data[i] = value;
-			}
-
-			public bool ContainsXY(int2 xy)
-			{
-				return xy.X >= 0 && xy.X < Size.X && xy.Y >= 0 && xy.Y < Size.Y;
-			}
-
-			public bool ContainsXY(int x, int y)
-			{
-				return x >= 0 && x < Size.X && y >= 0 && y < Size.Y;
-			}
-
-			public int2 Clamp(int2 xy)
-			{
-				var (nx, ny) = Clamp(xy.X, xy.Y);
-				return new int2(nx, ny);
-			}
-
-			public (int Nx, int Ny) Clamp(int x, int y)
-			{
-				if (x >= Size.X) x = Size.X - 1;
-				if (x < 0) x = 0;
-				if (y >= Size.Y) y = Size.Y - 1;
-				if (y < 0) y = 0;
-				return (x, y);
-			}
-
-			// <summary>
-			// Creates a transposed copy of the matrix.
-			// <summary>
-			public Matrix<T> Transpose()
-			{
-				var transposed = new Matrix<T>(new int2(Size.Y, Size.X));
-				for (var y = 0; y < Size.Y; y++)
-				{
-					for (var x = 0; x < Size.X; x++)
-					{
-						transposed[y, x] = this[x, y];
-					}
-				}
-
-				return transposed;
-			}
-
-			public Matrix<R> Map<R>(Func<T, R> func)
-			{
-				var mapped = new Matrix<R>(Size);
-				for (var i = 0; i < Data.Length; i++)
-				{
-					mapped.Data[i] = func(Data[i]);
-				}
-
-				return mapped;
-			}
-
-			public Matrix<T> Fill(T value)
-			{
-				Array.Fill(Data, value);
-				return this;
-			}
-
-			public Matrix<T> Clone()
-			{
-				return new Matrix<T>(Size, (T[])Data.Clone());
-			}
-
-			public static Matrix<T> Zip<T1, T2>(Matrix<T1> a, Matrix<T2> b, Func<T1, T2, T> func)
-			{
-				if (a.Size != b.Size)
-					throw new ArgumentException("Input matrices to FromZip must match in shape and size");
-				var matrix = new Matrix<T>(a.Size);
-				for (var i = 0; i < a.Data.Length; i++)
-					matrix.Data[i] = func(a.Data[i], b.Data[i]);
-				return matrix;
-			}
-		}
-
-		static void Dump2d(string label, Matrix<bool> matrix)
-		{
-			Console.Error.WriteLine($"{label}:");
-			for (var y = 0; y < matrix.Size.Y; y++)
-			{
-				for (var x = 0; x < matrix.Size.X; x++)
-				{
-					Console.Error.Write(matrix[x, y] ? "\u001b[0;42m .\u001b[m" : "\u001b[m .");
-				}
-
-				Console.Error.Write("\n");
-			}
-
-			Console.Error.WriteLine("");
-			Console.Error.Flush();
-		}
-
-		static void Dump2d(string label, Matrix<int> matrix)
-		{
-			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
-			for (var y = 0; y < matrix.Size.Y; y++)
-			{
-				for (var x = 0; x < matrix.Size.X; x++)
-				{
-					var v = matrix[x, y];
-					string formatted;
-					if (v > 0)
-						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;42m{0:X8}\u001b[m ", v);
-					else if (v < 0)
-						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;41m{0:X8}\u001b[m ", v);
-					else
-						formatted = "\u001b[m       0 ";
-					Console.Error.Write(formatted);
-				}
-
-				Console.Error.Write("\n");
-			}
-
-			Console.Error.WriteLine("");
-			Console.Error.Flush();
-		}
-
-		static void Dump2d(string label, Matrix<byte> matrix)
-		{
-			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
-			for (var y = 0; y < matrix.Size.Y; y++)
-			{
-				for (var x = 0; x < matrix.Size.X; x++)
-				{
-					var v = matrix[x, y];
-					string formatted;
-					if (v > 0 && v < 0x80)
-						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;42m{0:X2}\u001b[m ", v);
-					else if (v >= 0x80)
-						formatted = string.Format(NumberFormatInfo.InvariantInfo, "\u001b[1;41m{0:X2}\u001b[m ", v);
-					else
-						formatted = "\u001b[m 0 ";
-					Console.Error.Write(formatted);
-				}
-
-				Console.Error.Write("\n");
-			}
-
-			Console.Error.WriteLine("");
-			Console.Error.Flush();
-		}
-
 		readonly struct PathTerminal
 		{
 			public readonly string Type;
@@ -680,7 +309,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			public string SegmentType
 			{
-				get => $"{Type}.{DirectionToString(Direction)}";
+				get => $"{Type}.{MapUtils.Direction.ToString(Direction)}";
 			}
 
 			public PathTerminal(string type, int direction)
@@ -741,9 +370,9 @@ namespace OpenRA.Mods.Common.Traits
 			public Path(int2[] points, string startType, string endType, PermittedTemplates permittedTemplates)
 			{
 				Points = points;
-				var startDirection = CalculateDirection(Points[1] - Points[0]);
+				var startDirection = Direction.FromOffset(Points[1] - Points[0]);
 				Start = new PathTerminal(startType, startDirection);
-				var endDirection = CalculateDirection(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
+				var endDirection = Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
 				End = new PathTerminal(endType, endDirection);
 				PermittedTemplates = permittedTemplates;
 			}
@@ -1576,8 +1205,7 @@ namespace OpenRA.Mods.Common.Traits
 			var externalCircleCenter = (size.ToFloat2() - new float2(0.5f, 0.5f)) / 2.0f;
 			if (externalCircularBias != 0)
 			{
-				ReserveCircleInPlace(
-					matrix: elevation,
+				elevation.DrawCircle(
 					center: externalCircleCenter,
 					radius: minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
 					setTo: (_, _) => externalCircularBias * EXTERNAL_BIAS,
@@ -1633,8 +1261,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				Log.Write("debug", "creating circular cliff map border");
 				var cliffRing = new Matrix<bool>(size);
-				ReserveCircleInPlace(
-					matrix: cliffRing,
+				cliffRing.DrawCircle(
 					center: externalCircleCenter,
 					radius: minSpan / 2.0f - minimumLandSeaThickness,
 					setTo: (_, _) => true,
@@ -1666,8 +1293,7 @@ namespace OpenRA.Mods.Common.Traits
 				var cliffPlan = landPlan;
 				if (externalCircularBias > 0)
 				{
-					ReserveCircleInPlace(
-						matrix: cliffPlan,
+					cliffPlan.DrawCircle(
 						center: externalCircleCenter,
 						radius: minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
 						setTo: (_, _) => false,
@@ -1780,9 +1406,9 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					// This is grid points, not squares. Has a size of `size + 1`.
-					var deflated = DeflateSpace(space, true);
+					var deflated = MatrixUtils.DeflateSpace(space, true);
 					var kernel = new Matrix<bool>(2 * forestCutout, 2 * forestCutout).Fill(true);
-					var inflated = KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout - 1, forestCutout - 1), true);
+					var inflated = MatrixUtils.KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout - 1, forestCutout - 1), true);
 					for (var y = 0; y < size.Y; y++)
 					{
 						for (var x = 0; x < size.X; x++)
@@ -1898,20 +1524,19 @@ namespace OpenRA.Mods.Common.Traits
 
 				{
 					var kernel = new Matrix<bool>(roadSpacing * 2 + 1, roadSpacing * 2 + 1);
-					ReserveCircleInPlace(
-						kernel,
-						new float2(roadSpacing, roadSpacing),
-						roadSpacing,
-						(_, _) => true,
-						/*invert=*/false);
-					space = KernelDilateOrErode(
+					kernel.DrawCircle(
+						center: new float2(roadSpacing, roadSpacing),
+						radius: roadSpacing,
+						setTo: (_, _) => true,
+						invert: false);
+					space = MatrixUtils.KernelDilateOrErode(
 						space,
 						kernel,
 						new int2(roadSpacing, roadSpacing),
 						false);
 				}
 
-				var deflated = DeflateSpace(space, true);
+				var deflated = MatrixUtils.DeflateSpace(space, true);
 				var noJunctions = RemoveJunctionsFromDirectionMap(deflated);
 				var pointArrays = DeduplicateAndNormalizePointArrays(DirectionMapToPointArrays(noJunctions), size);
 
@@ -1974,37 +1599,47 @@ namespace OpenRA.Mods.Common.Traits
 				else
 				{
 					// Non 1, 2, 4 rotations need entity placement confined to a circle, regardless of externalCircularBias
-					ReserveCircleInPlace(
-						zoneable,
-						externalCircleCenter,
-						minSpan / 2.0f - 1.0f,
-						(_, _) => false,
-						/*invert=*/true);
+					zoneable.DrawCircle(
+						center: externalCircleCenter,
+						radius: minSpan / 2.0f - 1.0f,
+						setTo: (_, _) => false,
+						invert: true);
 				}
 
 				if (rotations > 1 || mirror != 0)
 				{
 					// Reserve the center of the map - otherwise it will mess with rotations
 					// TODO: Change externalCircleCenter to mapCenter
-					ReserveCircleInPlace(
-						zoneable,
-						externalCircleCenter,
-						1.0f,
-						(_, _) => false,
-						/*invert=*/false);
+					zoneable.DrawCircle(
+						center: externalCircleCenter,
+						radius: 1.0f,
+						setTo: (_, _) => false,
+						invert: false);
 				}
 
 				// Spawn generation
 				Log.Write("debug", "entities: zoning for spawns");
 				for (var iteration = 0; iteration < players; iteration++)
 				{
-					var roominess = CalculateRoominess(zoneable, false);
-					var spawnPreference = CalculateSpawnPreferences(roominess, minSpan * centralSpawnReservationFraction, spawnRegionSize, rotations, mirror);
-					var (chosenXY, chosenValue) = FindRandomMax(playerRandom, spawnPreference, spawnRegionSize);
+					var roominess = CalculateRoominess(zoneable, false)
+						.Foreach((v) => Math.Min(v, spawnRegionSize));
+					var spawnPreference =
+						CalculateSpawnPreferences(
+							roominess,
+							minSpan * centralSpawnReservationFraction,
+							spawnRegionSize,
+							rotations,
+							mirror);
+					var (chosenXY, chosenValue) = spawnPreference.FindRandomBest(
+						playerRandom,
+						(a, b) => a.CompareTo(b));
+
 					if (chosenValue <= 1)
 					{
 						Log.Write("debug", "No ideal spawn location. Ignoring central reservation constraint.");
-						(chosenXY, chosenValue) = FindRandomMax(playerRandom, roominess, spawnRegionSize);
+						(chosenXY, chosenValue) = roominess.FindRandomBest(
+							playerRandom,
+							(a, b) => a.CompareTo(b));
 					}
 
 					var room = chosenValue - 1;
@@ -2024,12 +1659,11 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						var mineWeights = new Matrix<float>(size);
 						var radius1Sq = radius1 * radius1;
-						ReserveCircleInPlace(
-							mineWeights,
-							chosenXY,
-							radius2,
-							(rSq, _) => rSq >= radius1Sq ? (1.0f * rSq) : 0.0f,
-							/*invert=*/false);
+						mineWeights.DrawCircle(
+							center: chosenXY,
+							radius: radius2,
+							setTo: (rSq, _) => rSq >= radius1Sq ? (1.0f * rSq) : 0.0f,
+							invert: false);
 						for (var mine = 0; mine < spawnMines; mine++)
 						{
 							var xy = mineWeights.XY(playerRandom.PickWeighted(mineWeights.Data));
@@ -2040,7 +1674,11 @@ namespace OpenRA.Mods.Common.Traits
 							minePlan.ZoningRadius = mineReservation;
 							minePlan.Int2Location = xy;
 							spawnActorPlans.Add(minePlan);
-							ReserveCircleInPlace(mineWeights, minePlan.Int2Location, 1.0f, (_, _) => 0.0f, /*invert=*/false);
+							mineWeights.DrawCircle(
+								center: minePlan.Int2Location,
+								radius: 1.0f,
+								setTo: (_, _) => 0.0f,
+								invert: false);
 						}
 					}
 
@@ -2057,19 +1695,18 @@ namespace OpenRA.Mods.Common.Traits
 						var expansionZoneable = zoneable.Clone();
 						if (centralExpansionReservationFraction > 0)
 						{
-							ReserveCircleInPlace(
-								expansionZoneable,
-								externalCircleCenter,
-								minSpan * centralExpansionReservationFraction,
-								(_, _) => false,
-								/*invert=*/false);
+							expansionZoneable.DrawCircle(
+								center: externalCircleCenter,
+								radius: minSpan * centralExpansionReservationFraction,
+								setTo: (_, _) => false,
+								invert: false);
 						}
 
-						var expansionRoominess = CalculateRoominess(expansionZoneable, false);
-						var (chosenXY, chosenValue) = FindRandomMax(
+						var expansionRoominess = CalculateRoominess(expansionZoneable, false)
+							.Foreach((v) => Math.Min(v, maximumExpansionSize + expansionBorder));
+						var (chosenXY, chosenValue) = expansionRoominess.FindRandomBest(
 							expansionRandom,
-							expansionRoominess,
-							maximumExpansionSize + expansionBorder);
+							(a, b) => a.CompareTo(b));
 						var room = chosenValue - 1;
 						var radius2 = room - expansionBorder;
 						if (radius2 < minimumExpansionSize)
@@ -2086,12 +1723,11 @@ namespace OpenRA.Mods.Common.Traits
 						var expansionActorPlans = new List<ActorPlan>();
 						var mineWeights = new Matrix<float>(size);
 						var radius1Sq = radius1 * radius1;
-						ReserveCircleInPlace(
-							mineWeights,
-							chosenXY,
-							radius2,
-							(rSq, _) => rSq >= radius1Sq ? (1.0f * rSq) : 0.0f,
-							/*invert=*/false);
+						mineWeights.DrawCircle(
+							center: chosenXY,
+							radius: radius2,
+							setTo: (rSq, _) => rSq >= radius1Sq ? (1.0f * rSq) : 0.0f,
+							invert: false);
 						for (var mine = 0; mine < mineCount; mine++)
 						{
 							var xy = mineWeights.XY(expansionRandom.PickWeighted(mineWeights.Data));
@@ -2102,7 +1738,11 @@ namespace OpenRA.Mods.Common.Traits
 							minePlan.ZoningRadius = mineReservation;
 							minePlan.Int2Location = xy;
 							expansionActorPlans.Add(minePlan);
-							ReserveCircleInPlace(mineWeights, minePlan.Int2Location, 1.0f, (_, _) => 0.0f, /*invert=*/false);
+							mineWeights.DrawCircle(
+								center: minePlan.Int2Location,
+								radius: 1.0f,
+								setTo: (_, _) => 0.0f,
+								invert: false);
 						}
 
 						RotateAndMirrorActorPlans(actorPlans, expansionActorPlans, rotations, mirror);
@@ -2119,8 +1759,11 @@ namespace OpenRA.Mods.Common.Traits
 							: 0;
 					for (var i = 0; i < targetBuildingCount; i++)
 					{
-						var roominess = CalculateRoominess(zoneable, false);
-						var (chosenXY, chosenValue) = FindRandomMax(buildingRandom, roominess, 3);
+						var roominess = CalculateRoominess(zoneable, false)
+							.Foreach((v) => Math.Min(v, 3));
+						var (chosenXY, chosenValue) = roominess.FindRandomBest(
+							buildingRandom,
+							(a, b) => a.CompareTo(b));
 						if (chosenValue < 3)
 							break;
 						var types = new string[]
@@ -2183,20 +1826,18 @@ namespace OpenRA.Mods.Common.Traits
 						switch (actorPlan.Reference.Type)
 						{
 							case "mine":
-								ReserveCircleInPlace(
-									oreStrength,
-									actorPlan.Int2Location,
-									16,
-									(rSq, v) => v + 1.0f / (1.0f + MathF.Sqrt(rSq)),
-									/*invert=*/false);
+								oreStrength.DrawCircle(
+									center: actorPlan.Int2Location,
+									radius: 16,
+									setTo: (rSq, v) => v + 1.0f / (1.0f + MathF.Sqrt(rSq)),
+									invert: false);
 								break;
 							case "gmine":
-								ReserveCircleInPlace(
-									gemStrength,
-									actorPlan.Int2Location,
-									16,
-									(rSq, v) => v + 1.0f / (1.0f + MathF.Sqrt(rSq)),
-									/*invert=*/false);
+								gemStrength.DrawCircle(
+									center: actorPlan.Int2Location,
+									radius: 16,
+									setTo: (rSq, v) => v + 1.0f / (1.0f + MathF.Sqrt(rSq)),
+									invert: false);
 								break;
 							default:
 								break;
@@ -2218,23 +1859,21 @@ namespace OpenRA.Mods.Common.Traits
 					foreach (var actorPlan in actorPlans)
 					{
 						if (actorPlan.Reference.Type == "mpspawn")
-							ReserveCircleInPlace(
-								orePlan,
-								actorPlan.Int2Location,
-								32,
-								(rSq, v) => v * (1.0f + spawnResourceBias / rSq),
-								/*invert=*/false);
+							orePlan.DrawCircle(
+								center: actorPlan.Int2Location,
+								radius: 32,
+								setTo: (rSq, v) => v * (1.0f + spawnResourceBias / rSq),
+								invert: false);
 					}
 
 					foreach (var actorPlan in actorPlans)
 					{
 						if (actorPlan.Reference.Type == "mpspawn")
-							ReserveCircleInPlace(
-								orePlan,
-								actorPlan.Int2Location,
-								3,
-								(_, _) => float.NegativeInfinity,
-								/*invert=*/false);
+							orePlan.DrawCircle(
+								center: actorPlan.Int2Location,
+								radius: 3,
+								setTo: (_, _) => float.NegativeInfinity,
+								invert: false);
 					}
 
 					foreach (var actorPlan in actorPlans)
@@ -2632,52 +2271,6 @@ namespace OpenRA.Mods.Common.Traits
 			return array[iLow] * (1 - weight) + array[iHigh] * weight;
 		}
 
-		delegate T ReserveCircleSetTo<T>(float radiusSquared, T oldValue);
-		static void ReserveCircleInPlace<T>(Matrix<T> matrix, float2 center, float radius, ReserveCircleSetTo<T> setTo, bool invert)
-		{
-			int minX;
-			int minY;
-			int maxX;
-			int maxY;
-			if (invert)
-			{
-				minX = 0;
-				minY = 0;
-				maxX = matrix.Size.X - 1;
-				maxY = matrix.Size.Y - 1;
-			}
-			else
-			{
-				minX = (int)MathF.Floor(center.X - radius);
-				minY = (int)MathF.Floor(center.Y - radius);
-				maxX = (int)MathF.Ceiling(center.X + radius);
-				maxY = (int)MathF.Ceiling(center.Y + radius);
-				if (minX < 0)
-					minX = 0;
-				if (minY < 0)
-					minY = 0;
-				if (maxX >= matrix.Size.X)
-					maxX = matrix.Size.X - 1;
-				if (maxY >= matrix.Size.Y)
-					maxY = matrix.Size.Y - 1;
-			}
-
-			var radiusSquared = radius * radius;
-			for (var y = minY; y <= maxY; y++)
-			{
-				for (var x = minX; x <= maxX; x++)
-				{
-					var rx = x - center.X;
-					var ry = y - center.Y;
-					var thisRadiusSquared = rx * rx + ry * ry;
-					if (rx * rx + ry * ry <= radiusSquared != invert)
-					{
-						matrix[x, y] = setTo(thisRadiusSquared, matrix[x, y]);
-					}
-				}
-			}
-		}
-
 		static Matrix<bool> ProduceTerrain(Matrix<float> elevation, int terrainSmoothing, float smoothingThreshold, int minimumThickness, bool bias, string debugLabel)
 		{
 			Log.Write("debug", $"{debugLabel}: fixing terrain anomalies: primary median blur");
@@ -2731,7 +2324,11 @@ namespace OpenRA.Mods.Common.Traits
 							for (var x = 0; x < elevation.Size.X; x++)
 							{
 								if (diff[x, y])
-									ReserveCircleInPlace(landmass, new float2(x, y), minimumThickness * 2, (_, _) => bias, false);
+									landmass.DrawCircle(
+										center: new float2(x, y),
+										radius: minimumThickness * 2,
+										setTo: (_, _) => bias,
+										invert: false);
 							}
 						}
 					}
@@ -2761,7 +2358,7 @@ namespace OpenRA.Mods.Common.Traits
 							var y = cy + oy;
 							if (extendOut)
 							{
-								(x, y) = input.Clamp(x, y);
+								(x, y) = input.ClampXY(x, y);
 							}
 							else
 							{
@@ -3006,19 +2603,19 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					switch (direction)
 					{
-						case DIRECTION_R:
+						case Direction.R:
 							gradientH[x, y] = 0;
 							x++;
 							break;
-						case DIRECTION_D:
+						case Direction.D:
 							gradientV[x, y] = 0;
 							y++;
 							break;
-						case DIRECTION_L:
+						case Direction.L:
 							x--;
 							gradientH[x, y] = 0;
 							break;
-						case DIRECTION_U:
+						case Direction.U:
 							y--;
 							gradientV[x, y] = 0;
 							break;
@@ -3031,22 +2628,22 @@ namespace OpenRA.Mods.Common.Traits
 					var d = gradientV.ContainsXY(x, y) && gradientV[x, y] < 0;
 					var l = gradientH.ContainsXY(x - 1, y) && gradientH[x - 1, y] < 0;
 					var u = gradientV.ContainsXY(x, y - 1) && gradientV[x, y - 1] > 0;
-					if (direction == DIRECTION_R && u)
-						direction = DIRECTION_U;
-					else if (direction == DIRECTION_D && r)
-						direction = DIRECTION_R;
-					else if (direction == DIRECTION_L && d)
-						direction = DIRECTION_D;
-					else if (direction == DIRECTION_U && l)
-						direction = DIRECTION_L;
+					if (direction == Direction.R && u)
+						direction = Direction.U;
+					else if (direction == Direction.D && r)
+						direction = Direction.R;
+					else if (direction == Direction.L && d)
+						direction = Direction.D;
+					else if (direction == Direction.U && l)
+						direction = Direction.L;
 					else if (r)
-						direction = DIRECTION_R;
+						direction = Direction.R;
 					else if (d)
-						direction = DIRECTION_D;
+						direction = Direction.D;
 					else if (l)
-						direction = DIRECTION_L;
+						direction = Direction.L;
 					else if (u)
-						direction = DIRECTION_U;
+						direction = Direction.U;
 					else
 						break; // Dead end (not a loop)
 				}
@@ -3059,17 +2656,17 @@ namespace OpenRA.Mods.Common.Traits
 			for (var x = 1; x < matrix.Size.X; x++)
 			{
 				if (gradientV[x, 0] < 0)
-					TracePath(x, 0, DIRECTION_D);
+					TracePath(x, 0, Direction.D);
 				if (gradientV[x, matrix.Size.Y - 1] > 0)
-					TracePath(x, matrix.Size.Y, DIRECTION_U);
+					TracePath(x, matrix.Size.Y, Direction.U);
 			}
 
 			for (var y = 1; y < matrix.Size.Y; y++)
 			{
 				if (gradientH[0, y] > 0)
-					TracePath(0, y, DIRECTION_R);
+					TracePath(0, y, Direction.R);
 				if (gradientH[matrix.Size.X - 1, y] < 0)
-					TracePath(matrix.Size.X, y, DIRECTION_L);
+					TracePath(matrix.Size.X, y, Direction.L);
 			}
 
 			// Trace loops
@@ -3078,14 +2675,14 @@ namespace OpenRA.Mods.Common.Traits
 				for (var x = 0; x < matrix.Size.X; x++)
 				{
 					if (gradientH[x, y] > 0)
-						TracePath(x, y, DIRECTION_R);
+						TracePath(x, y, Direction.R);
 					else if (gradientH[x, y] < 0)
-						TracePath(x + 1, y, DIRECTION_L);
+						TracePath(x + 1, y, Direction.L);
 
 					if (gradientV[x, y] < 0)
-						TracePath(x, y, DIRECTION_D);
+						TracePath(x, y, Direction.D);
 					else if (gradientV[x, y] > 0)
-						TracePath(x, y + 1, DIRECTION_U);
+						TracePath(x, y + 1, Direction.U);
 				}
 			}
 
@@ -3226,17 +2823,17 @@ namespace OpenRA.Mods.Common.Traits
 				ReverseDirectionMasks = new int[RelativePoints.Length];
 
 				// Last point has no direction.
-				Directions[^1] = DIRECTION_NONE;
+				Directions[^1] = MapUtils.Direction.NONE;
 				DirectionMasks[^1] = 0;
 				ReverseDirectionMasks[^1] = 0;
 				for (var i = 0; i < RelativePoints.Length - 1; i++)
 				{
-					var direction = CalculateDirection(RelativePoints[i + 1] - RelativePoints[i]);
-					if (direction == DIRECTION_NONE)
+					var direction = Direction.FromOffset(RelativePoints[i + 1] - RelativePoints[i]);
+					if (direction == MapUtils.Direction.NONE)
 						throw new ArgumentException("TemplateSegment has duplicate points in sequence");
 					Directions[i] = direction;
 					DirectionMasks[i] = 1 << direction;
-					ReverseDirectionMasks[i] = 1 << ReverseDirection(direction);
+					ReverseDirectionMasks[i] = 1 << Direction.Reverse(direction);
 				}
 			}
 		}
@@ -3320,21 +2917,21 @@ namespace OpenRA.Mods.Common.Traits
 									gradientX[x, y] += directionX;
 									gradientY[x, y] += directionY;
 									if (x > minX)
-										traversables[x, y] |= DIRECTION_M_L;
+										traversables[x, y] |= Direction.M_L;
 									if (x < maxX)
-										traversables[x, y] |= DIRECTION_M_R;
+										traversables[x, y] |= Direction.M_R;
 									if (y > minY)
-										traversables[x, y] |= DIRECTION_M_U;
+										traversables[x, y] |= Direction.M_U;
 									if (y < maxY)
-										traversables[x, y] |= DIRECTION_M_D;
+										traversables[x, y] |= Direction.M_D;
 									if (x > minX && y > minY)
-										traversables[x, y] |= DIRECTION_M_LU;
+										traversables[x, y] |= Direction.M_LU;
 									if (x > minX && y < maxY)
-										traversables[x, y] |= DIRECTION_M_LD;
+										traversables[x, y] |= Direction.M_LD;
 									if (x < maxX && y > minY)
-										traversables[x, y] |= DIRECTION_M_RU;
+										traversables[x, y] |= Direction.M_RU;
 									if (x < maxX && y < maxY)
-										traversables[x, y] |= DIRECTION_M_RD;
+										traversables[x, y] |= Direction.M_RD;
 								}
 							}
 						}
@@ -3350,7 +2947,7 @@ namespace OpenRA.Mods.Common.Traits
 						continue;
 					}
 
-					var direction = CalculateDirection(gradientX[i], gradientY[i]);
+					var direction = Direction.FromOffset(gradientX[i], gradientY[i]);
 
 					// .... direction: 0123456701234567
 					//                 UUU DDD UUU DDD
@@ -3672,24 +3269,24 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					var from = pointArray[i - 1];
 					var to = pointArray[i];
-					var direction = CalculateDirection(to - from);
+					var direction = Direction.FromOffset(to - from);
 					var fx = from.X;
 					var fy = from.Y;
 					switch (direction)
 					{
-						case DIRECTION_R:
+						case Direction.R:
 							SeedChirality(new int2(fx    , fy    ),  1, true);
 							SeedChirality(new int2(fx    , fy - 1), -1, true);
 							break;
-						case DIRECTION_D:
+						case Direction.D:
 							SeedChirality(new int2(fx - 1, fy    ),  1, true);
 							SeedChirality(new int2(fx    , fy    ), -1, true);
 							break;
-						case DIRECTION_L:
+						case Direction.L:
 							SeedChirality(new int2(fx - 1, fy - 1),  1, true);
 							SeedChirality(new int2(fx - 1, fy    ), -1, true);
 							break;
-						case DIRECTION_U:
+						case Direction.U:
 							SeedChirality(new int2(fx    , fy - 1),  1, true);
 							SeedChirality(new int2(fx - 1, fy - 1), -1, true);
 							break;
@@ -3705,7 +3302,7 @@ namespace OpenRA.Mods.Common.Traits
 				next = new List<int2>();
 				foreach (var point in current)
 				{
-					foreach (var offset in SPREAD4)
+					foreach (var offset in Direction.SPREAD4)
 					{
 						SeedChirality(point + offset, chirality[point], false);
 					}
@@ -3917,236 +3514,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		// Perform a generic flood fill starting at seeds [(xy, prop, d), ...].
-		//
-		// The prop (propagation value) and d (propagation direction) values of
-		// the seed are optional.
-		//
-		// For each point being considered for fill, filler(xy, prop, d) is
-		// called with the current position (xy), propagation value (prop),
-		// and propagation direction (d). filler should return the value to be
-		// propagated or null if not to be propagated. Propagation happens to
-		// all non-diagonally adjacent neighbours, regardless of whether they
-		// have previously been visited, so filler is responsible for
-		// terminating propagation.
-		//
-		// The spread argument is optional an defines the propagation pattern
-		// from a point. Usually, SPREAD4_D is appropriate.
-		//
-		// filler should capture and manipulate any necessary input and output
-		// arrays.
-		//
-		// Each call to filler will have either an equal or greater
-		// growth/propagation distance from their seed value than all calls
-		// before it. (You can think of this as them being called in ordered
-		// growth layers.)
-		//
-		// Note that filler may be called multiple times for the same spot,
-		// perhaps with different propagation values. Within the same
-		// growth/propagation distance, filler will be called from values
-		// propagated from earlier seeds before values propagated from later
-		// seeds.
-		//
-		// filler is not called for positions outside of the bounds defined by
-		// size EXCEPT for points being processed as seed values.
-		static void FloodFill<T>(int2 size, IEnumerable<(int2 XY, T Prop, int D)> seeds, Func<int2, T, int, T?> filler, ImmutableArray<(int2 Offset, int Direction)> spread) where T : struct
-		{
-			var next = seeds.ToList();
-			while (next.Count != 0)
-			{
-				var current = next;
-				next = new List<(int2, T, int)>();
-				foreach (var (source, prop, d) in current)
-				{
-					var newProp = filler(source, prop, d);
-					if (newProp != null)
-					{
-						foreach (var (offset, direction) in spread)
-						{
-							var destination = source + offset;
-							if (destination.X < 0 || destination.X >= size.X || destination.Y < 0 || destination.Y >= size.Y)
-								continue;
-
-							next.Add((destination, (T)newProp, direction));
-						}
-					}
-				}
-			}
-		}
-
-		// <summary>
-		// Shrinkwraps true space to be as far away from false space as
-		// possible, preserving topology.
-		// </summary>
-		static Matrix<byte> DeflateSpace(Matrix<bool> space, bool outsideIsHole)
-		{
-			var size = space.Size;
-			var holes = new Matrix<int>(size);
-			var holeCount = 0;
-			for (var y = 0; y < space.Size.Y; y++)
-			{
-				for (var x = 0; x < space.Size.X; x++)
-				{
-					if (!space[x, y] && holes[x, y] == 0)
-					{
-						holeCount++;
-						int? Filler(int2 xy, int holeId, int direction)
-						{
-							if (!space[xy] && holes[xy] == 0)
-							{
-								holes[xy] = holeId;
-								return holeId;
-							}
-							else
-							{
-								return null;
-							}
-						}
-
-						FloodFill(space.Size, new[] { (new int2(x, y), holeCount, DIRECTION_NONE) }, Filler, SPREAD4_D);
-					}
-				}
-			}
-
-			const int UNASSIGNED = int.MaxValue;
-			var voronoi = new Matrix<int>(size);
-			var distances = new Matrix<int>(size).Fill(UNASSIGNED);
-			var closestN = new Matrix<int>(size).Fill(UNASSIGNED);
-			var midN = (size.X * size.Y + 1) / 2;
-			var seeds = new List<(int2, (int, int2, int), int)>();
-			for (var y = 0; y < size.Y; y++)
-			{
-				for (var x = 0; x < size.X; x++)
-				{
-					var xy = new int2(x, y);
-					if (holes[xy] != 0)
-						seeds.Add((xy, (holes[xy], xy, closestN.Index(x, y)), DIRECTION_NONE));
-				}
-			}
-
-			if (outsideIsHole)
-			{
-				holeCount++;
-				for (var x = 0; x < size.X; x++)
-				{
-					// Hack: closestN is actually inside, but starting x, y are outside.
-					seeds.Add((new int2(x, 0), (holeCount, new int2(x, -1), closestN.Index(x, 0)), DIRECTION_NONE));
-					seeds.Add((new int2(x, size.Y - 1), (holeCount, new int2(x, size.Y), closestN.Index(x, size.Y - 1)), DIRECTION_NONE));
-				}
-
-				for (var y = 0; y < size.Y; y++)
-				{
-					// Hack: closestN is actually inside, but starting x, y are outside.
-					seeds.Add((new int2(0, y), (holeCount, new int2(-1, y), closestN.Index(0, y)), DIRECTION_NONE));
-					seeds.Add((new int2(size.X - 1, y), (holeCount, new int2(size.X, y), closestN.Index(size.X - 1, y)), DIRECTION_NONE));
-				}
-			}
-
-			{
-				(int HoleId, int2 StartXY, int StartN)? Filler(int2 xy, (int HoleId, int2 StartXY, int StartN) prop, int direction)
-				{
-					var n = closestN.Index(xy);
-					var distance = (xy - prop.StartXY).LengthSquared;
-					if (distance < distances[n])
-					{
-						voronoi[n] = prop.HoleId;
-						distances[n] = distance;
-						closestN[n] = prop.StartN;
-						return (prop.HoleId, prop.StartXY, prop.StartN);
-					}
-					else if (distance == distances[n])
-					{
-						if (closestN[n] == prop.StartN)
-						{
-							return null;
-						}
-						else if (n <= midN == prop.StartN < closestN[n])
-						{
-							// For the first half of the map, lower seed indexes are preferred.
-							// For the second half of the map, higher seed indexes are preferred.
-							voronoi[n] = prop.HoleId;
-							closestN[n] = prop.StartN;
-							return (prop.HoleId, prop.StartXY, prop.StartN);
-						}
-						else
-						{
-							return null;
-						}
-					}
-					else
-					{
-						return null;
-					}
-				}
-
-				FloodFill(size, seeds, Filler, SPREAD4_D);
-			}
-
-			var deflatedSize = size + new int2(1, 1);
-			var deflated = new Matrix<byte>(deflatedSize);
-			var neighborhood = new int[4];
-			var scan = new int2[]
-			{
-				new(-1, -1),
-				new(0, -1),
-				new(-1, 0),
-				new(0, 0)
-			};
-			for (var cy = 0; cy < deflatedSize.Y; cy++)
-			{
-				for (var cx = 0; cx < deflatedSize.X; cx++)
-				{
-					for (var neighbor = 0; neighbor < 4; neighbor++)
-					{
-						var x = Math.Clamp(cx + scan[neighbor].X, 0, size.X - 1);
-						var y = Math.Clamp(cy + scan[neighbor].Y, 0, size.Y - 1);
-						neighborhood[neighbor] = voronoi[x, y];
-					}
-
-					deflated[cx, cy] = (byte)(
-						(neighborhood[0] != neighborhood[1] ? DIRECTION_M_U : 0) |
-						(neighborhood[1] != neighborhood[3] ? DIRECTION_M_R : 0) |
-						(neighborhood[3] != neighborhood[2] ? DIRECTION_M_D : 0) |
-						(neighborhood[2] != neighborhood[0] ? DIRECTION_M_L : 0));
-				}
-			}
-
-			return deflated;
-		}
-
-		static Matrix<bool> KernelDilateOrErode(Matrix<bool> input, Matrix<bool> kernel, int2 kernelOffset, bool dilate)
-		{
-			var output = new Matrix<bool>(input.Size).Fill(!dilate);
-			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < input.Size.X; cx++)
-				{
-					void InnerLoop()
-					{
-						for (var ky = 0; ky < kernel.Size.Y; ky++)
-						{
-							for (var kx = 0; kx < kernel.Size.X; kx++)
-							{
-								var x = cx + kx - kernelOffset.X;
-								var y = cy + ky - kernelOffset.Y;
-								if (!input.ContainsXY(x, y))
-									continue;
-								if (kernel[kx, ky] && input[x, y] == dilate)
-								{
-									output[cx, cy] = dilate;
-									return;
-								}
-							}
-						}
-					}
-
-					InnerLoop();
-				}
-			}
-
-			return output;
-		}
-
 		static void ObstructArea(Map map, List<ActorPlan> actorPlans, Matrix<Replaceability> replace, IReadOnlyList<Obstacle> permittedObstacles, MersenneTwister random)
 		{
 			var obstaclesByAreaDict = new Dictionary<int, List<Obstacle>>();
@@ -4306,12 +3673,11 @@ namespace OpenRA.Mods.Common.Traits
 			var externalCircle = new Matrix<bool>(size);
 			var externalCircleCenter = (size - new float2(1.0f, 1.0f)) / 2.0f;
 			var minSpan = Math.Min(size.X, size.Y);
-			ReserveCircleInPlace(
-				externalCircle,
-				externalCircleCenter,
-				minSpan / 2.0f - 1.0f,
-				(_, _) => true,
-				/*invert=*/true);
+			externalCircle.DrawCircle(
+				center: externalCircleCenter,
+				radius: minSpan / 2.0f - 1.0f,
+				setTo: (_, _) => true,
+				invert: true);
 			ReserveForEntitiesInPlace(playable, actorPlans,
 				(old) => old == Playability.Playable ? Playability.Partial : old);
 			void Fill(Region region, int2 start)
@@ -4345,7 +3711,7 @@ namespace OpenRA.Mods.Common.Traits
 					return null;
 				}
 
-				FloodFill(size, new[] { (start, true, DIRECTION_NONE) }, Filler, SPREAD4_D);
+				MatrixUtils.FloodFill(size, new[] { (start, true, Direction.NONE) }, Filler, Direction.SPREAD4_D);
 			}
 
 			for (var y = 0; y < size.Y; y++)
@@ -4385,12 +3751,11 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				if (actorPlan.ZoningRadius > 0.0f)
-					ReserveCircleInPlace(
-						matrix,
-						actorPlan.Int2Location,
-						actorPlan.ZoningRadius,
-						(_, v) => setTo(v),
-						/*invert=*/false);
+					matrix.DrawCircle(
+						center: actorPlan.Int2Location,
+						radius: actorPlan.ZoningRadius,
+						setTo: (_, v) => setTo(v),
+						invert: false);
 			}
 		}
 
@@ -4402,15 +3767,15 @@ namespace OpenRA.Mods.Common.Traits
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
 					var dm = input[cx, cy];
-					if (CountDirections(dm) > 2)
+					if (Direction.Count(dm) > 2)
 					{
 						output[cx, cy] = 0;
-						foreach (var (offset, d) in SPREAD8_D)
+						foreach (var (offset, d) in Direction.SPREAD8_D)
 						{
 							var xy = new int2(cx + offset.X, cy + offset.Y);
 							if (!input.ContainsXY(xy))
 								continue;
-							var dr = ReverseDirection(d);
+							var dr = Direction.Reverse(d);
 							output[xy] = (byte)(output[xy] & ~(1 << dr));
 						}
 					}
@@ -4419,14 +3784,14 @@ namespace OpenRA.Mods.Common.Traits
 
 			for (var x = 0; x < input.Size.X; x++)
 			{
-				output[x, 0] = (byte)(output[x, 0] & ~(DIRECTION_M_LU | DIRECTION_M_U | DIRECTION_M_RU));
-				output[x, input.Size.Y - 1] = (byte)(output[x, input.Size.Y - 1] & ~(DIRECTION_M_RD | DIRECTION_M_D | DIRECTION_M_LD));
+				output[x, 0] = (byte)(output[x, 0] & ~(Direction.M_LU | Direction.M_U | Direction.M_RU));
+				output[x, input.Size.Y - 1] = (byte)(output[x, input.Size.Y - 1] & ~(Direction.M_RD | Direction.M_D | Direction.M_LD));
 			}
 
 			for (var y = 0; y < input.Size.Y; y++)
 			{
-				output[0, y] = (byte)(output[0, y] & ~(DIRECTION_M_LD | DIRECTION_M_L | DIRECTION_M_LU));
-				output[input.Size.X - 1, y] &= (byte)(output[input.Size.X - 1, y] & ~(DIRECTION_M_RU | DIRECTION_M_R | DIRECTION_M_RD));
+				output[0, y] = (byte)(output[0, y] & ~(Direction.M_LD | Direction.M_L | Direction.M_LU));
+				output[input.Size.X - 1, y] &= (byte)(output[input.Size.X - 1, y] & ~(Direction.M_RU | Direction.M_R | Direction.M_RD));
 			}
 
 			return output;
@@ -4441,7 +3806,7 @@ namespace OpenRA.Mods.Common.Traits
 				for (var sx = 0; sx < input.Size.X; sx++)
 				{
 					var sdm = input[sx, sy];
-					if (MaskToDirection(sdm) != DIRECTION_NONE)
+					if (Direction.FromMask(sdm) != Direction.NONE)
 					{
 						var points = new List<int2>();
 						var xy = new int2(sx, sy);
@@ -4451,14 +3816,14 @@ namespace OpenRA.Mods.Common.Traits
 						{
 							points.Add(xy);
 							var dm = input[xy] & ~reverseDm;
-							foreach (var (offset, d) in SPREAD8_D)
+							foreach (var (offset, d) in Direction.SPREAD8_D)
 							{
 								if ((dm & (1 << d)) != 0)
 								{
 									xy += offset;
 									if (!input.ContainsXY(xy))
 										throw new ArgumentException("input should not link out of bounds");
-									reverseDm = 1 << ReverseDirection(d);
+									reverseDm = 1 << Direction.Reverse(d);
 									return true;
 								}
 							}
@@ -4540,20 +3905,20 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			if (inertialRange > points.Length - 1)
 				inertialRange = points.Length - 1;
-			var sd = CalculateNonDiagonalDirection(points[inertialRange] - points[0]);
-			var ed = CalculateNonDiagonalDirection(points[^1] - points[^(inertialRange + 1)]);
+			var sd = Direction.FromOffsetNonDiagonal(points[inertialRange] - points[0]);
+			var ed = Direction.FromOffsetNonDiagonal(points[^1] - points[^(inertialRange + 1)]);
 			var newPoints = new int2[points.Length + extension * 2];
 
 			for (var i = 0; i < extension; i++)
 			{
-				newPoints[i] = points[0] - DirectionToXY(sd) * (extension - i);
+				newPoints[i] = points[0] - Direction.ToOffset(sd) * (extension - i);
 			}
 
 			Array.Copy(points, 0, newPoints, extension, points.Length);
 
 			for (var i = 0; i < extension; i++)
 			{
-				newPoints[extension + points.Length + i] = points[^1] + DirectionToXY(ed) * (i + 1);
+				newPoints[extension + points.Length + i] = points[^1] + Direction.ToOffset(ed) * (i + 1);
 			}
 
 			return newPoints;
@@ -4613,29 +3978,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return preferences;
-		}
-
-		static (int2 XY, int Value) FindRandomMax(MersenneTwister random, Matrix<int> matrix, int cap)
-		{
-			var candidates = new List<int>();
-			var best = int.MinValue;
-			for (var n = 0; n < matrix.Data.Length; n++)
-			{
-				if (best < cap && matrix[n] > best)
-				{
-					if (matrix[n] >= cap)
-						best = cap;
-					else
-						best = matrix[n];
-					candidates.Clear();
-				}
-
-				if (matrix[n] == best)
-					candidates.Add(n);
-			}
-			var choice = candidates[random.Next(candidates.Count)];
-			var xy = matrix.XY(choice);
-			return (xy, best);
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
