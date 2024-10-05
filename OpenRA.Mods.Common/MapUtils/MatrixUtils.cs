@@ -606,5 +606,93 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			return (output, changes);
 		}
+
+		// TODO: Unused?!
+		// <summary>Read a linearly interpolated value between the cells of a matrix.</summary>
+		public static float Interpolate(Matrix<float> matrix, float x, float y)
+		{
+			var xa = (int)MathF.Floor(x);
+			var xb = (int)MathF.Ceiling(x);
+			var ya = (int)MathF.Floor(y);
+			var yb = (int)MathF.Ceiling(y);
+
+			// "w" for "weight"
+			var xbw = x - xa;
+			var ybw = y - ya;
+			var xaw = 1.0f - xbw;
+			var yaw = 1.0f - ybw;
+
+			if (xa < 0)
+			{
+				xa = 0;
+				xb = 0;
+			}
+			else if (xb > matrix.Size.X - 1)
+			{
+				xa = matrix.Size.X - 1;
+				xb = matrix.Size.X - 1;
+			}
+
+			if (ya < 0)
+			{
+				ya = 0;
+				yb = 0;
+			}
+			else if (yb > matrix.Size.Y - 1)
+			{
+				ya = matrix.Size.Y - 1;
+				yb = matrix.Size.Y - 1;
+			}
+
+			var naa = matrix[xa, ya];
+			var nba = matrix[xb, ya];
+			var nab = matrix[xa, yb];
+			var nbb = matrix[xb, yb];
+			return (naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw;
+		}
+
+		static float ArrayQuantile(float[] array, float quantile)
+		{
+			if (array.Length == 0)
+			{
+				throw new ArgumentException("Cannot get quantile of empty array");
+			}
+
+			var iFloat = quantile * (array.Length - 1);
+			if (iFloat < 0)
+			{
+				iFloat = 0;
+			}
+
+			if (iFloat > array.Length - 1)
+			{
+				iFloat = array.Length - 1;
+			}
+
+			var iLow = (int)iFloat;
+			if (iLow == iFloat)
+			{
+				return array[iLow];
+			}
+
+			var iHigh = iLow + 1;
+			var weight = iFloat - iLow;
+			return array[iLow] * (1 - weight) + array[iHigh] * weight;
+		}
+
+		// <summary>
+		// Uniformally add to or subtract from all matrix cells such that the given quantile,
+		// fraction, has the given target value.
+		// </summary>
+		public static void CalibrateQuantileInPlace(Matrix<float> matrix, float target, float fraction)
+		{
+			var sorted = (float[])matrix.Data.Clone();
+			Array.Sort(sorted);
+			var adjustment = target - ArrayQuantile(sorted, fraction);
+			for (var i = 0; i < matrix.Data.Length; i++)
+			{
+				matrix[i] += adjustment;
+			}
+		}
 	}
 }

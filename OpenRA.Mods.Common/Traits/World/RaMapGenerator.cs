@@ -748,13 +748,13 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			Log.Write("debug", "elevation: generating noise");
-			var elevation = FractalNoise2dWithSymmetry(
+			var elevation = NoiseUtils.SymmetricFractalNoise(
 				waterRandom,
 				size,
 				rotations,
 				mirror,
 				wavelengthScale,
-				PinkAmplitudeFunction);
+				NoiseUtils.PinkAmplitude);
 
 			if (terrainSmoothing > 0)
 			{
@@ -763,7 +763,7 @@ namespace OpenRA.Mods.Common.Traits
 				elevation = MatrixUtils.GaussianBlur(elevation, radius, radius);
 			}
 
-			CalibrateHeightInPlace(
+			MatrixUtils.CalibrateQuantileInPlace(
 				elevation,
 				0.0f,
 				water);
@@ -849,7 +849,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				Log.Write("debug", "mountains: calculating elevation roughness");
 				var roughnessMatrix = MatrixUtils.GridVariance(elevation, roughnessRadius).Map(v => MathF.Sqrt(v));
-				CalibrateHeightInPlace(
+				MatrixUtils.CalibrateQuantileInPlace(
 					roughnessMatrix,
 					0.0f,
 					1.0f - roughness);
@@ -889,7 +889,7 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					var availableFraction = (float)available / total;
-					CalibrateHeightInPlace(
+					MatrixUtils.CalibrateQuantileInPlace(
 						mountainElevation,
 						0.0f,
 						1.0f - availableFraction * mountains);
@@ -920,14 +920,14 @@ namespace OpenRA.Mods.Common.Traits
 			if (forests > 0.0f)
 			{
 				Log.Write("debug", "forests: generating noise");
-				var forestNoise = FractalNoise2dWithSymmetry(
+				var forestNoise = NoiseUtils.SymmetricFractalNoise(
 					forestRandom,
 					size,
 					rotations,
 					mirror,
 					wavelengthScale,
 					wavelength => MathF.Pow(wavelength, forestClumpiness));
-				CalibrateHeightInPlace(
+				MatrixUtils.CalibrateQuantileInPlace(
 					forestNoise,
 					0.0f,
 					1.0f - forests);
@@ -1363,7 +1363,7 @@ namespace OpenRA.Mods.Common.Traits
 				// Grow resources
 				{
 					Log.Write("debug", "ore: generating noise");
-					var orePattern = FractalNoise2dWithSymmetry(
+					var orePattern = NoiseUtils.SymmetricFractalNoise(
 						resourceRandom,
 						size,
 						rotations,
@@ -1371,7 +1371,7 @@ namespace OpenRA.Mods.Common.Traits
 						wavelengthScale,
 						wavelength => MathF.Pow(wavelength, oreClumpiness));
 					{
-						CalibrateHeightInPlace(
+						MatrixUtils.CalibrateQuantileInPlace(
 							orePattern,
 							0.0f,
 							0.0f);
@@ -1576,214 +1576,6 @@ namespace OpenRA.Mods.Common.Traits
 			map.ActorDefinitions = actorPlans
 				.Select((plan, i) => new MiniYamlNode($"Actor{i}", plan.Reference.Save()))
 				.ToImmutableArray();
-		}
-
-		static Matrix<float> FractalNoise2dWithSymmetry(MersenneTwister random, int2 size, int rotations, Symmetry.Mirror mirror, float wavelengthScale, AmplitudeFunction ampFunc)
-		{
-			if (rotations < 1)
-			{
-				throw new ArgumentException("rotations must be >= 1");
-			}
-
-			// Need higher resolution due to cropping and rotation artifacts
-			var templateSpan = Math.Max(size.X, size.Y) * 2 + 2;
-			var templateSize = new int2(templateSpan, templateSpan);
-			var template = FractalNoise2d(random, templateSize, wavelengthScale, ampFunc);
-			var unmirrored = new Matrix<float>(size);
-
-			// This -1 is required to compensate for the top-left vs the center of a grid square.
-			var offset = new float2((size.X - 1) / 2.0f, (size.Y - 1) / 2.0f);
-			var templateOffset = new float2(templateSpan / 2.0f, templateSpan / 2.0f);
-			for (var rotation = 0; rotation < rotations; rotation++)
-			{
-				var angle = rotation * MathF.Tau / rotations;
-				var cosAngle = Symmetry.CosSnapF(angle);
-				var sinAngle = Symmetry.SinSnapF(angle);
-				for (var y = 0; y < size.Y; y++)
-				{
-					for (var x = 0; x < size.X; x++)
-					{
-						var xy = new float2(x, y);
-
-						// xy # corner noise space
-						// xy - offset # middle noise space
-						// (xy - offset) * SQRT2 # middle temp space
-						// R * ((xy - offset) * SQRT2) # middle temp space rotate
-						// R * ((xy - offset) * SQRT2) + to # corner temp space rotate
-						var midt = (xy - offset) * (float)SQRT2;
-						var tx = (midt.X * cosAngle - midt.Y * sinAngle) + templateOffset.X;
-						var ty = (midt.X * sinAngle + midt.Y * cosAngle) + templateOffset.Y;
-						unmirrored[x, y] +=
-							Interpolate2d(
-								template,
-								tx,
-								ty) / rotations;
-					}
-				}
-			}
-
-			if (mirror == Symmetry.Mirror.None)
-			{
-				return unmirrored;
-			}
-
-			var mirrored = new Matrix<float>(size);
-			for (var y = 0; y < size.Y; y++)
-			{
-				for (var x = 0; x < size.X; x++)
-				{
-					var txy = Symmetry.MirrorGridSquare(mirror, new int2(x, y), size);
-					mirrored[x, y] = unmirrored[x, y] + unmirrored[txy];
-				}
-			}
-
-			return mirrored;
-		}
-
-		delegate float AmplitudeFunction(float wavelength);
-		static float PinkAmplitudeFunction(float wavelength) => wavelength;
-		static Matrix<float> FractalNoise2d(MersenneTwister random, int2 size, float wavelengthScale, AmplitudeFunction ampFunc)
-		{
-			var span = Math.Max(size.X, size.Y);
-			var wavelengths = new float[(int)Math.Log2(span)];
-			for (var i = 0; i < wavelengths.Length; i++)
-			{
-				wavelengths[i] = (1 << i) * wavelengthScale;
-			}
-
-			// float AmpFunc(float wavelength) => wavelength / span / wavelengths.Length;
-			var noise = new Matrix<float>(size);
-			foreach (var wavelength in wavelengths)
-			{
-				var amps = ampFunc(wavelength);
-				var subSpan = (int)(span / wavelength) + 2;
-				var subNoise = PerlinNoise2d(random, subSpan);
-
-				// Offsets should align to grid.
-				// (The wavelength is divided back out later.)
-				var offsetX = (int)(random.NextFloat() * wavelength);
-				var offsetY = (int)(random.NextFloat() * wavelength);
-				for (var y = 0; y < size.Y; y++)
-				{
-					for (var x = 0; x < size.X; x++)
-					{
-						noise[y * size.X + x] +=
-							amps * Interpolate2d(
-								subNoise,
-								(offsetX + x) / wavelength,
-								(offsetY + y) / wavelength);
-					}
-				}
-			}
-
-			return noise;
-		}
-
-		static Matrix<float> PerlinNoise2d(MersenneTwister random, int span)
-		{
-			var noise = new Matrix<float>(span, span);
-			const float D = 0.25f;
-			for (var y = 0; y <= span; y++)
-			{
-				for (var x = 0; x <= span; x++)
-				{
-					var phase = MathF.Tau * random.NextFloatExclusive();
-					var vx = MathF.Cos(phase);
-					var vy = MathF.Sin(phase);
-					if (x > 0 && y > 0)
-						noise[x - 1, y - 1] += vx * -D + vy * -D;
-					if (x < span && y > 0)
-						noise[x    , y - 1] += vx *  D + vy * -D;
-					if (x > 0 && y < span)
-						noise[x - 1, y    ] += vx * -D + vy *  D;
-					if (x < span && y < span)
-						noise[x    , y    ] += vx *  D + vy *  D;
-				}
-			}
-
-			return noise;
-		}
-
-		static float Interpolate2d(Matrix<float> matrix, float x, float y)
-		{
-			var xa = (int)MathF.Floor(x);
-			var xb = (int)MathF.Ceiling(x);
-			var ya = (int)MathF.Floor(y);
-			var yb = (int)MathF.Ceiling(y);
-
-			// "w" for "weight"
-			var xbw = x - xa;
-			var ybw = y - ya;
-			var xaw = 1.0f - xbw;
-			var yaw = 1.0f - ybw;
-
-			if (xa < 0)
-			{
-				xa = 0;
-				xb = 0;
-			}
-			else if (xb > matrix.Size.X - 1)
-			{
-				xa = matrix.Size.X - 1;
-				xb = matrix.Size.X - 1;
-			}
-
-			if (ya < 0)
-			{
-				ya = 0;
-				yb = 0;
-			}
-			else if (yb > matrix.Size.Y - 1)
-			{
-				ya = matrix.Size.Y - 1;
-				yb = matrix.Size.Y - 1;
-			}
-
-			var naa = matrix[xa, ya];
-			var nba = matrix[xb, ya];
-			var nab = matrix[xa, yb];
-			var nbb = matrix[xb, yb];
-			return (naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw;
-		}
-
-		static void CalibrateHeightInPlace(Matrix<float> matrix, float target, float fraction)
-		{
-			var sorted = (float[])matrix.Data.Clone();
-			Array.Sort(sorted);
-			var adjustment = target - ArrayQuantile(sorted, fraction);
-			for (var i = 0; i < matrix.Data.Length; i++)
-			{
-				matrix[i] += adjustment;
-			}
-		}
-
-		static float ArrayQuantile(float[] array, float quantile)
-		{
-			if (array.Length == 0)
-			{
-				throw new ArgumentException("Cannot get quantile of empty array");
-			}
-
-			var iFloat = quantile * (array.Length - 1);
-			if (iFloat < 0)
-			{
-				iFloat = 0;
-			}
-
-			if (iFloat > array.Length - 1)
-			{
-				iFloat = array.Length - 1;
-			}
-
-			var iLow = (int)iFloat;
-			if (iLow == iFloat)
-			{
-				return array[iLow];
-			}
-
-			var iHigh = iLow + 1;
-			var weight = iFloat - iLow;
-			return array[iLow] * (1 - weight) + array[iHigh] * weight;
 		}
 
 		static Matrix<bool> ProduceTerrain(Matrix<float> elevation, int terrainSmoothing, float smoothingThreshold, int minimumThickness, bool bias, string debugLabel)
