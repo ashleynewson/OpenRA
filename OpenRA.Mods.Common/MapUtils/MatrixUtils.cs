@@ -781,5 +781,87 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			return roominess;
 		}
+
+		// <summary>
+		// Given a set of grid-intersection point arrays, creates a matrix where each cell
+		// identifies whether the closest points are wrapping around it clockwise or
+		// counter-clockwise (as defined in MapUtils.Direction).
+		//
+		// Positive output values indicate the points are wrapping around it clockwise.
+		// Negative output values indicate the points are wrapping around it counter-clockwise.
+		// Outputs can be zero or non-unit magnitude if there are fighting point arrays.
+		// </summary>
+		public static Matrix<int> PointsChirality(int2 size, IEnumerable<int2[]> pointArrayArray)
+		{
+			var chirality = new Matrix<int>(size);
+			var next = new List<int2>();
+			void SeedChirality(int2 point, int value, bool firstPass)
+			{
+				if (!chirality.ContainsXY(point))
+					return;
+				if (firstPass)
+				{
+					// Some paths which overlap or go back on themselves
+					// might fight for chirality. Vote on it.
+					chirality[point] += value;
+				}
+				else
+				{
+					if (chirality[point] != 0)
+						return;
+					chirality[point] = value;
+				}
+
+				next.Add(point);
+			}
+
+			foreach (var pointArray in pointArrayArray)
+			{
+				for (var i = 1; i < pointArray.Length; i++)
+				{
+					var from = pointArray[i - 1];
+					var to = pointArray[i];
+					var direction = Direction.FromOffset(to - from);
+					var fx = from.X;
+					var fy = from.Y;
+					switch (direction)
+					{
+						case Direction.R:
+							SeedChirality(new int2(fx    , fy    ),  1, true);
+							SeedChirality(new int2(fx    , fy - 1), -1, true);
+							break;
+						case Direction.D:
+							SeedChirality(new int2(fx - 1, fy    ),  1, true);
+							SeedChirality(new int2(fx    , fy    ), -1, true);
+							break;
+						case Direction.L:
+							SeedChirality(new int2(fx - 1, fy - 1),  1, true);
+							SeedChirality(new int2(fx - 1, fy    ), -1, true);
+							break;
+						case Direction.U:
+							SeedChirality(new int2(fx    , fy - 1),  1, true);
+							SeedChirality(new int2(fx - 1, fy - 1), -1, true);
+							break;
+						default:
+							throw new ArgumentException("Unsupported direction for chirality");
+					}
+				}
+			}
+
+			while (next.Count != 0)
+			{
+				var current = next;
+				next = new List<int2>();
+				foreach (var point in current)
+				{
+					foreach (var offset in Direction.SPREAD4)
+					{
+						SeedChirality(point + offset, chirality[point], false);
+					}
+				}
+			}
+
+			return chirality;
+		}
 	}
 }

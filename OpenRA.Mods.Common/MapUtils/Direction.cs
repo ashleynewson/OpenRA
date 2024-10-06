@@ -18,21 +18,21 @@ namespace OpenRA.Mods.Common.MapUtils
 	{
 		// <summary>No direction</summary>
 		public const int NONE = -1;
-		// <summary>Right, 0 degrees</summary>
+		// <summary>Right, 0 degrees, +X</summary>
 		public const int R = 0;
-		// <summary>Right-down, 45 degrees</summary>
+		// <summary>Right-down, 45 degrees, +X+Y</summary>
 		public const int RD = 1;
-		// <summary>Down, 90 degrees</summary>
+		// <summary>Down, 90 degrees, +Y</summary>
 		public const int D = 2;
-		// <summary>Left-down, 135 degrees</summary>
+		// <summary>Left-down, 135 degrees, -X+Y</summary>
 		public const int LD = 3;
-		// <summary>Left, 180 degrees</summary>
+		// <summary>Left, 180 degrees, -X</summary>
 		public const int L = 4;
-		// <summary>Left-up, 225 degrees</summary>
+		// <summary>Left-up, 225 degrees, -X-Y</summary>
 		public const int LU = 5;
-		// <summary>Up, 270 degrees</summary>
+		// <summary>Up, 270 degrees, -Y</summary>
 		public const int U = 6;
-		// <summary>Right-up, 315 degrees</summary>
+		// <summary>Right-up, 315 degrees, +X-Y</summary>
 		public const int RU = 7;
 
 		// <summary>Bitmask right</summary>
