@@ -477,7 +477,7 @@ namespace OpenRA.Mods.Common.Traits
 			var landPlan = ProduceTerrain(elevation, terrainSmoothing, smoothingThreshold, minimumLandSeaThickness, /*bias=*/water < 0.5, "land planning");
 
 			Log.Write("debug", "beaches");
-			var beaches = BordersToPoints(landPlan);
+			var beaches = MatrixUtils.BordersToPoints(landPlan);
 			if (beaches.Length > 0)
 			{
 				var beachPermittedTemplates = new TilingPath.PermittedTemplates(
@@ -535,7 +535,7 @@ namespace OpenRA.Mods.Common.Traits
 					radius: minSpan / 2.0f - minimumLandSeaThickness,
 					setTo: (_, _) => true,
 					invert: true);
-				var cliffs = BordersToPoints(cliffRing);
+				var cliffs = MatrixUtils.BordersToPoints(cliffRing);
 				foreach (var cliff in cliffs)
 				{
 					var tweakedPoints = TweakPathPoints(cliff, size);
@@ -611,7 +611,7 @@ namespace OpenRA.Mods.Common.Traits
 					Log.Write("debug", $"mountains: altitude {altitude}: fixing terrain anomalies");
 					cliffPlan = ProduceTerrain(mountainElevation, terrainSmoothing, smoothingThreshold, minimumMountainThickness, false, $"mountains: altitude {altitude}");
 					Log.Write("debug", $"mountains: altitude {altitude}: tracing cliffs");
-					var unmaskedCliffs = BordersToPoints(cliffPlan);
+					var unmaskedCliffs = MatrixUtils.BordersToPoints(cliffPlan);
 					Log.Write("debug", $"mountains: altitude {altitude}: appling roughness mask to cliffs");
 					var maskedCliffs = MaskPoints(unmaskedCliffs, cliffMask);
 					var cliffs = maskedCliffs.Where(cliff => cliff.Length >= minimumCliffLength).ToArray();
@@ -1509,131 +1509,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Fixes made, with potentially more that can be in another pass.
 			return (thinnest, changes);
-		}
-
-		static int2[][] BordersToPoints(Matrix<bool> matrix)
-		{
-			// There is redundant memory/iteration, but I don't care enough.
-
-			// These are really only the signs of the gradients.
-			var gradientH = new Matrix<sbyte>(matrix.Size);
-			var gradientV = new Matrix<sbyte>(matrix.Size);
-			for (var y = 0; y < matrix.Size.Y; y++)
-			{
-				for (var x = 1; x < matrix.Size.X; x++)
-				{
-					var l = matrix[x - 1, y] ? 1 : 0;
-					var r = matrix[x, y] ? 1 : 0;
-					gradientV[x, y] = (sbyte)(r - l);
-				}
-			}
-
-			for (var y = 1; y < matrix.Size.Y; y++)
-			{
-				for (var x = 0; x < matrix.Size.X; x++)
-				{
-					var u = matrix[x, y - 1] ? 1 : 0;
-					var d = matrix[x, y] ? 1 : 0;
-					gradientH[x, y] = (sbyte)(d - u);
-				}
-			}
-
-			// Looping paths contain the start/end point twice.
-			var paths = new List<int2[]>();
-			void TracePath(int sx, int sy, int direction)
-			{
-				var points = new List<int2>();
-				var x = sx;
-				var y = sy;
-				points.Add(new int2(x, y));
-				do
-				{
-					switch (direction)
-					{
-						case Direction.R:
-							gradientH[x, y] = 0;
-							x++;
-							break;
-						case Direction.D:
-							gradientV[x, y] = 0;
-							y++;
-							break;
-						case Direction.L:
-							x--;
-							gradientH[x, y] = 0;
-							break;
-						case Direction.U:
-							y--;
-							gradientV[x, y] = 0;
-							break;
-						default:
-							throw new ArgumentException("direction assertion failed");
-					}
-
-					points.Add(new int2(x, y));
-					var r = gradientH.ContainsXY(x, y) && gradientH[x, y] > 0;
-					var d = gradientV.ContainsXY(x, y) && gradientV[x, y] < 0;
-					var l = gradientH.ContainsXY(x - 1, y) && gradientH[x - 1, y] < 0;
-					var u = gradientV.ContainsXY(x, y - 1) && gradientV[x, y - 1] > 0;
-					if (direction == Direction.R && u)
-						direction = Direction.U;
-					else if (direction == Direction.D && r)
-						direction = Direction.R;
-					else if (direction == Direction.L && d)
-						direction = Direction.D;
-					else if (direction == Direction.U && l)
-						direction = Direction.L;
-					else if (r)
-						direction = Direction.R;
-					else if (d)
-						direction = Direction.D;
-					else if (l)
-						direction = Direction.L;
-					else if (u)
-						direction = Direction.U;
-					else
-						break; // Dead end (not a loop)
-				}
-				while (x != sx || y != sy);
-
-				paths.Add(points.ToArray());
-			}
-
-			// Trace non-loops (from edge of map)
-			for (var x = 1; x < matrix.Size.X; x++)
-			{
-				if (gradientV[x, 0] < 0)
-					TracePath(x, 0, Direction.D);
-				if (gradientV[x, matrix.Size.Y - 1] > 0)
-					TracePath(x, matrix.Size.Y, Direction.U);
-			}
-
-			for (var y = 1; y < matrix.Size.Y; y++)
-			{
-				if (gradientH[0, y] > 0)
-					TracePath(0, y, Direction.R);
-				if (gradientH[matrix.Size.X - 1, y] < 0)
-					TracePath(matrix.Size.X, y, Direction.L);
-			}
-
-			// Trace loops
-			for (var y = 0; y < matrix.Size.Y; y++)
-			{
-				for (var x = 0; x < matrix.Size.X; x++)
-				{
-					if (gradientH[x, y] > 0)
-						TracePath(x, y, Direction.R);
-					else if (gradientH[x, y] < 0)
-						TracePath(x + 1, y, Direction.L);
-
-					if (gradientV[x, y] < 0)
-						TracePath(x, y, Direction.D);
-					else if (gradientV[x, y] > 0)
-						TracePath(x, y + 1, Direction.U);
-				}
-			}
-
-			return paths.ToArray();
 		}
 
 		// <summary>
