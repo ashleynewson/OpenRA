@@ -20,14 +20,18 @@ using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapUtils
 {
-	// <summary>A super template that can be used to paint both tiles and actors.</summary>
-	sealed class PathTiler
+	public sealed class TilingPath
 	{
+		// <summary>Describes the type and direction of the start or end of a TilingPath.</summary>
 		public readonly struct Terminal
 		{
 			public readonly string Type;
 			public readonly int Direction;
 
+			// <summary>
+			// A string which can match the format used by
+			// OpenRA.Mods.Common.Terrain.TemplateSegment's Start or End.
+			// </summary>
 			public string SegmentType
 			{
 				get => $"{Type}.{MapUtils.Direction.ToString(Direction)}";
@@ -40,6 +44,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
+		// <summary>
+		// Describes the permitted start, middle, and end templates that can be used to tile the
+		// path.
+		// </summary>
 		public sealed class PermittedTemplates
 		{
 			// This should probably be changed to store Segments rather than Templates.
@@ -59,9 +67,18 @@ namespace OpenRA.Mods.Common.MapUtils
 				: this(all, all, all)
 			{ }
 
+			// <summary>
+			// Find templates that use the given types at their start and ends.
+			//
+			// The start and end of a template don't have to match, so long as both are in the
+			// provided types list.
+			// </summary>
 			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, string[] types)
 				=> FindTemplates(templatedTerrainInfo, types, types);
 
+			// <summary>
+			// Find templates that use the given start and end types.
+			// </summary>
 			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, string[] startTypes, string[] endTypes)
 			{
 				return templatedTerrainInfo.Templates.Values
@@ -74,29 +91,42 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		public sealed class Path
+		// <summary>
+		// Target point sequence to fit TemplateSegments to.
+		//
+		// Must have at least two points.
+		//
+		// A loop must have the start and end points equal.
+		// </summary>
+		public int2[] Points;
+		// <summary>
+		// Maximum permitted Chebychev distance that layed TemplateSegments may be from the
+		// specified points.
+		// </summary>
+		public int MaxDeviation;
+		public Terminal Start;
+		public Terminal End;
+		public PermittedTemplates Templates;
+		// <summary>Whether the start and end points are the same.</summary>
+		public bool IsLoop
 		{
-			public int2[] Points;
-			public Terminal Start;
-			public Terminal End;
-			public PermittedTemplates PermittedTemplates;
-			public bool IsLoop
-			{
-				get => Points[0] == Points[^1];
-			}
+			get => Points[0] == Points[^1];
+		}
 
-			// <summary>
-			// Simple constructor for paths
-			// </summary>
-			public Path(int2[] points, string startType, string endType, PermittedTemplates permittedTemplates)
-			{
-				Points = points;
-				var startDirection = Direction.FromOffset(Points[1] - Points[0]);
-				Start = new Terminal(startType, startDirection);
-				var endDirection = Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
-				End = new Terminal(endType, endDirection);
-				PermittedTemplates = permittedTemplates;
-			}
+		public TilingPath(
+			int2[] points,
+			int maxDeviation,
+			string startType,
+			string endType,
+			PermittedTemplates permittedTemplates)
+		{
+			Points = points;
+			MaxDeviation = maxDeviation;
+			var startDirection = Direction.FromOffset(Points[1] - Points[0]);
+			Start = new Terminal(startType, startDirection);
+			var endDirection = Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
+			End = new Terminal(endType, endDirection);
+			Templates = permittedTemplates;
 		}
 
 		private sealed class TilePathSegment
@@ -147,23 +177,20 @@ namespace OpenRA.Mods.Common.MapUtils
 		// <summary>
 		// Attempt to tile the given path onto a map.
 		//
-		// maxDeviation controls how far from the path any chosen TemplateSegments may deviate from
-		// it. Note that layed templates' tiles may be placed outside of this range.
-		//
 		// If the path could be tiled, returns the sequence of points actually traversed by the
 		// chosen TemplateSegments. Returns null if the path could not be tiled within constraints.
 		// </summary>
-		public static int2[] TilePath(Map map, Path path, MersenneTwister random, int maxDeviation)
+		public int2[] TilePath(Map map, MersenneTwister random)
 		{
 			var minPoint = new int2(
-				path.Points.Min(p => p.X) - maxDeviation,
-				path.Points.Min(p => p.Y) - maxDeviation);
+				Points.Min(p => p.X) - MaxDeviation,
+				Points.Min(p => p.Y) - MaxDeviation);
 			var maxPoint = new int2(
-				path.Points.Max(p => p.X) + maxDeviation,
-				path.Points.Max(p => p.Y) + maxDeviation);
-			var points = path.Points.Select(point => point - minPoint).ToArray();
+				Points.Max(p => p.X) + MaxDeviation,
+				Points.Max(p => p.Y) + MaxDeviation);
+			var points = Points.Select(point => point - minPoint).ToArray();
 
-			var isLoop = path.IsLoop;
+			var isLoop = IsLoop;
 
 			// grid points (not squares), so these are offset 0.5 from tile centers.
 			var size = new int2(1 + maxPoint.X - minPoint.X, 1 + maxPoint.Y - minPoint.Y);
@@ -210,7 +237,7 @@ namespace OpenRA.Mods.Common.MapUtils
 						directionY += point.Y - points[pointPrevI].Y;
 					}
 
-					for (var deviation = 0; deviation <= maxDeviation; deviation++)
+					for (var deviation = 0; deviation <= MaxDeviation; deviation++)
 					{
 						var minX = point.X - deviation;
 						var minY = point.Y - deviation;
@@ -226,7 +253,7 @@ namespace OpenRA.Mods.Common.MapUtils
 									deviations[x, y] = deviation;
 								}
 
-								if (deviation == maxDeviation)
+								if (deviation == MaxDeviation)
 								{
 									gradientX[x, y] += directionX;
 									gradientY[x, y] += directionY;
@@ -272,7 +299,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			var pathStart = points[0];
 			var pathEnd = points[^1];
-			var permittedTemplates = path.PermittedTemplates.All.ToImmutableHashSet();
+			var permittedTemplates = Templates.All.ToImmutableHashSet();
 
 			const int MAX_SCORE = int.MaxValue;
 			var segmentTypeToId = new Dictionary<string, int>();
@@ -319,9 +346,9 @@ namespace OpenRA.Mods.Common.MapUtils
 				return (typeId, new int2(xy % size.X, xy / size.X), priority);
 			}
 
-			var pathStartTypeId = segmentTypeToId[path.Start.SegmentType];
-			var pathEndTypeId = segmentTypeToId[path.End.SegmentType];
-			var innerTypeIds = path.PermittedTemplates.Inner
+			var pathStartTypeId = segmentTypeToId[Start.SegmentType];
+			var pathEndTypeId = segmentTypeToId[End.SegmentType];
+			var innerTypeIds = Templates.Inner
 				.SelectMany(template => template.Segments)
 				.SelectMany(segment => new[] { segment.Start, segment.End })
 				.Select(segmentType => segmentTypeToId[segmentType])
@@ -534,7 +561,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			return resultPoints.ToArray();
 		}
 
-		static void PaintTemplate(Map map, int2 at, TerrainTemplateInfo template)
+		private static void PaintTemplate(Map map, int2 at, TerrainTemplateInfo template)
 		{
 			if (template.PickAny)
 				throw new ArgumentException("PaintTemplate does not expect PickAny");

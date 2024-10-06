@@ -502,20 +502,21 @@ namespace OpenRA.Mods.Common.Traits
 			var beaches = BordersToPoints(landPlan);
 			if (beaches.Length > 0)
 			{
-				var beachPermittedTemplates = new PathTiler.PermittedTemplates(
-					PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Beach" }));
+				var beachPermittedTemplates = new TilingPath.PermittedTemplates(
+					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Beach" }));
 				var tiledBeaches = new int2[beaches.Length][];
 				for (var i = 0; i < beaches.Length; i++)
 				{
 					var tweakedPoints = TweakPathPoints(beaches[i], size);
-					var beachPath = new PathTiler.Path(tweakedPoints, "Beach", "Beach", beachPermittedTemplates);
+					var beachPath = new TilingPath(
+						tweakedPoints,
+						(minimumLandSeaThickness - 1) / 2,
+						"Beach",
+						"Beach",
+						beachPermittedTemplates);
 					tiledBeaches[i] =
-						PathTiler.TilePath(
-							map,
-							beachPath,
-							beachTilingRandom,
-							(minimumLandSeaThickness - 1) / 2
-						) ?? throw new MapGenerationException("Could not fit tiles for beach");
+						beachPath.TilePath(map, beachTilingRandom)
+							?? throw new MapGenerationException("Could not fit tiles for beach");
 				}
 
 				Log.Write("debug", "filling water");
@@ -541,12 +542,12 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			var nonLoopedCliffPermittedTemplates = new PathTiler.PermittedTemplates(
-				PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Cliff" }),
-				PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }),
-				PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }, new[] { "Clear" }));
-			var loopedCliffPermittedTemplates = new PathTiler.PermittedTemplates(
-				PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }));
+			var nonLoopedCliffPermittedTemplates = new TilingPath.PermittedTemplates(
+				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Cliff" }),
+				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }),
+				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }, new[] { "Clear" }));
+			var loopedCliffPermittedTemplates = new TilingPath.PermittedTemplates(
+				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }));
 			if (externalCircularBias > 0)
 			{
 				Log.Write("debug", "creating circular cliff map border");
@@ -561,17 +562,22 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					var tweakedPoints = TweakPathPoints(cliff, size);
 					var isLoop = tweakedPoints[0] == tweakedPoints[^1];
-					PathTiler.Path cliffPath;
+					TilingPath cliffPath;
 					if (isLoop)
-						cliffPath = new PathTiler.Path(tweakedPoints, "Cliff", "Cliff", loopedCliffPermittedTemplates);
+						cliffPath = new TilingPath(
+							tweakedPoints,
+							(minimumMountainThickness - 1) / 2,
+							"Cliff",
+							"Cliff",
+							loopedCliffPermittedTemplates);
 					else
-						cliffPath = new PathTiler.Path(tweakedPoints, "Clear", "Clear", nonLoopedCliffPermittedTemplates);
-					var tiled = PathTiler.TilePath(
-						map,
-						cliffPath,
-						cliffTilingRandom,
-						(minimumMountainThickness - 1) / 2);
-					if (tiled == null)
+						cliffPath = new TilingPath(
+							tweakedPoints,
+							(minimumMountainThickness - 1) / 2,
+							"Clear",
+							"Clear",
+							nonLoopedCliffPermittedTemplates);
+					if (cliffPath.TilePath(map, cliffTilingRandom) == null)
 						throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
 				}
 			}
@@ -638,17 +644,22 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						var tweakedPoints = TweakPathPoints(cliff, size);
 						var isLoop = tweakedPoints[0] == tweakedPoints[^1];
-						PathTiler.Path cliffPath;
+						TilingPath cliffPath;
 						if (isLoop)
-							cliffPath = new PathTiler.Path(tweakedPoints, "Cliff", "Cliff", loopedCliffPermittedTemplates);
+							cliffPath = new TilingPath(
+								tweakedPoints,
+								(minimumMountainThickness - 1) / 2,
+								"Cliff",
+								"Cliff",
+								loopedCliffPermittedTemplates);
 						else
-							cliffPath = new PathTiler.Path(tweakedPoints, "Clear", "Clear", nonLoopedCliffPermittedTemplates);
-						var tiled = PathTiler.TilePath(
-							map,
-							cliffPath,
-							cliffTilingRandom,
-							(minimumMountainThickness - 1) / 2);
-						if (tiled == null)
+							cliffPath = new TilingPath(
+								tweakedPoints,
+								(minimumMountainThickness - 1) / 2,
+								"Clear",
+								"Clear",
+								nonLoopedCliffPermittedTemplates);
+						if (cliffPath.TilePath(map, cliffTilingRandom) == null)
 							throw new MapGenerationException("Could not fit tiles for cliffs");
 					}
 				}
@@ -842,10 +853,10 @@ namespace OpenRA.Mods.Common.Traits
 				var noJunctions = RemoveJunctionsFromDirectionMap(deflated);
 				var pointArrays = DeduplicateAndNormalizePointArrays(DirectionMapToPointArrays(noJunctions), size);
 
-				var roadPermittedTemplates = new PathTiler.PermittedTemplates(
-					PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Road", "RoadIn", "RoadOut" }),
-					PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }),
-					PathTiler.PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" }));
+				var roadPermittedTemplates = new TilingPath.PermittedTemplates(
+					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Road", "RoadIn", "RoadOut" }),
+					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }),
+					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" }));
 
 				foreach (var pointArray in pointArrays)
 				{
@@ -865,14 +876,14 @@ namespace OpenRA.Mods.Common.Traits
 						continue;
 
 					// Currently, never looped.
-					var path = new PathTiler.Path(tweaked, "Clear", "Clear", roadPermittedTemplates);
+					var path = new TilingPath(
+						tweaked,
+						roadSpacing - 1,
+						"Clear",
+						"Clear",
+						roadPermittedTemplates);
 
-					var tiled = PathTiler.TilePath(
-						map,
-						path,
-						roadTilingRandom,
-						roadSpacing - 1);
-					if (tiled == null)
+					if (path.TilePath(map, roadTilingRandom) == null)
 						throw new MapGenerationException("Could not fit tiles for roads");
 				}
 			}
