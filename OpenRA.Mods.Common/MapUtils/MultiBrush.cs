@@ -243,7 +243,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-
+		// <summary>
+		// Paint an area defined by replace onto map and actorPlans using availableBrushes.
+		// </summary>
 		public static void PaintArea(
 			Map map,
 			List<ActorPlan> actorPlans,
