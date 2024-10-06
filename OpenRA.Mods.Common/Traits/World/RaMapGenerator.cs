@@ -14,7 +14,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using OpenRA;
 using OpenRA.Mods.Common.MapUtils;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
@@ -462,12 +461,14 @@ namespace OpenRA.Mods.Common.Traits
 				elevation,
 				0.0f,
 				water);
-			var externalCircleCenter = (size.ToFloat2() - new float2(0.5f, 0.5f)) / 2.0f;
+
+			var mapCenter = (size.ToFloat2() - new float2(1.0f, 1.0f)) / 2.0f;
+			var externalCircleRadius = minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness);
 			if (externalCircularBias != 0)
 			{
 				elevation.DrawCircle(
-					center: externalCircleCenter,
-					radius: minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
+					center: mapCenter,
+					radius: externalCircleRadius,
 					setTo: (_, _) => externalCircularBias * EXTERNAL_BIAS,
 					invert: true);
 			}
@@ -530,7 +531,7 @@ namespace OpenRA.Mods.Common.Traits
 				Log.Write("debug", "creating circular cliff map border");
 				var cliffRing = new Matrix<bool>(size);
 				cliffRing.DrawCircle(
-					center: externalCircleCenter,
+					center: mapCenter,
 					radius: minSpan / 2.0f - minimumLandSeaThickness,
 					setTo: (_, _) => true,
 					invert: true);
@@ -573,7 +574,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (externalCircularBias > 0)
 				{
 					cliffPlan.DrawCircle(
-						center: externalCircleCenter,
+						center: mapCenter,
 						radius: minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
 						setTo: (_, _) => false,
 						invert: true);
@@ -751,18 +752,34 @@ namespace OpenRA.Mods.Common.Traits
 							.All(source => CheckCompatibility(main, source));
 						replace[destination] = compatible ? MultiBrush.Replaceability.None : MultiBrush.Replaceability.Actor;
 					});
-				Log.Write("debug", "symmatry enforcement: obstructing");
+				Log.Write("debug", "symmetry enforcement: obstructing");
 				MultiBrush.PaintArea(map, actorPlans, replace, forestObstacles, random);
 			}
 
 			var playableArea = new Matrix<bool>(size);
 			{
 				Log.Write("debug", "determining playable regions");
-				var (regionMask, regions, playability) = PlayableSpace.FindPlayableRegions(map, actorPlans, playabilityMap);
+				var (regions, regionMask, playability) = PlayableSpace.FindPlayableRegions(map, actorPlans, playabilityMap);
 				PlayableSpace.Region largest = null;
+				var disqualifications = new HashSet<int>();
+				if (externalCircularBias > 0)
+				{
+					var forbiddenSpace = new Matrix<bool>(size);
+					forbiddenSpace.DrawCircle(
+						center: mapCenter,
+						radius: minSpan / 2.0f - 1.0f,
+						setTo: (_, _) => true,
+						invert: true);
+					for (var n = 0; n < forbiddenSpace.Data.Length; n++)
+					{
+						if (forbiddenSpace[n] && regionMask[n] != PlayableSpace.NULL_REGION)
+							disqualifications.Add(regionMask[n]);
+					}
+				}
+
 				foreach (var region in regions)
 				{
-					if (externalCircularBias > 0 && region.ExternalCircle)
+					if (disqualifications.Contains(region.Id))
 						continue;
 					if (largest == null || region.PlayableArea > largest.PlayableArea)
 						largest = region;
@@ -896,7 +913,7 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					// Non 1, 2, 4 rotations need entity placement confined to a circle, regardless of externalCircularBias
 					zoneable.DrawCircle(
-						center: externalCircleCenter,
+						center: mapCenter,
 						radius: minSpan / 2.0f - 1.0f,
 						setTo: (_, _) => false,
 						invert: true);
@@ -905,9 +922,8 @@ namespace OpenRA.Mods.Common.Traits
 				if (rotations > 1 || mirror != 0)
 				{
 					// Reserve the center of the map - otherwise it will mess with rotations
-					// TODO: Change externalCircleCenter to mapCenter
 					zoneable.DrawCircle(
-						center: externalCircleCenter,
+						center: mapCenter,
 						radius: 1.0f,
 						setTo: (_, _) => false,
 						invert: false);
@@ -992,7 +1008,7 @@ namespace OpenRA.Mods.Common.Traits
 						if (centralExpansionReservationFraction > 0)
 						{
 							expansionZoneable.DrawCircle(
-								center: externalCircleCenter,
+								center: mapCenter,
 								radius: minSpan * centralExpansionReservationFraction,
 								setTo: (_, _) => false,
 								invert: false);
