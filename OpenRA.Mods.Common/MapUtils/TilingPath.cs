@@ -180,7 +180,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		// If the path could be tiled, returns the sequence of points actually traversed by the
 		// chosen TemplateSegments. Returns null if the path could not be tiled within constraints.
 		// </summary>
-		public int2[] TilePath(Map map, MersenneTwister random)
+		public int2[] Tile(Map map, MersenneTwister random)
 		{
 			var minPoint = new int2(
 				Points.Min(p => p.X) - MaxDeviation,
