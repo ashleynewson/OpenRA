@@ -9,7 +9,6 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 
 namespace OpenRA.Mods.Common.MapUtils
@@ -32,6 +31,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 		// <summary>
 		// Additional data for a region containing playable space.
+		// The shape of a region is specified separately via a region mask.
 		// </summary>
 		public sealed class Region
 		{
@@ -41,23 +41,27 @@ namespace OpenRA.Mods.Common.MapUtils
 			public int PlayableArea;
 			// <summary>Region ID.</summary>
 			public int Id;
-			public bool ExternalCircle;
 		}
+
+		public const int NULL_REGION = -1;
 
 		// <summary>
 		// Analyses a given map's tiles and ActorPlans and determines the playable space within it.
 		//
 		// Requires a playabilityMap which specifies whether certain tiles are considered playable
 		// or not. Actors are always considered partially playable.
+		//
+		// RegionMap contains the mapping of map positions to Regions. If a map position is not
+		// within a region, the value is NULL_REGION.
 		// </summary>
-		public static (Matrix<int> RegionMask, Region[] Regions, Matrix<Playability> Playable) FindPlayableRegions(
+		public static (Region[] Regions, Matrix<int> RegionMap, Matrix<Playability> Playable) FindPlayableRegions(
 			Map map,
 			List<ActorPlan> actorPlans,
 			Dictionary<TerrainTile, Playability> playabilityMap)
 		{
 			var size = map.MapSize;
 			var regions = new List<Region>();
-			var regionMask = new Matrix<int>(size);
+			var regionMap = new Matrix<int>(size).Fill(NULL_REGION);
 			var playable = new Matrix<Playability>(size);
 			for (var y = 0; y < size.Y; y++)
 			{
@@ -67,14 +71,6 @@ namespace OpenRA.Mods.Common.MapUtils
 				}
 			}
 
-			var externalCircle = new Matrix<bool>(size);
-			var externalCircleCenter = (size - new float2(1.0f, 1.0f)) / 2.0f;
-			var minSpan = Math.Min(size.X, size.Y);
-			externalCircle.DrawCircle(
-				center: externalCircleCenter,
-				radius: minSpan / 2.0f - 1.0f,
-				setTo: (_, _) => true,
-				invert: true);
 			MatrixUtils.ReserveForEntitiesInPlace(
 				playable,
 				actorPlans,
@@ -83,17 +79,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				void AddToRegion(int2 xy, bool fullyPlayable)
 				{
-					regionMask[xy] = region.Id;
+					regionMap[xy] = region.Id;
 					region.Area++;
 					if (fullyPlayable)
 						region.PlayableArea++;
-					if (externalCircle[xy])
-						region.ExternalCircle = true;
 				}
 
 				bool? Filler(int2 xy, bool fullyPlayable, int _)
 				{
-					if (regionMask[xy] == 0)
+					if (regionMap[xy] == NULL_REGION)
 					{
 						if (fullyPlayable && playable[xy] == Playability.Playable)
 						{
@@ -118,21 +112,20 @@ namespace OpenRA.Mods.Common.MapUtils
 				for (var x = 0; x < size.X; x++)
 				{
 					var start = new int2(x, y);
-					if (regionMask[start] == 0 && playable[start] == Playability.Playable)
+					if (regionMap[start] == NULL_REGION && playable[start] == Playability.Playable)
 					{
 						var region = new Region()
 						{
 							Area = 0,
 							PlayableArea = 0,
-							Id = regions.Count + 1,
-							ExternalCircle = false,
+							Id = regions.Count,
 						};
 						regions.Add(region);
 						Fill(region, start);
 					}
 				}
 			}
-			return (regionMask, regions.ToArray(), playable);
+			return (regions.ToArray(), regionMap, playable);
 		}
 	}
 }
