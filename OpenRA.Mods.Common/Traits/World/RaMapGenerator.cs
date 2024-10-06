@@ -60,21 +60,6 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
-		enum Replaceability
-		{
-
-			// Area cannot be replaced by a tile or obstructing entity.
-			None = 0,
-
-			// Area must be replaced by a different tile, and may optionally be given an entity.
-			Tile = 1,
-
-			// Area must be given an entity, but the underlying tile must not change.
-			Entity = 2,
-
-			// Area can be replaced by a tile and/or entity.
-			Any = 3,
-		}
 
 		enum Playability
 		{
@@ -163,195 +148,6 @@ namespace OpenRA.Mods.Common.Traits
 				var endDirection = Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
 				End = new PathTerminal(endType, endDirection);
 				PermittedTemplates = permittedTemplates;
-			}
-		}
-
-		// TODO: Rename to something more generic like "painting template".
-		sealed class Obstacle
-		{
-			public float Weight;
-			public readonly Map map;
-			public readonly ModData modData;
-			readonly List<(int2, TerrainTile)> tiles;
-			readonly List<ActorPlan> entities;
-			int2[] shape;
-
-			public IEnumerable<(int2 XY, TerrainTile Tile)> Tiles => tiles;
-			public IEnumerable<ActorPlan> Entities => entities;
-			public bool HasTiles => tiles.Count != 0;
-			public bool HasEntities => entities.Count != 0;
-			public IEnumerable<int2> Shape => shape;
-			public int Area => shape.Length;
-			public Replaceability Contract()
-			{
-				var hasTiles = tiles.Count != 0;
-				var hasEntities = entities.Count != 0;
-				if (hasTiles && hasEntities)
-					return Replaceability.Any;
-				else if (hasTiles && !hasEntities)
-					return Replaceability.Tile;
-				else if (!hasTiles && hasEntities)
-					return Replaceability.Entity;
-				else
-					throw new ArgumentException("Obstacle has no tiles or entities");
-			}
-
-			public Obstacle(Map map, ModData modData)
-			{
-				Weight = 1.0f;
-				this.map = map;
-				this.modData = modData;
-				tiles = new List<(int2, TerrainTile)>();
-				entities = new List<ActorPlan>();
-				shape = Array.Empty<int2>();
-			}
-
-			Obstacle(Obstacle other)
-			{
-				Weight = other.Weight;
-				map = other.map;
-				modData = other.modData;
-				tiles = other.tiles.ToList();
-				entities = other.entities.ToList();
-				shape = other.shape.ToArray();
-			}
-
-			public Obstacle Clone()
-			{
-				return new Obstacle(this);
-			}
-
-			void UpdateShape()
-			{
-				var xys = new HashSet<int2>();
-
-				foreach (var (xy, _) in tiles)
-				{
-					xys.Add(xy);
-				}
-
-				foreach (var entity in entities)
-				{
-					foreach (var cpos in entity.Footprint())
-					{
-						var mpos = cpos.Key.ToMPos(map);
-						xys.Add(new int2(mpos.U, mpos.V));
-					}
-				}
-
-				shape = xys.OrderBy(xy => (xy.Y, xy.X)).ToArray();
-			}
-
-			// <summary>
-			// Add tiles from a template, optionally with a given offset. By
-			// default, it will be auto-offset such that the first tile is
-			// under (0, 0).
-			// </summary>
-			public Obstacle WithTemplate(ushort templateId, int2? offset = null)
-			{
-				var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
-				var templateInfo = tileset.Templates[templateId];
-				if (templateInfo.PickAny)
-					throw new ArgumentException("PickAny not supported - create separate obstacles instead.");
-				for (var y = 0; y < templateInfo.Size.Y; y++)
-				{
-					for (var x = 0; x < templateInfo.Size.X; x++)
-					{
-						var i = y * templateInfo.Size.X + x;
-						if (templateInfo[i] != null)
-						{
-							if (offset == null)
-								offset = new int2(-x, -y);
-							var tile = new TerrainTile(templateId, (byte)i);
-							tiles.Add((new int2(x, y) + (int2)offset, tile));
-						}
-					}
-				}
-
-				UpdateShape();
-				return this;
-			}
-
-			public Obstacle WithTile(TerrainTile tile)
-			{
-				tiles.Add((new int2(0, 0), tile));
-				UpdateShape();
-				return this;
-			}
-
-			public Obstacle WithEntity(ActorPlan entity)
-			{
-				entities.Add(entity);
-				UpdateShape();
-				return this;
-			}
-
-			public Obstacle WithBackingTile(TerrainTile tile)
-			{
-				if (Area == 0)
-					throw new InvalidOperationException("No entities");
-				foreach (var xy in shape)
-				{
-					tiles.Add((xy, tile));
-				}
-
-				return this;
-			}
-
-			public Obstacle WithWeight(float weight)
-			{
-				Weight = weight;
-				return this;
-			}
-
-			public void Paint(List<ActorPlan> actorPlans, int2 paintXY, Replaceability contract)
-			{
-				switch (contract)
-				{
-					case Replaceability.None:
-						throw new ArgumentException("Cannot paint: Replaceability.None");
-					case Replaceability.Any:
-						if (entities.Count > 0)
-							PaintEntities(actorPlans, paintXY);
-						else if (tiles.Count > 0)
-							PaintTiles(paintXY);
-						else
-							throw new ArgumentException("Cannot paint: no tiles or entities");
-						break;
-					case Replaceability.Tile:
-						if (tiles.Count == 0)
-							throw new ArgumentException("Cannot paint: no tiles");
-						PaintTiles(paintXY);
-						PaintEntities(actorPlans, paintXY);
-						break;
-					case Replaceability.Entity:
-						if (entities.Count == 0)
-							throw new ArgumentException("Cannot paint: no entities");
-						PaintEntities(actorPlans, paintXY);
-						break;
-				}
-			}
-
-			void PaintTiles(int2 paintXY)
-			{
-				foreach (var (xy, tile) in tiles)
-				{
-					var mpos = new MPos(paintXY.X + xy.X, paintXY.Y + xy.Y);
-					if (map.Contains(mpos))
-						map.Tiles[mpos] = tile;
-				}
-			}
-
-			void PaintEntities(List<ActorPlan> actorPlans, int2 paintXY)
-			{
-				foreach (var entity in entities)
-				{
-					var plan = entity.Clone();
-					var paintUV = new MPos(paintXY.X, paintXY.Y);
-					var offset = plan.Location;
-					plan.Location = paintUV.ToCPos(map) + new CVec(offset.X, offset.Y);
-					actorPlans.Add(plan);
-				}
 			}
 		}
 
@@ -540,52 +336,52 @@ namespace OpenRA.Mods.Common.Traits
 			var roughIndex = tileset.GetTerrainIndex("Rough");
 			var waterIndex = tileset.GetTerrainIndex("Water");
 
-			ImmutableArray<Obstacle> forestObstacles;
-			ImmutableArray<Obstacle> unplayableObstacles;
+			ImmutableArray<MultiBrush> forestObstacles;
+			ImmutableArray<MultiBrush> unplayableObstacles;
 			{
-				var basic = new Obstacle(map, modData).WithWeight(1.0f);
+				var basic = new MultiBrush(map, modData).WithWeight(1.0f);
 				var husk = basic.Clone().WithWeight(0.1f);
 				forestObstacles = ImmutableArray.Create(
-					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t02").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t03").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t05").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t06").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t07").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t08").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t10").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t11").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t12").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t13").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t14").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t15").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t16").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "t17").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc01").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc02").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc03").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc04").AlignFootprint()),
-					basic.Clone().WithEntity(new ActorPlan(map, "tc05").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t01.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t02.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t03.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t05.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t06.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t07.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t08.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t10.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t11.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t12.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t13.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t14.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t15.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t16.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "t17.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc01.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc02.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc03.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc04.husk").AlignFootprint()),
-					husk.Clone().WithEntity(new ActorPlan(map, "tc05.husk").AlignFootprint()));
+					basic.Clone().WithActor(new ActorPlan(map, "t01").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t02").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t03").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t05").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t06").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t07").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t10").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t11").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t12").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t13").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t14").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t15").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t16").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "t17").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "tc01").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "tc02").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "tc03").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "tc04").AlignFootprint()),
+					basic.Clone().WithActor(new ActorPlan(map, "tc05").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t01.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t02.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t03.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t05.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t06.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t07.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t08.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t10.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t11.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t12.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t13.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t14.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t15.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t16.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "t17.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "tc01.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "tc02.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "tc03.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "tc04.husk").AlignFootprint()),
+					husk.Clone().WithActor(new ActorPlan(map, "tc05.husk").AlignFootprint()));
 
 				var clear = new TerrainTile(LAND_TILE, 0);
 				unplayableObstacles = ImmutableArray.Create(
@@ -618,24 +414,24 @@ namespace OpenRA.Mods.Common.Traits
 					basic.Clone().WithTemplate(587).WithWeight(0.1f),
 					basic.Clone().WithTemplate(588).WithWeight(0.1f),
 					basic.Clone().WithTemplate(400).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t01").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t02").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t03").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t05").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t06").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t07").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t08").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t10").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t11").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t12").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t13").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t14").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t15").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t16").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithEntity(new ActorPlan(map, "t17").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f));
+					basic.Clone().WithActor(new ActorPlan(map, "t01").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t02").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t03").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t05").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t06").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t07").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t10").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t11").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t12").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t13").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t14").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t15").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t16").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+					basic.Clone().WithActor(new ActorPlan(map, "t17").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f));
 			}
 
-			var replaceabilityMap = new Dictionary<TerrainTile, Replaceability>();
+			var replaceabilityMap = new Dictionary<TerrainTile, MultiBrush.Replaceability>();
 			var playabilityMap = new Dictionary<TerrainTile, Playability>();
 			foreach (var kv in tileset.Templates)
 			{
@@ -664,18 +460,18 @@ namespace OpenRA.Mods.Common.Traits
 
 					if (id == WATER_TILE)
 					{
-						replaceabilityMap[tile] = Replaceability.Tile;
+						replaceabilityMap[tile] = MultiBrush.Replaceability.Tile;
 					}
 					else if (template.Categories.Contains("Cliffs"))
 					{
 						if (type == rockIndex)
-							replaceabilityMap[tile] = Replaceability.None;
+							replaceabilityMap[tile] = MultiBrush.Replaceability.None;
 						else
-							replaceabilityMap[tile] = Replaceability.Entity;
+							replaceabilityMap[tile] = MultiBrush.Replaceability.Actor;
 					}
 					else if (template.Categories.Contains("Beach") || template.Categories.Contains("Road"))
 					{
-						replaceabilityMap[tile] = Replaceability.Tile;
+						replaceabilityMap[tile] = MultiBrush.Replaceability.Tile;
 						if (playabilityMap[tile] == Playability.Unplayable)
 							playabilityMap[tile] = Playability.Partial;
 					}
@@ -870,7 +666,7 @@ namespace OpenRA.Mods.Common.Traits
 					Log.Write("debug", $"mountains: altitude {altitude}: determining eligible area for cliffs");
 
 					// Limit mountain area to the existing mountain space (starting with all available land)
-					var roominess = CalculateRoominess(cliffPlan, true);
+					var roominess = MatrixUtils.ChebyshevRoom(cliffPlan, true);
 					var available = 0;
 					var total = size.X * size.Y;
 					for (var n = 0; n < mountainElevation.Data.Length; n++)
@@ -984,11 +780,11 @@ namespace OpenRA.Mods.Common.Traits
 					}
 				}
 
-				var forestReplace = Matrix<Replaceability>.Zip(
+				var forestReplace = Matrix<MultiBrush.Replaceability>.Zip(
 					forestPlan,
 					IdentifyReplaceableTiles(map, tileset, replaceabilityMap),
-					(a, b) => a ? b : Replaceability.None);
-				ObstructArea(map, actorPlans, forestReplace, forestObstacles, forestTilingRandom);
+					(a, b) => a ? b : MultiBrush.Replaceability.None);
+				MultiBrush.PaintArea(map, actorPlans, forestReplace, forestObstacles, forestTilingRandom);
 			}
 
 			if (enforceSymmetry != 0)
@@ -1015,7 +811,7 @@ namespace OpenRA.Mods.Common.Traits
 						throw new MapGenerationException("ambiguous symmetry policy");
 				}
 
-				var replace = new Matrix<Replaceability>(size);
+				var replace = new Matrix<MultiBrush.Replaceability>(size);
 				Symmetry.RotateAndMirrorOverGridSquares(size, rotations, mirror,
 					(int2[] sources, int2 destination) =>
 					{
@@ -1024,10 +820,10 @@ namespace OpenRA.Mods.Common.Traits
 							.Where(replace.ContainsXY)
 							.Select(source => tileset.GetTerrainIndex(map.Tiles[new MPos(source.X, source.Y)]))
 							.All(source => CheckCompatibility(main, source));
-						replace[destination] = compatible ? Replaceability.None : Replaceability.Entity;
+						replace[destination] = compatible ? MultiBrush.Replaceability.None : MultiBrush.Replaceability.Actor;
 					});
 				Log.Write("debug", "symmatry enforcement: obstructing");
-				ObstructArea(map, actorPlans, replace, forestObstacles, random);
+				MultiBrush.PaintArea(map, actorPlans, replace, forestObstacles, random);
 			}
 
 			var playableArea = new Matrix<bool>(size);
@@ -1049,11 +845,11 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					Log.Write("debug", "obstructing semi-unreachable areas");
 
-					var replace = Matrix<Replaceability>.Zip(
+					var replace = Matrix<MultiBrush.Replaceability>.Zip(
 						regionMask,
 						IdentifyReplaceableTiles(map, tileset, replaceabilityMap),
-						(a, b) => a == largest.Id ? Replaceability.None : b);
-					ObstructArea(map, actorPlans, replace, unplayableObstacles, random);
+						(a, b) => a == largest.Id ? MultiBrush.Replaceability.None : b);
+					MultiBrush.PaintArea(map, actorPlans, replace, unplayableObstacles, random);
 				}
 
 				for (var n = 0; n < playableArea.Data.Length; n++)
@@ -1186,7 +982,7 @@ namespace OpenRA.Mods.Common.Traits
 				Log.Write("debug", "entities: zoning for spawns");
 				for (var iteration = 0; iteration < players; iteration++)
 				{
-					var roominess = CalculateRoominess(zoneable, false)
+					var roominess = MatrixUtils.ChebyshevRoom(zoneable, false)
 						.Foreach((v) => Math.Min(v, spawnRegionSize));
 					var spawnPreference =
 						CalculateSpawnPreferences(
@@ -1267,7 +1063,7 @@ namespace OpenRA.Mods.Common.Traits
 								invert: false);
 						}
 
-						var expansionRoominess = CalculateRoominess(expansionZoneable, false)
+						var expansionRoominess = MatrixUtils.ChebyshevRoom(expansionZoneable, false)
 							.Foreach((v) => Math.Min(v, maximumExpansionSize + expansionBorder));
 						var (chosenXY, chosenValue) = expansionRoominess.FindRandomBest(
 							expansionRandom,
@@ -1324,7 +1120,7 @@ namespace OpenRA.Mods.Common.Traits
 							: 0;
 					for (var i = 0; i < targetBuildingCount; i++)
 					{
-						var roominess = CalculateRoominess(zoneable, false)
+						var roominess = MatrixUtils.ChebyshevRoom(zoneable, false)
 							.Foreach((v) => Math.Min(v, 3));
 						var (chosenXY, chosenValue) = roominess.FindRandomBest(
 							buildingRandom,
@@ -2512,88 +2308,6 @@ namespace OpenRA.Mods.Common.Traits
 			return chirality;
 		}
 
-		static Matrix<int> CalculateRoominess(Matrix<bool> elevations, bool roomyEdges)
-		{
-			var roominess = new Matrix<int>(elevations.Size);
-
-			// This could be more efficient.
-			var next = new List<int2>();
-
-			// Find shores and map boundary
-			for (var cy = 0; cy < elevations.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < elevations.Size.X; cx++)
-				{
-					var pCount = 0;
-					var nCount = 0;
-					for (var oy = -1; oy <= 1; oy++)
-					{
-						for (var ox = -1; ox <= 1; ox++)
-						{
-							var x = cx + ox;
-							var y = cy + oy;
-							if (!elevations.ContainsXY(x, y))
-							{
-								// Boundary
-							}
-							else if (elevations[x, y])
-								pCount++;
-							else
-								nCount++;
-						}
-					}
-
-					if (roomyEdges && nCount + pCount != 9)
-					{
-						continue;
-					}
-
-					if (pCount != 9 && nCount != 9)
-					{
-						roominess[cx, cy] = elevations[cx, cy] ? 1 : -1;
-						next.Add(new int2(cx, cy));
-					}
-				}
-			}
-
-			if (next.Count == 0)
-			{
-				// There were no shores. Use minSpan or -minSpan as appropriate.
-				var minSpan = Math.Min(elevations.Size.X, elevations.Size.Y);
-				roominess.Fill(elevations[0] ? minSpan : -minSpan);
-				return roominess;
-			}
-
-			for (var distance = 2; next.Count != 0; distance++)
-			{
-				var current = next;
-				next = new List<int2>();
-				foreach (var point in current)
-				{
-					var cx = point.X;
-					var cy = point.Y;
-					for (var oy = -1; oy <= 1; oy++)
-					{
-						for (var ox = -1; ox <= 1; ox++)
-						{
-							if (ox == 0 && oy == 0)
-								continue;
-							var x = cx + ox;
-							var y = cy + oy;
-							if (!roominess.ContainsXY(x, y))
-								continue;
-							if (roominess[x, y] != 0)
-								continue;
-							roominess[x, y] = elevations[x, y] ? distance : -distance;
-							next.Add(new int2(x, y));
-						}
-					}
-				}
-			}
-
-			return roominess;
-		}
-
 		static int2[][] MaskPoints(int2[][] pointArrayArray, Matrix<bool> mask)
 		{
 			var newPointArrayArray = new List<int2[]>();
@@ -2649,139 +2363,15 @@ namespace OpenRA.Mods.Common.Traits
 			return newPointArrayArray.ToArray();
 		}
 
-		static void ObstructArea(Map map, List<ActorPlan> actorPlans, Matrix<Replaceability> replace, IReadOnlyList<Obstacle> permittedObstacles, MersenneTwister random)
+		static Matrix<MultiBrush.Replaceability> IdentifyReplaceableTiles(Map map, ITemplatedTerrainInfo tileset, Dictionary<TerrainTile, MultiBrush.Replaceability> replaceabilityMap)
 		{
-			var obstaclesByAreaDict = new Dictionary<int, List<Obstacle>>();
-			foreach (var obstacle in permittedObstacles)
-			{
-				if (!obstaclesByAreaDict.ContainsKey(obstacle.Area))
-					obstaclesByAreaDict.Add(obstacle.Area, new List<Obstacle>());
-				obstaclesByAreaDict[obstacle.Area].Add(obstacle);
-			}
-
-			var obstaclesByArea = obstaclesByAreaDict
-				.OrderBy(kv => -kv.Key)
-				.ToList();
-			var obstacleTotalArea = permittedObstacles.Sum(t => t.Area);
-			var obstacleTotalWeight = permittedObstacles.Sum(t => t.Weight);
-
-			// Give 1-by-1 entities the final pass, as they are most flexible.
-			obstaclesByArea.Add(
-				new KeyValuePair<int, List<Obstacle>>(
-					1,
-					permittedObstacles.Where(o => o.HasEntities && o.Area == 1).ToList()));
-			var size = map.MapSize;
-			var replaceIndices = new int[replace.Data.Length];
-			var remaining = new Matrix<bool>(size);
-			var replaceArea = 0;
-			for (var n = 0; n < replace.Data.Length; n++)
-			{
-				if (replace[n] != Replaceability.None)
-				{
-					remaining[n] = true;
-					replaceIndices[replaceArea] = n;
-					replaceArea++;
-				}
-				else
-				{
-					remaining[n] = false;
-				}
-			}
-
-			var indices = new int[replace.Data.Length];
-			int indexCount;
-
-			void RefreshIndices()
-			{
-				indexCount = 0;
-				// TODO: Why is this array not truncated? Why is it even done this way?
-				foreach (var n in replaceIndices)
-				{
-					if (remaining[n])
-					{
-						indices[indexCount] = n;
-						indexCount++;
-					}
-				}
-
-				random.ShuffleInPlace(indices, 0, indexCount);
-			}
-
-			Replaceability ReserveShape(int2 paintXY, IEnumerable<int2> shape, Replaceability contract)
-			{
-				foreach (var shapeXY in shape)
-				{
-					var xy = paintXY + shapeXY;
-					if (!replace.ContainsXY(xy))
-						continue;
-					if (!remaining[xy])
-					{
-						// Can't reserve - not the right shape
-						return Replaceability.None;
-					}
-
-					contract &= replace[xy];
-					if (contract == Replaceability.None)
-					{
-						// Can't reserve - obstruction choice doesn't comply
-						// with replaceability of original tiles.
-						return Replaceability.None;
-					}
-				}
-
-				// Can reserve. Commit.
-				foreach (var shapeXY in shape)
-				{
-					var xy = paintXY + shapeXY;
-					if (!replace.ContainsXY(xy))
-						continue;
-
-					remaining[xy] = false;
-				}
-
-				return contract;
-			}
-
-			foreach (var obstaclesKv in obstaclesByArea)
-			{
-				var obstacles = obstaclesKv.Value;
-				if (obstacles.Count == 0)
-					continue;
-
-				var obstacleArea = obstacles[0].Area;
-				var obstacleWeights = obstacles.Select(o => o.Weight).ToArray();
-				var obstacleWeightForArea = obstacleWeights.Sum();
-				var remainingQuota =
-					obstacleArea == 1
-						? int.MaxValue
-						: (int)Math.Ceiling(replaceArea * obstacleWeightForArea / obstacleTotalWeight);
-				RefreshIndices();
-				foreach (var n in indices)
-				{
-					var obstacle = obstacles[random.PickWeighted(obstacleWeights)];
-					var paintXY = replace.XY(n);
-					var contract = ReserveShape(paintXY, obstacle.Shape, obstacle.Contract());
-					if (contract != Replaceability.None)
-					{
-						obstacle.Paint(actorPlans, paintXY, contract);
-					}
-
-					remainingQuota -= obstacleArea;
-					if (remainingQuota <= 0)
-						break;
-				}
-			}
-		}
-
-		static Matrix<Replaceability> IdentifyReplaceableTiles(Map map, ITemplatedTerrainInfo tileset, Dictionary<TerrainTile, Replaceability> replaceabilityMap)
-		{
-			var output = new Matrix<Replaceability>(map.MapSize);
+			var output = new Matrix<MultiBrush.Replaceability>(map.MapSize);
 
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
 				var tile = map.Tiles[mpos];
-				var replaceability = Replaceability.Any;
+				var replaceability = MultiBrush.Replaceability.Any;
 				if (replaceabilityMap.TryGetValue(tile, out var value))
 					replaceability = value;
 				output[mpos.U, mpos.V] = replaceability;

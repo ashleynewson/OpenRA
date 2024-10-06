@@ -694,5 +694,92 @@ namespace OpenRA.Mods.Common.MapUtils
 				matrix[i] += adjustment;
 			}
 		}
+
+		// <summary>
+		// For true cells, gives the Chebyshev distance to the closest false cell.
+		// For false cells, gives the Chebyshev distance to the closest true cell as a negative.
+		// outsideValue specifies whether the outside of the matrix is considered true or false.
+		// </summary>
+		public static Matrix<int> ChebyshevRoom(Matrix<bool> input, bool outsideValue)
+		{
+			var roominess = new Matrix<int>(input.Size);
+
+			// This could be more efficient.
+			var next = new List<int2>();
+
+			// Find shores and map boundary
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					var pCount = 0;
+					var nCount = 0;
+					for (var oy = -1; oy <= 1; oy++)
+					{
+						for (var ox = -1; ox <= 1; ox++)
+						{
+							var x = cx + ox;
+							var y = cy + oy;
+							if (!input.ContainsXY(x, y))
+							{
+								// Boundary
+							}
+							else if (input[x, y])
+								pCount++;
+							else
+								nCount++;
+						}
+					}
+
+					if (outsideValue && nCount + pCount != 9)
+					{
+						continue;
+					}
+
+					if (pCount != 9 && nCount != 9)
+					{
+						roominess[cx, cy] = input[cx, cy] ? 1 : -1;
+						next.Add(new int2(cx, cy));
+					}
+				}
+			}
+
+			if (next.Count == 0)
+			{
+				// There were no shores. Use minSpan or -minSpan as appropriate.
+				var minSpan = Math.Min(input.Size.X, input.Size.Y);
+				roominess.Fill(input[0] ? minSpan : -minSpan);
+				return roominess;
+			}
+
+			for (var distance = 2; next.Count != 0; distance++)
+			{
+				var current = next;
+				next = new List<int2>();
+				foreach (var point in current)
+				{
+					var cx = point.X;
+					var cy = point.Y;
+					for (var oy = -1; oy <= 1; oy++)
+					{
+						for (var ox = -1; ox <= 1; ox++)
+						{
+							if (ox == 0 && oy == 0)
+								continue;
+							var x = cx + ox;
+							var y = cy + oy;
+							if (!roominess.ContainsXY(x, y))
+								continue;
+							if (roominess[x, y] != 0)
+								continue;
+							roominess[x, y] = input[x, y] ? distance : -distance;
+							next.Add(new int2(x, y));
+						}
+					}
+				}
+			}
+
+			return roominess;
+		}
 	}
 }
