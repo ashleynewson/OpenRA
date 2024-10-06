@@ -58,29 +58,6 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
-
-		enum Playability
-		{
-			// Area is unplayable by land/naval units.
-			Unplayable = 0,
-
-			// Area is unplayable by land/naval units, but should count as
-			// being "within" a playable region. This usually applies to random
-			// rock or river tiles in largely passable templates.
-			Partial = 1,
-
-			// Area is playable by either land or naval units.
-			Playable = 2,
-		}
-
-		sealed class Region
-		{
-			public int Area;
-			public int PlayableArea;
-			public int Id;
-			public bool ExternalCircle;
-		}
-
 		public IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData)
 		{
 			return ImmutableList.Create(
@@ -354,7 +331,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			var replaceabilityMap = new Dictionary<TerrainTile, MultiBrush.Replaceability>();
-			var playabilityMap = new Dictionary<TerrainTile, Playability>();
+			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
 			foreach (var kv in tileset.Templates)
 			{
 				var id = kv.Key;
@@ -373,11 +350,11 @@ namespace OpenRA.Mods.Common.Traits
 						type == roughIndex ||
 						type == waterIndex)
 					{
-						playabilityMap[tile] = Playability.Playable;
+						playabilityMap[tile] = PlayableSpace.Playability.Playable;
 					}
 					else
 					{
-						playabilityMap[tile] = Playability.Unplayable;
+						playabilityMap[tile] = PlayableSpace.Playability.Unplayable;
 					}
 
 					if (id == WATER_TILE)
@@ -394,8 +371,8 @@ namespace OpenRA.Mods.Common.Traits
 					else if (template.Categories.Contains("Beach") || template.Categories.Contains("Road"))
 					{
 						replaceabilityMap[tile] = MultiBrush.Replaceability.Tile;
-						if (playabilityMap[tile] == Playability.Unplayable)
-							playabilityMap[tile] = Playability.Partial;
+						if (playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
+							playabilityMap[tile] = PlayableSpace.Playability.Partial;
 					}
 				}
 			}
@@ -515,12 +492,12 @@ namespace OpenRA.Mods.Common.Traits
 						"Beach",
 						beachPermittedTemplates);
 					tiledBeaches[i] =
-						beachPath.TilePath(map, beachTilingRandom)
+						beachPath.Tile(map, beachTilingRandom)
 							?? throw new MapGenerationException("Could not fit tiles for beach");
 				}
 
 				Log.Write("debug", "filling water");
-				var beachChirality = PointsChirality(size, tiledBeaches);
+				var beachChirality = MatrixUtils.PointsChirality(size, tiledBeaches);
 				foreach (var cell in map.AllCells)
 				{
 					var mpos = cell.ToMPos(map);
@@ -577,7 +554,7 @@ namespace OpenRA.Mods.Common.Traits
 							"Clear",
 							"Clear",
 							nonLoopedCliffPermittedTemplates);
-					if (cliffPath.TilePath(map, cliffTilingRandom) == null)
+					if (cliffPath.Tile(map, cliffTilingRandom) == null)
 						throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
 				}
 			}
@@ -659,7 +636,7 @@ namespace OpenRA.Mods.Common.Traits
 								"Clear",
 								"Clear",
 								nonLoopedCliffPermittedTemplates);
-						if (cliffPath.TilePath(map, cliffTilingRandom) == null)
+						if (cliffPath.Tile(map, cliffTilingRandom) == null)
 							throw new MapGenerationException("Could not fit tiles for cliffs");
 					}
 				}
@@ -781,8 +758,8 @@ namespace OpenRA.Mods.Common.Traits
 			var playableArea = new Matrix<bool>(size);
 			{
 				Log.Write("debug", "determining playable regions");
-				var (regionMask, regions, playability) = FindPlayableRegions(map, actorPlans, playabilityMap);
-				Region largest = null;
+				var (regionMask, regions, playability) = PlayableSpace.FindPlayableRegions(map, actorPlans, playabilityMap);
+				PlayableSpace.Region largest = null;
 				foreach (var region in regions)
 				{
 					if (externalCircularBias > 0 && region.ExternalCircle)
@@ -806,7 +783,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				for (var n = 0; n < playableArea.Data.Length; n++)
 				{
-					playableArea[n] = playability[n] == Playability.Playable && regionMask[n] == largest.Id;
+					playableArea[n] = playability[n] == PlayableSpace.Playability.Playable && regionMask[n] == largest.Id;
 				}
 			}
 
@@ -883,7 +860,7 @@ namespace OpenRA.Mods.Common.Traits
 						"Clear",
 						roadPermittedTemplates);
 
-					if (path.TilePath(map, roadTilingRandom) == null)
+					if (path.Tile(map, roadTilingRandom) == null)
 						throw new MapGenerationException("Could not fit tiles for roads");
 				}
 			}
@@ -1747,79 +1724,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		static Matrix<sbyte> PointsChirality(int2 size, int2[][] pointArrayArray)
-		{
-			var chirality = new Matrix<sbyte>(size);
-			var next = new List<int2>();
-			void SeedChirality(int2 point, sbyte value, bool firstPass)
-			{
-				if (!chirality.ContainsXY(point))
-					return;
-				if (firstPass)
-				{
-					// Some paths which overlap or go back on themselves
-					// might fight for chirality. Vote on it.
-					chirality[point] += value;
-				}
-				else
-				{
-					if (chirality[point] != 0)
-						return;
-					chirality[point] = value;
-				}
-
-				next.Add(point);
-			}
-
-			foreach (var pointArray in pointArrayArray)
-			{
-				for (var i = 1; i < pointArray.Length; i++)
-				{
-					var from = pointArray[i - 1];
-					var to = pointArray[i];
-					var direction = Direction.FromOffset(to - from);
-					var fx = from.X;
-					var fy = from.Y;
-					switch (direction)
-					{
-						case Direction.R:
-							SeedChirality(new int2(fx    , fy    ),  1, true);
-							SeedChirality(new int2(fx    , fy - 1), -1, true);
-							break;
-						case Direction.D:
-							SeedChirality(new int2(fx - 1, fy    ),  1, true);
-							SeedChirality(new int2(fx    , fy    ), -1, true);
-							break;
-						case Direction.L:
-							SeedChirality(new int2(fx - 1, fy - 1),  1, true);
-							SeedChirality(new int2(fx - 1, fy    ), -1, true);
-							break;
-						case Direction.U:
-							SeedChirality(new int2(fx    , fy - 1),  1, true);
-							SeedChirality(new int2(fx - 1, fy - 1), -1, true);
-							break;
-						default:
-							throw new ArgumentException("Unsupported direction for chirality");
-					}
-				}
-			}
-
-			while (next.Count != 0)
-			{
-				var current = next;
-				next = new List<int2>();
-				foreach (var point in current)
-				{
-					foreach (var offset in Direction.SPREAD4)
-					{
-						SeedChirality(point + offset, chirality[point], false);
-					}
-				}
-			}
-
-			return chirality;
-		}
-
 		static int2[][] MaskPoints(int2[][] pointArrayArray, Matrix<bool> mask)
 		{
 			var newPointArrayArray = new List<int2[]>();
@@ -1892,88 +1796,6 @@ namespace OpenRA.Mods.Common.Traits
 			return output;
 		}
 
-
-		static (Matrix<int> RegionMask, Region[] Regions, Matrix<Playability> Playable) FindPlayableRegions(Map map, List<ActorPlan> actorPlans, Dictionary<TerrainTile, Playability> playabilityMap)
-		{
-			var size = map.MapSize;
-			var regions = new List<Region>();
-			var regionMask = new Matrix<int>(size);
-			var playable = new Matrix<Playability>(size);
-			for (var y = 0; y < size.Y; y++)
-			{
-				for (var x = 0; x < size.X; x++)
-				{
-					playable[x, y] = playabilityMap[map.Tiles[new MPos(x, y)]];
-				}
-			}
-
-			var externalCircle = new Matrix<bool>(size);
-			var externalCircleCenter = (size - new float2(1.0f, 1.0f)) / 2.0f;
-			var minSpan = Math.Min(size.X, size.Y);
-			externalCircle.DrawCircle(
-				center: externalCircleCenter,
-				radius: minSpan / 2.0f - 1.0f,
-				setTo: (_, _) => true,
-				invert: true);
-			MatrixUtils.ReserveForEntitiesInPlace(
-				playable,
-				actorPlans,
-				(old) => old == Playability.Playable ? Playability.Partial : old);
-			void Fill(Region region, int2 start)
-			{
-				void AddToRegion(int2 xy, bool fullyPlayable)
-				{
-					regionMask[xy] = region.Id;
-					region.Area++;
-					if (fullyPlayable)
-						region.PlayableArea++;
-					if (externalCircle[xy])
-						region.ExternalCircle = true;
-				}
-
-				bool? Filler(int2 xy, bool fullyPlayable, int _)
-				{
-					if (regionMask[xy] == 0)
-					{
-						if (fullyPlayable && playable[xy] == Playability.Playable)
-						{
-							AddToRegion(xy, true);
-							return true;
-						}
-						else if (playable[xy] == Playability.Partial)
-						{
-							AddToRegion(xy, false);
-							return false;
-						}
-					}
-
-					return null;
-				}
-
-				MatrixUtils.FloodFill(size, new[] { (start, true, Direction.NONE) }, Filler, Direction.SPREAD4_D);
-			}
-
-			for (var y = 0; y < size.Y; y++)
-			{
-				for (var x = 0; x < size.X; x++)
-				{
-					var start = new int2(x, y);
-					if (regionMask[start] == 0 && playable[start] == Playability.Playable)
-					{
-						var region = new Region()
-						{
-							Area = 0,
-							PlayableArea = 0,
-							Id = regions.Count + 1,
-							ExternalCircle = false,
-						};
-						regions.Add(region);
-						Fill(region, start);
-					}
-				}
-			}
-			return (regionMask, regions.ToArray(), playable);
-		}
 
 		static Matrix<byte> RemoveJunctionsFromDirectionMap(Matrix<byte> input)
 		{
