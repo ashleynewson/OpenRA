@@ -154,19 +154,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			Templates = permittedTemplates;
 		}
 
-		public void UpdateTerminalDirections(Terminal start, Terminal end)
-		{
-			if (Points != null)
-			{
-			}
-			else
-			{
-				Start.Direction = Direction.NONE;
-				End.Direction = Direction.NONE;
-			}
-		}
-
-		private sealed class TilePathSegment
+		sealed class TilingSegment
 		{
 			public readonly TerrainTemplateInfo TemplateInfo;
 			public readonly TemplateSegment TemplateSegment;
@@ -179,7 +167,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			public readonly int[] DirectionMasks;
 			public readonly int[] ReverseDirectionMasks;
 
-			public TilePathSegment(TerrainTemplateInfo templateInfo, TemplateSegment templateSegment, int startId, int endId)
+			public TilingSegment(TerrainTemplateInfo templateInfo, TemplateSegment templateSegment, int startId, int endId)
 			{
 				TemplateInfo = templateInfo;
 				TemplateSegment = templateSegment;
@@ -196,13 +184,13 @@ namespace OpenRA.Mods.Common.MapUtils
 				ReverseDirectionMasks = new int[RelativePoints.Length];
 
 				// Last point has no direction.
-				Directions[^1] = MapUtils.Direction.NONE;
+				Directions[^1] = Direction.NONE;
 				DirectionMasks[^1] = 0;
 				ReverseDirectionMasks[^1] = 0;
 				for (var i = 0; i < RelativePoints.Length - 1; i++)
 				{
 					var direction = Direction.FromOffset(RelativePoints[i + 1] - RelativePoints[i]);
-					if (direction == MapUtils.Direction.NONE)
+					if (direction == Direction.NONE)
 						throw new ArgumentException("TemplateSegment has duplicate points in sequence");
 					Directions[i] = direction;
 					DirectionMasks[i] = 1 << direction;
@@ -348,8 +336,8 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			const int MAX_SCORE = int.MaxValue;
 			var segmentTypeToId = new Dictionary<string, int>();
-			var segmentsByStart = new List<List<TilePathSegment>>();
-			var segmentsByEnd = new List<List<TilePathSegment>>();
+			var segmentsByStart = new List<List<TilingSegment>>();
+			var segmentsByEnd = new List<List<TilingSegment>>();
 			var scores = new List<Matrix<int>>();
 			{
 				void RegisterSegmentType(string type)
@@ -357,8 +345,8 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (segmentTypeToId.ContainsKey(type)) return;
 					var newId = segmentTypeToId.Count;
 					segmentTypeToId.Add(type, newId);
-					segmentsByStart.Add(new List<TilePathSegment>());
-					segmentsByEnd.Add(new List<TilePathSegment>());
+					segmentsByStart.Add(new List<TilingSegment>());
+					segmentsByEnd.Add(new List<TilingSegment>());
 					scores.Add(new Matrix<int>(size).Fill(MAX_SCORE));
 				}
 
@@ -370,7 +358,7 @@ namespace OpenRA.Mods.Common.MapUtils
 						RegisterSegmentType(segment.End);
 						var startTypeId = segmentTypeToId[segment.Start];
 						var endTypeId = segmentTypeToId[segment.End];
-						var tilePathSegment = new TilePathSegment(template, segment, startTypeId, endTypeId);
+						var tilePathSegment = new TilingSegment(template, segment, startTypeId, endTypeId);
 						segmentsByStart[startTypeId].Add(tilePathSegment);
 						segmentsByEnd[endTypeId].Add(tilePathSegment);
 					}
@@ -403,7 +391,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			// Lower (closer to zero) scores are better matches.
 			// Higher scores are worse matches.
 			// MAX_SCORE means totally unacceptable.
-			int ScoreSegment(TilePathSegment segment, int2 from)
+			int ScoreSegment(TilingSegment segment, int2 from)
 			{
 				if (from == pathStart)
 				{
@@ -540,7 +528,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			(int2 From, int FromTypeId) TraceBackStep(int2 to, int toTypeId)
 			{
 				var toScore = scores[toTypeId][to];
-				var candidates = new List<TilePathSegment>();
+				var candidates = new List<TilingSegment>();
 				foreach (var segment in segmentsByEnd[toTypeId])
 				{
 					var from = to - segment.Moves;
@@ -606,7 +594,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			return resultPoints.ToArray();
 		}
 
-		private static void PaintTemplate(Map map, int2 at, TerrainTemplateInfo template)
+		static void PaintTemplate(Map map, int2 at, TerrainTemplateInfo template)
 		{
 			if (template.PickAny)
 				throw new ArgumentException("PaintTemplate does not expect PickAny");
