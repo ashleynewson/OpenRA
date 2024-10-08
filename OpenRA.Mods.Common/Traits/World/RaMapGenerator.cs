@@ -485,15 +485,18 @@ namespace OpenRA.Mods.Common.Traits
 				var tiledBeaches = new int2[beaches.Length][];
 				for (var i = 0; i < beaches.Length; i++)
 				{
-					var tweakedPoints = TweakPathPoints(beaches[i], size);
 					var beachPath = new TilingPath(
-						tweakedPoints,
+						map,
+						beaches[i],
 						(minimumLandSeaThickness - 1) / 2,
 						"Beach",
 						"Beach",
 						beachPermittedTemplates);
+					beachPath
+						.ExtendEdge(4)
+						.OptimizeLoop();
 					tiledBeaches[i] =
-						beachPath.Tile(map, beachTilingRandom)
+						beachPath.Tile(beachTilingRandom)
 							?? throw new MapGenerationException("Could not fit tiles for beach");
 				}
 
@@ -538,24 +541,28 @@ namespace OpenRA.Mods.Common.Traits
 				var cliffs = MatrixUtils.BordersToPoints(cliffRing);
 				foreach (var cliff in cliffs)
 				{
-					var tweakedPoints = TweakPathPoints(cliff, size);
-					var isLoop = tweakedPoints[0] == tweakedPoints[^1];
+					var isLoop = cliff[0] == cliff[^1];
 					TilingPath cliffPath;
 					if (isLoop)
 						cliffPath = new TilingPath(
-							tweakedPoints,
+							map,
+							cliff,
 							(minimumMountainThickness - 1) / 2,
 							"Cliff",
 							"Cliff",
 							loopedCliffPermittedTemplates);
 					else
 						cliffPath = new TilingPath(
-							tweakedPoints,
+							map,
+							cliff,
 							(minimumMountainThickness - 1) / 2,
 							"Clear",
 							"Clear",
 							nonLoopedCliffPermittedTemplates);
-					if (cliffPath.Tile(map, cliffTilingRandom) == null)
+					cliffPath
+						.ExtendEdge(4)
+						.OptimizeLoop();
+					if (cliffPath.Tile(cliffTilingRandom) == null)
 						throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
 				}
 			}
@@ -620,24 +627,28 @@ namespace OpenRA.Mods.Common.Traits
 					Log.Write("debug", $"mountains: altitude {altitude}: fitting and laying tiles");
 					foreach (var cliff in cliffs)
 					{
-						var tweakedPoints = TweakPathPoints(cliff, size);
-						var isLoop = tweakedPoints[0] == tweakedPoints[^1];
+						var isLoop = cliff[0] == cliff[^1];
 						TilingPath cliffPath;
 						if (isLoop)
 							cliffPath = new TilingPath(
-								tweakedPoints,
+								map,
+								cliff,
 								(minimumMountainThickness - 1) / 2,
 								"Cliff",
 								"Cliff",
 								loopedCliffPermittedTemplates);
 						else
 							cliffPath = new TilingPath(
-								tweakedPoints,
+								map,
+								cliff,
 								(minimumMountainThickness - 1) / 2,
 								"Clear",
 								"Clear",
 								nonLoopedCliffPermittedTemplates);
-						if (cliffPath.Tile(map, cliffTilingRandom) == null)
+						cliffPath
+							.ExtendEdge(4)
+							.OptimizeLoop();
+						if (cliffPath.Tile(cliffTilingRandom) == null)
 							throw new MapGenerationException("Could not fit tiles for cliffs");
 					}
 				}
@@ -854,30 +865,32 @@ namespace OpenRA.Mods.Common.Traits
 
 				foreach (var pointArray in pointArrays)
 				{
-					var shrunk = ShrinkPointArray(pointArray, 4, 12);
-					if (shrunk == null)
-						continue;
-					var extended = InertiallyExtendPathInPlace(shrunk, 2, 8);
-					var tweaked = TweakPathPoints(extended, size);
-
-					// Roads that are _almost_ vertical or horizontal tile badly.
-					// Filter them out.
-					var minX = tweaked.Min((p) => p.X);
-					var minY = tweaked.Min((p) => p.Y);
-					var maxX = tweaked.Max((p) => p.X);
-					var maxY = tweaked.Max((p) => p.Y);
-					if (maxX - minX < 6 || maxY - minY < 6)
-						continue;
-
 					// Currently, never looped.
 					var path = new TilingPath(
-						tweaked,
+						map,
+						pointArray,
 						roadSpacing - 1,
 						"Clear",
 						"Clear",
 						roadPermittedTemplates);
+					path
+						.Shrink(4, 12)
+						.InertiallyExtend(2, 8)
+						.ExtendEdge(4);
 
-					if (path.Tile(map, roadTilingRandom) == null)
+					// Shrinking may have deleted the path.
+					if (path.Points == null)
+						continue;
+
+					// Roads that are _almost_ vertical or horizontal tile badly. Filter them out.
+					var minX = path.Points.Min((p) => p.X);
+					var minY = path.Points.Min((p) => p.Y);
+					var maxX = path.Points.Max((p) => p.X);
+					var maxY = path.Points.Max((p) => p.Y);
+					if (maxX - minX < 6 || maxY - minY < 6)
+						continue;
+
+					if (path.Tile(roadTilingRandom) == null)
 						throw new MapGenerationException("Could not fit tiles for roads");
 				}
 			}
@@ -1511,110 +1524,6 @@ namespace OpenRA.Mods.Common.Traits
 			return (thinnest, changes);
 		}
 
-		// <summary>
-		// Modifies a points (for a path) to be easier to tile.
-		// For loops, the points are made to start and end within the longest straight.
-		// For map edge-connected paths, the path is extended beyond the edge.
-		static int2[] TweakPathPoints(int2[] points, int2 size)
-		{
-			var len = points.Length;
-			var last = len - 1;
-			if (points[0].X == points[last].X && points[0].Y == points[last].Y)
-			{
-				// Closed loop. Find the longest straight
-				// (nrlen excludes the repeated point at the end.)
-				var nrlen = len - 1;
-				var prevDim = -1;
-				var scanStart = -1;
-				var bestScore = -1;
-				var bestBend = -1;
-				var prevBend = -1;
-				var prevI = 0;
-				for (var i = 1; ; i++)
-				{
-					if (i == nrlen)
-						i = 0;
-					var dim = points[i].X == points[prevI].X ? 1 : 0;
-					if (prevDim != -1 && prevDim != dim)
-					{
-						if (scanStart == -1)
-						{
-							// This is technically just after the bend. But that's fine.
-							scanStart = i;
-						}
-						else
-						{
-							var score = prevI - prevBend;
-							if (score < 0)
-								score += nrlen;
-
-							if (score > bestScore)
-							{
-								bestBend = prevBend;
-								bestScore = score;
-							}
-
-							if (i == scanStart)
-							{
-								break;
-							}
-						}
-
-						prevBend = prevI;
-					}
-
-					prevDim = dim;
-					prevI = i;
-				}
-
-				var favouritePoint = (bestBend + (bestScore >> 1)) % nrlen;
-
-				// Repeat the start at the end.
-				// [...points.slice(favouritePoint, nrlen), ...points.slice(0, favouritePoint + 1)];
-				var tweaked = new int2[points.Length];
-				Array.Copy(points, favouritePoint, tweaked, 0, nrlen - favouritePoint);
-				Array.Copy(points, 0, tweaked, nrlen - favouritePoint, favouritePoint + 1);
-				return tweaked;
-			}
-			else
-			{
-				// Not a loop.
-				int2[] Extend(int2 point, int extensionLength)
-				{
-					var ox = (point.X == 0) ? -1
-						: (point.X == size.X) ? 1
-						: 0;
-					var oy = (point.Y == 0) ? -1
-						: (point.Y == size.Y) ? 1
-						: 0;
-					if (ox == 0 && oy == 0)
-						return Array.Empty<int2>(); // We're not on an edge, so don't extend.
-					var offset = new int2(ox, oy);
-
-					var extension = new int2[extensionLength];
-					var newPoint = point;
-					for (var i = 0; i < extensionLength; i++)
-					{
-						newPoint += offset;
-						extension[i] = newPoint;
-					}
-
-					return extension;
-				}
-
-				// Open paths. Extend if beyond edges.
-				var startExt = Extend(points[0], /*extensionLength=*/4).Reverse().ToArray();
-				var endExt = Extend(points[last], /*extensionLength=*/4);
-
-				// [...startExt, ...points, ...endExt];
-				var tweaked = new int2[points.Length + startExt.Length + endExt.Length];
-				Array.Copy(startExt, 0, tweaked, 0, startExt.Length);
-				Array.Copy(points, 0, tweaked, startExt.Length, points.Length);
-				Array.Copy(endExt, 0, tweaked, points.Length + startExt.Length, endExt.Length);
-				return tweaked;
-			}
-		}
-
 		static int2[][] MaskPoints(int2[][] pointArrayArray, Matrix<bool> mask)
 		{
 			var newPointArrayArray = new List<int2[]>();
@@ -1817,40 +1726,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return outputs.ToArray();
-		}
-
-		// No loop support.
-		// May return null.
-		static int2[] ShrinkPointArray(int2[] points, int shrinkBy, int minimumLength)
-		{
-			if (minimumLength <= 1)
-				throw new ArgumentException("minimumLength must be greater than 1");
-			if (points.Length < shrinkBy * 2 + minimumLength)
-				return null;
-			return points[shrinkBy..(points.Length - shrinkBy)];
-		}
-
-		static int2[] InertiallyExtendPathInPlace(int2[] points, int extension, int inertialRange)
-		{
-			if (inertialRange > points.Length - 1)
-				inertialRange = points.Length - 1;
-			var sd = Direction.FromOffsetNonDiagonal(points[inertialRange] - points[0]);
-			var ed = Direction.FromOffsetNonDiagonal(points[^1] - points[^(inertialRange + 1)]);
-			var newPoints = new int2[points.Length + extension * 2];
-
-			for (var i = 0; i < extension; i++)
-			{
-				newPoints[i] = points[0] - Direction.ToOffset(sd) * (extension - i);
-			}
-
-			Array.Copy(points, 0, newPoints, extension, points.Length);
-
-			for (var i = 0; i < extension; i++)
-			{
-				newPoints[extension + points.Length + i] = points[^1] + Direction.ToOffset(ed) * (i + 1);
-			}
-
-			return newPoints;
 		}
 
 		static Matrix<int> CalculateSpawnPreferences(Matrix<int> roominess, float centralReservation, int spawnRegionSize, int rotations, Symmetry.Mirror mirror)
