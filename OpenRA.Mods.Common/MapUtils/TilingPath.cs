@@ -23,21 +23,32 @@ namespace OpenRA.Mods.Common.MapUtils
 	public sealed class TilingPath
 	{
 		// <summary>Describes the type and direction of the start or end of a TilingPath.</summary>
-		public readonly struct Terminal
+		public struct Terminal
 		{
-			public readonly string Type;
-			public readonly int Direction;
+			public string Type;
+
+			// <summary>
+			// Direction to use for this terminal.
+			//
+			// If the direction here is null, it will be determined automatically later.
+			// </summary>
+			public int? Direction;
 
 			// <summary>
 			// A string which can match the format used by
 			// OpenRA.Mods.Common.Terrain.TemplateSegment's Start or End.
 			// </summary>
-			public string SegmentType
+			public readonly string SegmentType
 			{
-				get => $"{Type}.{MapUtils.Direction.ToString(Direction)}";
+				get
+				{
+					var direction = Direction
+						?? throw new InvalidOperationException("Direction is null");
+					return $"{Type}.{MapUtils.Direction.ToString(direction)}";
+				}
 			}
 
-			public Terminal(string type, int direction)
+			public Terminal(string type, int? direction)
 			{
 				Type = type;
 				Direction = direction;
@@ -91,42 +102,68 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
+		public Map Map;
+
 		// <summary>
 		// Target point sequence to fit TemplateSegments to.
 		//
-		// Must have at least two points.
+		// If null, Tiling will be a no-op.
+		//
+		// If non-null, must have at least two points.
 		//
 		// A loop must have the start and end points equal.
 		// </summary>
 		public int2[] Points;
+
 		// <summary>
 		// Maximum permitted Chebychev distance that layed TemplateSegments may be from the
 		// specified points.
 		// </summary>
 		public int MaxDeviation;
+
+		// <summary>
+		// Stores start type and direction.
+		// </summary>
 		public Terminal Start;
+
+		// <summary>
+		// Stores end type and direction.
+		// </summary>
 		public Terminal End;
 		public PermittedTemplates Templates;
+
 		// <summary>Whether the start and end points are the same.</summary>
 		public bool IsLoop
 		{
-			get => Points[0] == Points[^1];
+			get => Points != null && Points[0] == Points[^1];
 		}
 
 		public TilingPath(
+			Map map,
 			int2[] points,
 			int maxDeviation,
 			string startType,
 			string endType,
 			PermittedTemplates permittedTemplates)
 		{
+			Map = map;
 			Points = points;
 			MaxDeviation = maxDeviation;
-			var startDirection = Direction.FromOffset(Points[1] - Points[0]);
-			Start = new Terminal(startType, startDirection);
-			var endDirection = Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
-			End = new Terminal(endType, endDirection);
+			Start = new Terminal(startType, null);
+			End = new Terminal(endType, null);
 			Templates = permittedTemplates;
+		}
+
+		public void UpdateTerminalDirections(Terminal start, Terminal end)
+		{
+			if (Points != null)
+			{
+			}
+			else
+			{
+				Start.Direction = Direction.NONE;
+				End.Direction = Direction.NONE;
+			}
 		}
 
 		private sealed class TilePathSegment
@@ -180,8 +217,16 @@ namespace OpenRA.Mods.Common.MapUtils
 		// If the path could be tiled, returns the sequence of points actually traversed by the
 		// chosen TemplateSegments. Returns null if the path could not be tiled within constraints.
 		// </summary>
-		public int2[] Tile(Map map, MersenneTwister random)
+		public int2[] Tile(MersenneTwister random)
 		{
+			if (Points == null)
+				return null;
+
+			var start = Start;
+			var end = End;
+			start.Direction ??= Direction.FromOffset(Points[1] - Points[0]);
+			end.Direction ??= Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
+
 			var minPoint = new int2(
 				Points.Min(p => p.X) - MaxDeviation,
 				Points.Min(p => p.Y) - MaxDeviation);
@@ -346,8 +391,8 @@ namespace OpenRA.Mods.Common.MapUtils
 				return (typeId, new int2(xy % size.X, xy / size.X), priority);
 			}
 
-			var pathStartTypeId = segmentTypeToId[Start.SegmentType];
-			var pathEndTypeId = segmentTypeToId[End.SegmentType];
+			var pathStartTypeId = segmentTypeToId[start.SegmentType];
+			var pathEndTypeId = segmentTypeToId[end.SegmentType];
 			var innerTypeIds = Templates.Inner
 				.SelectMany(template => template.Segments)
 				.SelectMany(segment => new[] { segment.Start, segment.End })
@@ -527,7 +572,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				Debug.Assert(candidates.Count >= 1, "TraceBack didn't find an original route");
 				var chosenSegment = candidates[random.Next(candidates.Count)];
 				var chosenFrom = to - chosenSegment.Moves;
-				PaintTemplate(map, chosenFrom - chosenSegment.Offset + minPoint, chosenSegment.TemplateInfo);
+				PaintTemplate(Map, chosenFrom - chosenSegment.Offset + minPoint, chosenSegment.TemplateInfo);
 
 				// Skip end point as it is recorded in the previous template.
 				for (var i = chosenSegment.RelativePoints.Length - 2; i >= 0; i--)
@@ -578,6 +623,248 @@ namespace OpenRA.Mods.Common.MapUtils
 						map.Tiles[mpos] = tile;
 				}
 			}
+		}
+
+		// <summary>
+		// Extend the start and end of a path by extensionLength points. The directions of the
+		// extensions are based on the overall direction of the outermost inertialRange points.
+		//
+		// Returns this;
+		// </summary>
+		public TilingPath InertiallyExtend(int extensionLength, int inertialRange)
+		{
+			Points = InertiallyExtendPathPoints(Points, extensionLength, inertialRange);
+			return this;
+		}
+
+		// <summary>
+		// Extend the start and end of a path by extensionLength points. The directions of the
+		// extensions are based on the overall direction of the outermost inertialRange points.
+		// </summary>
+		public static int2[] InertiallyExtendPathPoints(int2[] points, int extensionLength, int inertialRange)
+		{
+			if (points == null)
+				return null;
+
+			if (inertialRange > points.Length - 1)
+				inertialRange = points.Length - 1;
+			var sd = Direction.FromOffsetNonDiagonal(points[inertialRange] - points[0]);
+			var ed = Direction.FromOffsetNonDiagonal(points[^1] - points[^(inertialRange + 1)]);
+			var newPoints = new int2[points.Length + extensionLength * 2];
+
+			for (var i = 0; i < extensionLength; i++)
+			{
+				newPoints[i] = points[0] - Direction.ToOffset(sd) * (extensionLength - i);
+			}
+
+			Array.Copy(points, 0, newPoints, extensionLength, points.Length);
+
+			for (var i = 0; i < extensionLength; i++)
+			{
+				newPoints[extensionLength + points.Length + i] = points[^1] + Direction.ToOffset(ed) * (i + 1);
+			}
+
+			return newPoints;
+		}
+
+		// <summary>
+		// For map edge-connected (non-loop) starts/ends, the path is extended beyond the edge.
+		// For loops or paths which don't connect to the map edge, no change is applied.
+		//
+		// Starts/ends which are corner-connected or already extend beyond the edge are unaltered.
+		//
+		// Returns this.
+		// </summary>
+		public TilingPath ExtendEdge(int extensionLength)
+		{
+			Points = ExtendEdgePathPoints(Points, Map.MapSize, extensionLength);
+			return this;
+		}
+
+		// <summary>
+		// For map edge-connected (non-loop) starts/ends, the path is extended beyond the edge.
+		// For loops or paths which don't connect to the map edge, the input points are returned
+		// unaltered.
+		//
+		// Starts/ends which are corner-connected or already extend beyond the edge are unaltered.
+		// </summary>
+		public static int2[] ExtendEdgePathPoints(int2[] points, int2 size, int extensionLength)
+		{
+			if (points == null)
+				return null;
+
+			if (points[0] != points[^1])
+			{
+				// Not a loop.
+				int2[] Extend(int2 point)
+				{
+					var ox = (point.X == 0) ? -1
+						: (point.X == size.X) ? 1
+						: 0;
+					var oy = (point.Y == 0) ? -1
+						: (point.Y == size.Y) ? 1
+						: 0;
+					if (ox == oy)
+					{
+						// We're either not on an edge or we're at a corner, so don't extend.
+						return Array.Empty<int2>();
+					}
+
+					var offset = new int2(ox, oy);
+
+					var extension = new int2[extensionLength];
+					var newPoint = point;
+					for (var i = 0; i < extensionLength; i++)
+					{
+						newPoint += offset;
+						extension[i] = newPoint;
+					}
+
+					return extension;
+				}
+
+				// Open paths. Extend if beyond edges.
+				var startExt = Extend(points[0]).Reverse().ToArray();
+				var endExt = Extend(points[^1]);
+
+				// [...startExt, ...points, ...endExt];
+				var tweaked = new int2[points.Length + startExt.Length + endExt.Length];
+				Array.Copy(startExt, 0, tweaked, 0, startExt.Length);
+				Array.Copy(points, 0, tweaked, startExt.Length, points.Length);
+				Array.Copy(endExt, 0, tweaked, points.Length + startExt.Length, endExt.Length);
+				return tweaked;
+			}
+			else
+			{
+				return points;
+			}
+		}
+
+		// <summary>
+		// For loops, points are rotated such that the start/end reside in the longest straight.
+		// For non-loops, the input points are returned unaltered.
+		//
+		// Returns this.
+		// </summary>
+		public TilingPath OptimizeLoop()
+		{
+			Points = OptimizeLoopPathPoints(Points);
+			return this;
+		}
+
+		// <summary>
+		// For loops, points are rotated such that the start/end reside in the longest straight.
+		// For non-loops, the input points are returned unaltered.
+		// </summary>
+		public static int2[] OptimizeLoopPathPoints(int2[] points)
+		{
+			if (points == null)
+				return null;
+
+			if (points[0] == points[^1])
+			{
+				// Closed loop. Find the longest straight
+				// (nrlen excludes the repeated point at the end.)
+				var nrlen = points.Length - 1;
+				var prevDim = -1;
+				var scanStart = -1;
+				var bestScore = -1;
+				var bestBend = -1;
+				var prevBend = -1;
+				var prevI = 0;
+				for (var i = 1; ; i++)
+				{
+					if (i == nrlen)
+						i = 0;
+					var dim = points[i].X == points[prevI].X ? 1 : 0;
+					if (prevDim != -1 && prevDim != dim)
+					{
+						if (scanStart == -1)
+						{
+							// This is technically just after the bend. But that's fine.
+							scanStart = i;
+						}
+						else
+						{
+							var score = prevI - prevBend;
+							if (score < 0)
+								score += nrlen;
+
+							if (score > bestScore)
+							{
+								bestBend = prevBend;
+								bestScore = score;
+							}
+
+							if (i == scanStart)
+							{
+								break;
+							}
+						}
+
+						prevBend = prevI;
+					}
+
+					prevDim = dim;
+					prevI = i;
+				}
+
+				var favouritePoint = (bestBend + (bestScore >> 1)) % nrlen;
+
+				// Repeat the start at the end.
+				// [...points.slice(favouritePoint, nrlen), ...points.slice(0, favouritePoint + 1)];
+				var tweaked = new int2[points.Length];
+				Array.Copy(points, favouritePoint, tweaked, 0, nrlen - favouritePoint);
+				Array.Copy(points, 0, tweaked, nrlen - favouritePoint, favouritePoint + 1);
+				return tweaked;
+			}
+			else
+			{
+				return points;
+			}
+		}
+
+		// <summary>
+		// Shrink a path by a given amount at both ends. If the number of points in the path drops
+		// below minimumLength, the path is nullified.
+		//
+		// If a loop is provided, the path is not shrunk, but the minimumLength requirement still
+		// holds.
+		//
+		// Returns this.
+		// </summary>
+		public TilingPath Shrink(int shrinkBy, int minimumLength)
+		{
+			Points = ShrinkPathPoints(Points, shrinkBy, minimumLength);
+			return this;
+		}
+
+		// <summary>
+		// Shrink a path by a given amount at both ends. If the number of points in the path drops
+		// below minimumLength, null is returned.
+		//
+		// If a loop is provided, the path is not shrunk, but the minimumLength requirement still
+		// holds.
+		// </summary>
+		public static int2[] ShrinkPathPoints(int2[] points, int shrinkBy, int minimumLength)
+		{
+			if (points == null)
+				return null;
+
+			if (minimumLength <= 1)
+				throw new ArgumentException("minimumLength must be greater than 1");
+
+			if (points[0] == points[^1])
+			{
+				// Loop.
+				if (points.Length < minimumLength)
+					return null;
+				return points[0..^0];
+			}
+
+			if (points.Length < shrinkBy * 2 + minimumLength)
+				return null;
+			return points[shrinkBy..(points.Length - shrinkBy)];
 		}
 	}
 }

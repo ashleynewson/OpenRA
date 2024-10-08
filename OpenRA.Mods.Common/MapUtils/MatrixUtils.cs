@@ -189,7 +189,7 @@ namespace OpenRA.Mods.Common.MapUtils
 							}
 						}
 
-						MatrixUtils.FloodFill(space.Size, new[] { (new int2(x, y), holeCount, Direction.NONE) }, Filler, Direction.SPREAD4_D);
+						FloodFill(space.Size, new[] { (new int2(x, y), holeCount, Direction.NONE) }, Filler, Direction.SPREAD4_D);
 					}
 				}
 			}
@@ -265,7 +265,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 				}
 
-				MatrixUtils.FloodFill(size, seeds, Filler, Direction.SPREAD4_D);
+				FloodFill(size, seeds, Filler, Direction.SPREAD4_D);
 			}
 
 			var deflatedSize = size + new int2(1, 1);
@@ -402,9 +402,9 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public static Matrix<float> GaussianBlur(Matrix<float> input, int radius, float standardDeviation)
 		{
-			var kernel = MatrixUtils.GaussianKernel1D(radius, standardDeviation);
-			var stage1 = MatrixUtils.KernelBlur(input, kernel, new int2(radius, 0));
-			var stage2 = MatrixUtils.KernelBlur(stage1, kernel.Transpose(), new int2(0, radius));
+			var kernel = GaussianKernel1D(radius, standardDeviation);
+			var stage1 = KernelBlur(input, kernel, new int2(radius, 0));
+			var stage2 = KernelBlur(stage1, kernel.Transpose(), new int2(0, radius));
 			return stage2;
 		}
 
