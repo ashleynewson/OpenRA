@@ -620,7 +620,7 @@ namespace OpenRA.Mods.Common.Traits
 					Log.Write("debug", $"mountains: altitude {altitude}: tracing cliffs");
 					var unmaskedCliffs = MatrixUtils.BordersToPoints(cliffPlan);
 					Log.Write("debug", $"mountains: altitude {altitude}: appling roughness mask to cliffs");
-					var maskedCliffs = MaskPoints(unmaskedCliffs, cliffMask);
+					var maskedCliffs = TilingPath.MaskPathPoints(unmaskedCliffs, cliffMask);
 					var cliffs = maskedCliffs.Where(cliff => cliff.Length >= minimumCliffLength).ToArray();
 					if (cliffs.Length == 0)
 						break;
@@ -855,8 +855,8 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				var deflated = MatrixUtils.DeflateSpace(space, true);
-				var noJunctions = RemoveJunctionsFromDirectionMap(deflated);
-				var pointArrays = DeduplicateAndNormalizePointArrays(DirectionMapToPointArrays(noJunctions), size);
+				var pointArrays = TilingPath.DirectionMapToPaths(deflated);
+				pointArrays = TilingPath.RetainDisjointPaths(pointArrays, size);
 
 				var roadPermittedTemplates = new TilingPath.PermittedTemplates(
 					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Road", "RoadIn", "RoadOut" }),
@@ -874,6 +874,7 @@ namespace OpenRA.Mods.Common.Traits
 						"Clear",
 						roadPermittedTemplates);
 					path
+						.ChirallyNormalize()
 						.Shrink(4, 12)
 						.InertiallyExtend(2, 8)
 						.ExtendEdge(4);
@@ -1524,61 +1525,6 @@ namespace OpenRA.Mods.Common.Traits
 			return (thinnest, changes);
 		}
 
-		static int2[][] MaskPoints(int2[][] pointArrayArray, Matrix<bool> mask)
-		{
-			var newPointArrayArray = new List<int2[]>();
-
-			foreach (var pointArray in pointArrayArray)
-			{
-				var isLoop = pointArray[0] == pointArray[^1];
-				int firstBad;
-				for (firstBad = 0; firstBad < pointArray.Length; firstBad++)
-				{
-					if (!mask[pointArray[firstBad]])
-						break;
-				}
-
-				if (firstBad == pointArray.Length)
-				{
-					// The path is entirely within the mask already.
-					newPointArrayArray.Add(pointArray);
-					continue;
-				}
-
-				var startAt = isLoop ? firstBad : 0;
-				var wrapAt = isLoop ? pointArray.Length - 1 : pointArray.Length;
-				if (wrapAt == 0)
-					throw new ArgumentException("single point paths should not exist");
-				Debug.Assert(startAt < wrapAt, "start outside wrap bounds");
-				var i = startAt;
-				List<int2> currentPointArray = null;
-				do
-				{
-					if (mask[pointArray[i]])
-					{
-						currentPointArray ??= new List<int2>();
-						currentPointArray.Add(pointArray[i]);
-					}
-					else
-					{
-						if (currentPointArray != null && currentPointArray.Count > 1)
-							newPointArrayArray.Add(currentPointArray.ToArray());
-						currentPointArray = null;
-					}
-
-					i++;
-					if (i == wrapAt)
-						i = 0;
-				}
-				while (i != startAt);
-
-				if (currentPointArray != null && currentPointArray.Count > 1)
-					newPointArrayArray.Add(currentPointArray.ToArray());
-			}
-
-			return newPointArrayArray.ToArray();
-		}
-
 		static Matrix<MultiBrush.Replaceability> IdentifyReplaceableTiles(Map map, ITemplatedTerrainInfo tileset, Dictionary<TerrainTile, MultiBrush.Replaceability> replaceabilityMap)
 		{
 			var output = new Matrix<MultiBrush.Replaceability>(map.MapSize);
@@ -1594,138 +1540,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return output;
-		}
-
-
-		static Matrix<byte> RemoveJunctionsFromDirectionMap(Matrix<byte> input)
-		{
-			var output = input.Clone();
-			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < input.Size.X; cx++)
-				{
-					var dm = input[cx, cy];
-					if (Direction.Count(dm) > 2)
-					{
-						output[cx, cy] = 0;
-						foreach (var (offset, d) in Direction.SPREAD8_D)
-						{
-							var xy = new int2(cx + offset.X, cy + offset.Y);
-							if (!input.ContainsXY(xy))
-								continue;
-							var dr = Direction.Reverse(d);
-							output[xy] = (byte)(output[xy] & ~(1 << dr));
-						}
-					}
-				}
-			}
-
-			for (var x = 0; x < input.Size.X; x++)
-			{
-				output[x, 0] = (byte)(output[x, 0] & ~(Direction.M_LU | Direction.M_U | Direction.M_RU));
-				output[x, input.Size.Y - 1] = (byte)(output[x, input.Size.Y - 1] & ~(Direction.M_RD | Direction.M_D | Direction.M_LD));
-			}
-
-			for (var y = 0; y < input.Size.Y; y++)
-			{
-				output[0, y] = (byte)(output[0, y] & ~(Direction.M_LD | Direction.M_L | Direction.M_LU));
-				output[input.Size.X - 1, y] &= (byte)(output[input.Size.X - 1, y] & ~(Direction.M_RU | Direction.M_R | Direction.M_RD));
-			}
-
-			return output;
-		}
-
-		static int2[][] DirectionMapToPointArrays(Matrix<byte> input)
-		{
-			// Loops not handled, but these would be extremely rare anyway.
-			var pointArrays = new List<int2[]>();
-			for (var sy = 0; sy < input.Size.Y; sy++)
-			{
-				for (var sx = 0; sx < input.Size.X; sx++)
-				{
-					var sdm = input[sx, sy];
-					if (Direction.FromMask(sdm) != Direction.NONE)
-					{
-						var points = new List<int2>();
-						var xy = new int2(sx, sy);
-						var reverseDm = 0;
-
-						bool AddPoint()
-						{
-							points.Add(xy);
-							var dm = input[xy] & ~reverseDm;
-							foreach (var (offset, d) in Direction.SPREAD8_D)
-							{
-								if ((dm & (1 << d)) != 0)
-								{
-									xy += offset;
-									if (!input.ContainsXY(xy))
-										throw new ArgumentException("input should not link out of bounds");
-									reverseDm = 1 << Direction.Reverse(d);
-									return true;
-								}
-							}
-
-							return false;
-						}
-
-						while (AddPoint())
-						{
-						}
-
-						pointArrays.Add(points.ToArray());
-					}
-				}
-			}
-
-			return pointArrays.ToArray();
-		}
-
-		// Assumes that inputs do not have overlapping end points.
-		// No loop support.
-		static int2[][] DeduplicateAndNormalizePointArrays(int2[][] inputs, int2 size)
-		{
-			bool ShouldReverse(int2[] points)
-			{
-				// This could be converted to integer math, but there's little motive.
-				var midX = (size.X - 1) / 2.0f;
-				var midY = (size.Y - 1) / 2.0f;
-				var v1x = points[0].X - midX;
-				var v1y = points[0].Y - midY;
-				var v2x = points[^1].X - midX;
-				var v2y = points[^1].Y - midY;
-
-				// Rotation around center?
-				var crossProd = v1x * v2y - v2x * v1y;
-				if (crossProd != 0)
-					return crossProd < 0;
-
-				// Distance from center?
-				var r1 = v1x * v1x + v1y * v1y;
-				var r2 = v2x * v2x + v2y * v2y;
-				if (r1 != r2)
-					return r1 < r2;
-
-				// Absolute angle
-				return v1y == v2y ? v1x > v2x : v1y > v2y;
-			}
-
-			var outputs = new List<int2[]>();
-			var lookup = new Matrix<bool>(size + new int2(1, 1));
-			foreach (var points in inputs)
-			{
-				var normalized = (int2[])points.Clone();
-				if (ShouldReverse(points))
-					Array.Reverse(normalized);
-				var xy = new int2(normalized[0].X, normalized[0].Y);
-				if (!lookup[xy])
-				{
-					outputs.Add(normalized);
-					lookup[xy] = true;
-				}
-			}
-
-			return outputs.ToArray();
 		}
 
 		static Matrix<int> CalculateSpawnPreferences(Matrix<int> roominess, float centralReservation, int spawnRegionSize, int rotations, Symmetry.Mirror mirror)
