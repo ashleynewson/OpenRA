@@ -854,5 +854,256 @@ namespace OpenRA.Mods.Common.MapUtils
 				return null;
 			return points[shrinkBy..(points.Length - shrinkBy)];
 		}
+
+		// <summary>
+		// Takes a path and normalizes its progression direction around the map center.
+		// Normalized but opposing paths should rotate around the center in the same direction.
+		// </summary>
+		public TilingPath ChirallyNormalize()
+		{
+			Points = ChirallyNormalizePathPoints(Points, Map.MapSize);
+			return this;
+		}
+
+		// <summary>
+		// Takes a path and normalizes its progression direction around the map center.
+		// Normalized but opposing paths should rotate around the center in the same direction.
+		// </summary>
+		public static int2[] ChirallyNormalizePathPoints(int2[] points, int2 size)
+		{
+			if (points == null || points.Length < 2)
+				return points;
+
+			var normalized = (int2[])points.Clone();
+			var start = points[0];
+			var end = points[^1];
+
+			if (start == end)
+			{
+				// Is loop
+				start = points[1];
+				end = points[^2];
+			}
+
+			bool ShouldReverse(int2 start, int2 end)
+			{
+				// This could be converted to integer math, but there's little motive.
+				var midX = (size.X - 1) / 2.0f;
+				var midY = (size.Y - 1) / 2.0f;
+				var v1x = start.X - midX;
+				var v1y = start.Y - midY;
+				var v2x = end.X - midX;
+				var v2y = end.Y - midY;
+
+				// Rotation around center?
+				var crossProd = v1x * v2y - v2x * v1y;
+				if (crossProd != 0)
+					return crossProd < 0;
+
+				// Distance from center?
+				var r1 = v1x * v1x + v1y * v1y;
+				var r2 = v2x * v2x + v2y * v2y;
+				if (r1 != r2)
+					return r1 < r2;
+
+				// Absolute angle
+				return v1y == v2y ? v1x > v2x : v1y > v2y;
+			}
+
+			if (ShouldReverse(start, end))
+				Array.Reverse(normalized);
+
+			return normalized;
+		}
+
+		// <summary>
+		// Given a set of point sequences and a stencil mask that defines permitted point positions,
+		// remove points that are disallowed, splitting or dropping point sequences as needed.
+		//
+		// The outside of the matrix is considered false (points disallowed).
+		//
+		// Sequences with fewer than 2 points are dropped.
+		// </summary>
+		public static int2[][] MaskPathPoints(IEnumerable<int2[]> pointArrayArray, Matrix<bool> mask)
+		{
+			var newPointArrayArray = new List<int2[]>();
+
+			foreach (var pointArray in pointArrayArray)
+			{
+				if (pointArray == null || pointArray.Length < 2)
+					continue;
+
+				var isLoop = pointArray[0] == pointArray[^1];
+				int firstBad;
+				for (firstBad = 0; firstBad < pointArray.Length; firstBad++)
+				{
+					if (!(mask.ContainsXY(pointArray[firstBad]) && mask[pointArray[firstBad]]))
+						break;
+				}
+
+				if (firstBad == pointArray.Length)
+				{
+					// The path is entirely within the mask already.
+					newPointArrayArray.Add(pointArray);
+					continue;
+				}
+
+				var startAt = isLoop ? firstBad : 0;
+				var wrapAt = isLoop ? pointArray.Length - 1 : pointArray.Length;
+				var i = startAt;
+				List<int2> currentPointArray = null;
+				do
+				{
+					if (mask.ContainsXY(pointArray[i]) && mask[pointArray[i]])
+					{
+						currentPointArray ??= new List<int2>();
+						currentPointArray.Add(pointArray[i]);
+					}
+					else
+					{
+						if (currentPointArray != null && currentPointArray.Count > 1)
+							newPointArrayArray.Add(currentPointArray.ToArray());
+						currentPointArray = null;
+					}
+
+					i++;
+					if (i == wrapAt)
+						i = 0;
+				}
+				while (i != startAt);
+
+				if (currentPointArray != null && currentPointArray.Count > 1)
+					newPointArrayArray.Add(currentPointArray.ToArray());
+			}
+
+			return newPointArrayArray.ToArray();
+		}
+
+		// <summary>
+		// Retains paths which have no points in common with other (previous and retained) paths.
+		//
+		// The underlying point sequences are not cloned.
+		//
+		// All input sequences must be non-null.
+		// </summary>
+		public static int2[][] RetainDisjointPaths(IEnumerable<int2[]> inputs, int2 size)
+		{
+			var outputs = new List<int2[]>();
+			var lookup = new Matrix<bool>(size + new int2(1, 1));
+			foreach (var points in inputs)
+			{
+				var retain = true;
+				foreach (var point in points)
+				{
+					if (lookup[point])
+					{
+						retain = false;
+						break;
+					}
+				}
+
+				if (retain)
+				{
+					outputs.Add(points);
+					foreach (var point in points)
+					{
+						lookup[point] = true;
+					}
+				}
+			}
+
+			return outputs.ToArray();
+		}
+
+		static Matrix<byte> RemoveJunctionsFromDirectionMap(Matrix<byte> input)
+		{
+			var output = input.Clone();
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					var dm = input[cx, cy];
+					if (Direction.Count(dm) > 2)
+					{
+						output[cx, cy] = 0;
+						foreach (var (offset, d) in Direction.SPREAD8_D)
+						{
+							var xy = new int2(cx + offset.X, cy + offset.Y);
+							if (!input.ContainsXY(xy))
+								continue;
+							var dr = Direction.Reverse(d);
+							output[xy] = (byte)(output[xy] & ~(1 << dr));
+						}
+					}
+				}
+			}
+
+			for (var x = 0; x < input.Size.X; x++)
+			{
+				output[x, 0] = (byte)(output[x, 0] & ~(Direction.M_LU | Direction.M_U | Direction.M_RU));
+				output[x, input.Size.Y - 1] = (byte)(output[x, input.Size.Y - 1] & ~(Direction.M_RD | Direction.M_D | Direction.M_LD));
+			}
+
+			for (var y = 0; y < input.Size.Y; y++)
+			{
+				output[0, y] = (byte)(output[0, y] & ~(Direction.M_LD | Direction.M_L | Direction.M_LU));
+				output[input.Size.X - 1, y] &= (byte)(output[input.Size.X - 1, y] & ~(Direction.M_RU | Direction.M_R | Direction.M_RD));
+			}
+
+			return output;
+		}
+
+		// <summary>
+		// Traces a matrix of directions into a set of point sequences.
+		//
+		// Any junctions in the input direction map are dropped.
+		// </summary>
+		public static int2[][] DirectionMapToPaths(Matrix<byte> input)
+		{
+			input = RemoveJunctionsFromDirectionMap(input);
+
+			// Loops not handled, but these would be extremely rare anyway.
+			var pointArrays = new List<int2[]>();
+			for (var sy = 0; sy < input.Size.Y; sy++)
+			{
+				for (var sx = 0; sx < input.Size.X; sx++)
+				{
+					var sdm = input[sx, sy];
+					if (Direction.FromMask(sdm) != Direction.NONE)
+					{
+						var points = new List<int2>();
+						var xy = new int2(sx, sy);
+						var reverseDm = 0;
+
+						bool AddPoint()
+						{
+							points.Add(xy);
+							var dm = input[xy] & ~reverseDm;
+							foreach (var (offset, d) in Direction.SPREAD8_D)
+							{
+								if ((dm & (1 << d)) != 0)
+								{
+									xy += offset;
+									if (!input.ContainsXY(xy))
+										throw new ArgumentException("input should not link out of bounds");
+									reverseDm = 1 << Direction.Reverse(d);
+									return true;
+								}
+							}
+
+							return false;
+						}
+
+						while (AddPoint())
+						{
+						}
+
+						pointArrays.Add(points.ToArray());
+					}
+				}
+			}
+
+			return pointArrays.ToArray();
+		}
 	}
 }
