@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using OpenRA.Mods.Common.MapUtils;
 using OpenRA.Mods.Common.Terrain;
