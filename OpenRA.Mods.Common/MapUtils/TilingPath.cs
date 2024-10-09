@@ -207,6 +207,50 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public int2[] Tile(MersenneTwister random)
 		{
+			// High-level explanation:
+			//
+			// This is essentially a Dijkstra's algorithm best-first search.
+			//
+			// The search is performed over a 3-dimensional space: (x, y, connection type).
+			// Connection types correspond to the .Start or .End values of TemplateSegments.
+			//
+			// The best found scores of the nodes in this space are stored as an array of matrices.
+			// There is a matrix for each possible connection type, and each matrix stores the
+			// (current) best scores at the (X, Y) locations for that given connection type.
+			//
+			// The directed edges between the nodes of this 3-dimensional space are defined by the
+			// TemplateSegments within the permitted set of templates. For example, a segment
+			// defined as
+			//
+			//   Segment:
+			//       Start: Beach.L
+			//       End: Beach.D
+			//       Points: 3,1, 2,1, 2,2, 2,3
+			//
+			// may connect a node from (10, 10) in the "Beach.L" matrix to node (9, 12) in the
+			// "Beach.D" matrix. (The overall point displacement is (2,3) - (3,1) = (-1, +2))
+			//
+			// The cost of a transition/link/edge between nodes is defined by how well the
+			// template segment fits the path (how little "deviation" is accumulates). However, in
+			// order for a transition to be allowed at all, it must satisfy some constraints:
+			//
+			// - It must not regress backward along the path (but no immediate "progress" is OK).
+			// - It must not deviate at any point in the segment beyond MaxDeviation from the path.
+			// - TODO: It must not skip to much later path points which are within MaxDeviation.
+			//
+			// The search is conducted from the path start node until the best possible score of
+			// the end node is confirmed. This also populates possible intermediate nodes' scores.
+			//
+			// Then, from the end node, it works backwards. It finds any (random) suitable template
+			// segment which connects back to a previous node where the difference in score is
+			// that of the template segment's cost, implying that that previous node is on an
+			// optimal path towards the end node. This process repeats until the start node is
+			// reached, painting templates along the way.
+			//
+			// Note that this algorithm makes a few (reasonable) assumptions about the shapes of
+			// templates, such as that they don't individually snake around too much. The actual
+			// tiles of a template are ignored during the search, with only the segment being used
+			// to calculate transition cost and validity.
 			if (Points == null)
 				return null;
 
@@ -387,9 +431,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				.Select(segmentType => segmentTypeToId[segmentType])
 				.ToImmutableHashSet();
 
-			// Assumes both f and t are in the sizeX/sizeY bounds.
 			// Lower (closer to zero) scores are better matches.
-			// Higher scores are worse matches.
 			// MAX_SCORE means totally unacceptable.
 			int ScoreSegment(TilingSegment segment, int2 from)
 			{
@@ -423,9 +465,9 @@ namespace OpenRA.Mods.Common.MapUtils
 					var point = from + segment.RelativePoints[pointI];
 					var directionMask = segment.DirectionMasks[pointI];
 					var reverseDirectionMask = segment.ReverseDirectionMasks[pointI];
-					if (point.X < 0 || point.X >= size.X || point.Y < 0 || point.Y >= size.Y)
+					if (!deviations.ContainsXY(point))
 					{
-						// Intermediate point escapes array bounds.
+						// Intermediate point escapes bounds.
 						return MAX_SCORE;
 					}
 
@@ -447,9 +489,10 @@ namespace OpenRA.Mods.Common.MapUtils
 						}
 					}
 
+					// pointI > 0 is needed to avoid double-counting the segments's start with the
+					// previous one's end.
 					if (pointI > 0)
 					{
-						// Don't double-count the template's path's starts and ends
 						deviationAcc += deviations[point];
 					}
 				}
