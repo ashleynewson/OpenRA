@@ -722,7 +722,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				var forestReplace = Matrix<MultiBrush.Replaceability>.Zip(
 					forestPlan,
-					IdentifyReplaceableTiles(map, tileset, replaceabilityMap),
+					IdentifyReplaceableTiles(map, replaceabilityMap),
 					(a, b) => a ? b : MultiBrush.Replaceability.None);
 				MultiBrush.PaintArea(map, actorPlans, forestReplace, forestObstacles, forestTilingRandom);
 			}
@@ -803,7 +803,7 @@ namespace OpenRA.Mods.Common.Traits
 
 					var replace = Matrix<MultiBrush.Replaceability>.Zip(
 						regionMask,
-						IdentifyReplaceableTiles(map, tileset, replaceabilityMap),
+						IdentifyReplaceableTiles(map, replaceabilityMap),
 						(a, b) => a == largest.Id ? MultiBrush.Replaceability.None : b);
 					MultiBrush.PaintArea(map, actorPlans, replace, unplayableObstacles, random);
 				}
@@ -1338,7 +1338,13 @@ namespace OpenRA.Mods.Common.Traits
 				.ToImmutableArray();
 		}
 
-		static Matrix<bool> ProduceTerrain(Matrix<float> elevation, int terrainSmoothing, float smoothingThreshold, int minimumThickness, bool bias, string debugLabel)
+		static Matrix<bool> ProduceTerrain(
+			Matrix<float> elevation,
+			int terrainSmoothing,
+			float smoothingThreshold,
+			int minimumThickness,
+			bool bias,
+			string debugLabel)
 		{
 			Log.Write("debug", $"{debugLabel}: fixing terrain anomalies: primary median blur");
 			var maxSpan = Math.Max(elevation.Size.X, elevation.Size.Y);
@@ -1524,7 +1530,9 @@ namespace OpenRA.Mods.Common.Traits
 			return (thinnest, changes);
 		}
 
-		static Matrix<MultiBrush.Replaceability> IdentifyReplaceableTiles(Map map, ITemplatedTerrainInfo tileset, Dictionary<TerrainTile, MultiBrush.Replaceability> replaceabilityMap)
+		static Matrix<MultiBrush.Replaceability> IdentifyReplaceableTiles(
+			Map map,
+			Dictionary<TerrainTile, MultiBrush.Replaceability> replaceabilityMap)
 		{
 			var output = new Matrix<MultiBrush.Replaceability>(map.MapSize);
 
