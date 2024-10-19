@@ -19,8 +19,8 @@ namespace OpenRA.Mods.Common.Terrain
 	/// </summary>
 	public class TemplateSegment
 	{
-		// TODO: I'm probably going to have to have a main type afterall.
 		public readonly string Start;
+		public readonly string Inner;
 		public readonly string End;
 		[FieldLoader.Ignore]
 		public readonly int2[] Points;
@@ -40,7 +40,6 @@ namespace OpenRA.Mods.Common.Terrain
 				for (var i = 0; i < Points.Length; i++)
 					Points[i] = new int2(Exts.ParseInt32Invariant(parts[2 * i]), Exts.ParseInt32Invariant(parts[2 * i + 1]));
 			}
-
 		}
 
 		public static bool MatchesType(string type, string matcher)
@@ -54,6 +53,8 @@ namespace OpenRA.Mods.Common.Terrain
 
 		public bool HasStartType(string matcher)
 			=> MatchesType(Start, matcher);
+		public bool HasInnerType(string matcher)
+			=> MatchesType(Inner, matcher);
 		public bool HasEndType(string matcher)
 			=> MatchesType(End, matcher);
 	}

@@ -479,8 +479,8 @@ namespace OpenRA.Mods.Common.Traits
 			var beaches = MatrixUtils.BordersToPoints(landPlan);
 			if (beaches.Length > 0)
 			{
-				var beachPermittedTemplates = new TilingPath.PermittedTemplates(
-					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Beach" }));
+				var beachPermittedTemplates =
+					TilingPath.PermittedTemplates.FromInner(tileset, new[] { "Beach" });
 				var tiledBeaches = new int2[beaches.Length][];
 				for (var i = 0; i < beaches.Length; i++)
 				{
@@ -522,12 +522,12 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			var nonLoopedCliffPermittedTemplates = new TilingPath.PermittedTemplates(
-				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Cliff" }),
-				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }),
-				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }, new[] { "Clear" }));
-			var loopedCliffPermittedTemplates = new TilingPath.PermittedTemplates(
-				TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Cliff" }));
+			var nonLoopedCliffPermittedTemplates =
+				TilingPath.PermittedTemplates.FromInnerAndTerminal(
+					tileset, new[] { "Cliff" }, new[] { "Clear" });
+			var loopedCliffPermittedTemplates =
+				TilingPath.PermittedTemplates.FromInner(
+					tileset, new[] { "Cliff" });
 			if (externalCircularBias > 0)
 			{
 				Log.Write("debug", "creating circular cliff map border");
@@ -857,10 +857,9 @@ namespace OpenRA.Mods.Common.Traits
 				var pointArrays = TilingPath.DirectionMapToPaths(deflated);
 				pointArrays = TilingPath.RetainDisjointPaths(pointArrays, size);
 
-				var roadPermittedTemplates = new TilingPath.PermittedTemplates(
-					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Clear" }, new[] { "Road", "RoadIn", "RoadOut" }),
-					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }),
-					TilingPath.PermittedTemplates.FindTemplates(tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" }));
+				var roadPermittedTemplates =
+					TilingPath.PermittedTemplates.FromInnerAndTerminal(
+						tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" });
 
 				foreach (var pointArray in pointArrays)
 				{
