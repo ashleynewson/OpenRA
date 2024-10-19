@@ -122,6 +122,18 @@ namespace OpenRA.Mods.Common.MapUtils
 		public int MaxDeviation;
 
 		// <summary>
+		// Determines how much corner-cutting is allowed.
+		//
+		// A value of zero will result in a value being derived from MaxDeviation.
+		// </summary>
+		public int MaxSkip;
+
+		// <summary>
+		// Increases separation between permitted tiling regions of different parts of the path.
+		// </summary>
+		public int MinSeparation;
+
+		// <summary>
 		// Stores start type and direction.
 		// </summary>
 		public Terminal Start;
@@ -149,6 +161,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			Map = map;
 			Points = points;
 			MaxDeviation = maxDeviation;
+			MaxSkip = 0;
+			MinSeparation = 0;
 			Start = new Terminal(startType, null);
 			End = new Terminal(endType, null);
 			Templates = permittedTemplates;
@@ -207,8 +221,6 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public int2[] Tile(MersenneTwister random)
 		{
-			// High-level explanation:
-			//
 			// This is essentially a Dijkstra's algorithm best-first search.
 			//
 			// The search is performed over a 3-dimensional space: (x, y, connection type).
@@ -234,9 +246,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			// template segment fits the path (how little "deviation" is accumulates). However, in
 			// order for a transition to be allowed at all, it must satisfy some constraints:
 			//
-			// - It must not regress backward along the path (but no immediate "progress" is OK).
+			// - It must not regress backward along the path (but no immediate progress is OK).
 			// - It must not deviate at any point in the segment beyond MaxDeviation from the path.
-			// - TODO: It must not skip to much later path points which are within MaxDeviation.
+			// - It must not skip to much later path points which are within MaxDeviation.
+			//
+			// Progress is measured as a combo of both the earliest and latest closest path points.
 			//
 			// The search is conducted from the path start node until the best possible score of
 			// the end node is confirmed. This also populates possible intermediate nodes' scores.
@@ -259,12 +273,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			start.Direction ??= Direction.FromOffset(Points[1] - Points[0]);
 			end.Direction ??= Direction.FromOffset(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
 
+			var maxSkip = MaxSkip > 0 ? MaxSkip : (2 * MaxDeviation + 1);
+
+			var scanRange = MaxDeviation + MinSeparation;
 			var minPoint = new int2(
-				Points.Min(p => p.X) - MaxDeviation,
-				Points.Min(p => p.Y) - MaxDeviation);
+				Points.Min(p => p.X) - scanRange,
+				Points.Min(p => p.Y) - scanRange);
 			var maxPoint = new int2(
-				Points.Max(p => p.X) + MaxDeviation,
-				Points.Max(p => p.Y) + MaxDeviation);
+				Points.Max(p => p.X) + scanRange,
+				Points.Max(p => p.Y) + scanRange);
 			var points = Points.Select(point => point - minPoint).ToArray();
 
 			var isLoop = IsLoop;
@@ -273,105 +290,178 @@ namespace OpenRA.Mods.Common.MapUtils
 			var size = new int2(1 + maxPoint.X - minPoint.X, 1 + maxPoint.Y - minPoint.Y);
 			var sizeXY = size.X * size.Y;
 
-			const int MAX_DEVIATION = int.MaxValue;
-
-			// Bit masks of 8-angle directions which are considered a positive progress
-			// traversal. Template choices with an overall negative progress traversal
-			// are rejected.
-			var directions = new Matrix<byte>(size);
+			const int OVER_DEVIATION = int.MaxValue;
+			const int INVALID_PROGRESS = int.MaxValue;
 
 			// How far away from the path this point is.
-			var deviations = new Matrix<int>(size).Fill(MAX_DEVIATION);
+			var deviations = new Matrix<int>(size).Fill(OVER_DEVIATION);
 
-			// Bit masks of 8-angle directions which define whether it's permitted
-			// to traverse from one point to a given neighbour.
-			var traversables = new Matrix<byte>(size);
+			var lowProgress = new Matrix<int>(size).Fill(INVALID_PROGRESS);
+			var highProgress = new Matrix<int>(size).Fill(INVALID_PROGRESS);
+
+			var progressModulus = IsLoop ? points.Length - 1 : points.Length;
+
+			// The following only apply to looped paths
+			var forwardProgressLimit = (progressModulus + 1) / 2;
+			var backwardProgressLimit = progressModulus / 2;
+
+			// MinValue essentially means "never match me".
+			var oppositeProgress =
+				(IsLoop && forwardProgressLimit == backwardProgressLimit)
+					? forwardProgressLimit
+					: int.MinValue;
+
+			int Progress(int from, int to)
 			{
-				var gradientX = new Matrix<int>(size);
-				var gradientY = new Matrix<int>(size);
-				for (var pointI = 0; pointI < points.Length; pointI++)
+				if (IsLoop)
 				{
-					if (isLoop && pointI == 0)
-					{
-						// Same as last point.
-						continue;
-					}
+					var progress = (progressModulus + to - from) % progressModulus;
+					if (progress < forwardProgressLimit)
+						return progress;
+					else if (progress > backwardProgressLimit)
+						return progress - progressModulus;
+					else
+						return oppositeProgress;
+				}
+				else
+				{
+					return to - from;
+				}
+			}
 
+			{
+				var progressSeeds = new List<(int2, int, int)>();
+				for (var pointI = 0; pointI < progressModulus; pointI++)
+				{
 					var point = points[pointI];
-					var pointPrevI = pointI - 1;
-					var pointNextI = pointI + 1;
-					var directionX = 0;
-					var directionY = 0;
-					if (pointNextI < points.Length)
-					{
-						directionX += points[pointNextI].X - point.X;
-						directionY += points[pointNextI].Y - point.Y;
-					}
+					lowProgress[point] = pointI;
+					highProgress[point] = pointI;
+					progressSeeds.Add((point, 0, Direction.NONE));
+				}
 
-					if (pointPrevI >= 0)
+				(int Low, int High) FindLowAndHigh(List<int> values)
+				{
+					Debug.Assert(values.Count > 0, "No values");
+					if (values.Count == 1)
+						return (values[0], values[0]);
+					if (IsLoop)
 					{
-						directionX += point.X - points[pointPrevI].X;
-						directionY += point.Y - points[pointPrevI].Y;
-					}
-
-					for (var deviation = 0; deviation <= MaxDeviation; deviation++)
-					{
-						var minX = point.X - deviation;
-						var minY = point.Y - deviation;
-						var maxX = point.X + deviation;
-						var maxY = point.Y + deviation;
-						for (var y = minY; y <= maxY; y++)
+						if (Progress(values[^1], values[0]) < 0)
+							return (values[0], values[^1]);
+						for (var i = 0; i < values.Count - 1; i++)
 						{
-							for (var x = minX; x <= maxX; x++)
-							{
-								// const i = y * sizeX + x;
-								if (deviation < deviations[x, y])
-								{
-									deviations[x, y] = deviation;
-								}
+							if (Progress(values[i], values[i + 1]) < 0)
+								return (values[i + 1], values[i]);
+						}
 
-								if (deviation == MaxDeviation)
+						return (INVALID_PROGRESS, INVALID_PROGRESS);
+					}
+					else
+					{
+						return (values[0], values[^1]);
+					}
+				}
+
+				var lows = new List<int>(8);
+				var highs = new List<int>(8);
+				int? ProgressFiller(int2 xy, int deviation, int direction)
+				{
+					if (deviations[xy] != OVER_DEVIATION)
+						return null;
+
+					deviations[xy] = deviation;
+
+					// low and high progress is preset for 0-deviation.
+					if (deviation == 0)
+						return 1;
+
+					lows.Clear();
+					highs.Clear();
+					for (var i = 0; i < 8; i++)
+					{
+						var offset = Direction.SPREAD8[i];
+						var neighbor = xy + offset;
+						if (!deviations.ContainsXY(neighbor) ||
+							deviations[neighbor] >= deviation ||
+							lowProgress[neighbor] == INVALID_PROGRESS ||
+							highProgress[neighbor] == INVALID_PROGRESS)
+						{
+							continue;
+						}
+
+						lows.Add(lowProgress[neighbor]);
+						highs.Add(highProgress[neighbor]);
+					}
+
+					lows.Sort();
+					highs.Sort();
+					(lowProgress[xy], _) = FindLowAndHigh(lows);
+					(_, highProgress[xy]) = FindLowAndHigh(highs);
+
+					if (deviation == scanRange)
+						return null;
+
+					return deviation + 1;
+				}
+
+				MatrixUtils.FloodFill(
+					size,
+					progressSeeds,
+					ProgressFiller,
+					Direction.SPREAD8_D);
+
+				var separationSeeds = new List<(int2, int, int)>();
+
+				for (var y = 0; y < size.Y; y++)
+				{
+					for (var x = 0; x < size.X; x++)
+					{
+						var xy = new int2(x, y);
+						var low = lowProgress[xy];
+						var high = highProgress[xy];
+						if (low == INVALID_PROGRESS ||
+							high == INVALID_PROGRESS)
+						{
+							separationSeeds.Add((xy, MinSeparation, Direction.NONE));
+							continue;
+						}
+
+						if (MinSeparation > 0)
+						{
+							foreach (var offset in Direction.SPREAD8)
+							{
+								var neighbor = xy + offset;
+								if (!deviations.ContainsXY(neighbor) ||
+									Math.Abs(Progress(low, lowProgress[neighbor])) > maxSkip ||
+									Math.Abs(Progress(high, highProgress[neighbor])) > maxSkip)
 								{
-									gradientX[x, y] += directionX;
-									gradientY[x, y] += directionY;
-									if (x > minX)
-										traversables[x, y] |= Direction.M_L;
-									if (x < maxX)
-										traversables[x, y] |= Direction.M_R;
-									if (y > minY)
-										traversables[x, y] |= Direction.M_U;
-									if (y < maxY)
-										traversables[x, y] |= Direction.M_D;
-									if (x > minX && y > minY)
-										traversables[x, y] |= Direction.M_LU;
-									if (x > minX && y < maxY)
-										traversables[x, y] |= Direction.M_LD;
-									if (x < maxX && y > minY)
-										traversables[x, y] |= Direction.M_RU;
-									if (x < maxX && y < maxY)
-										traversables[x, y] |= Direction.M_RD;
+									separationSeeds.Add((xy, MinSeparation - 1, Direction.NONE));
+									break;
 								}
 							}
+
+							// Last so that any greater range seeds take priority.
+							if (deviations[xy] > MaxDeviation)
+								separationSeeds.Add((xy, 0, Direction.NONE));
 						}
 					}
 				}
 
-				// Probational
-				for (var i = 0; i < sizeXY; i++)
+				int? SeparationFiller(int2 xy, int range, int direction)
 				{
-					if (gradientX[i] == 0 && gradientY[i] == 0)
-					{
-						directions[i] = 0;
-						continue;
-					}
-
-					var direction = Direction.FromOffset(gradientX[i], gradientY[i]);
-
-					// .... direction: 0123456701234567
-					//                 UUU DDD UUU DDD
-					//                 R LLL RRR LLL R
-					directions[i] = (byte)(0b100000111000001 >> (7 - direction));
+					if (deviations[xy] == 0 || deviations[xy] == OVER_DEVIATION)
+						return null;
+					deviations[xy] = OVER_DEVIATION;
+					if (range == 0)
+						return null;
+					return range - 1;
 				}
+
+				MatrixUtils.FloodFill(
+					size,
+					separationSeeds,
+					SeparationFiller,
+					Direction.SPREAD8_D);
 			}
 
 			var pathStart = points[0];
@@ -458,35 +548,38 @@ namespace OpenRA.Mods.Common.MapUtils
 				}
 
 				var deviationAcc = 0;
-				var progressionAcc = 0;
+				var lowProgressionAcc = 0;
+				var highProgressionAcc = 0;
 				var lastPointI = segment.RelativePoints.Length - 1;
 				for (var pointI = 0; pointI <= lastPointI; pointI++)
 				{
 					var point = from + segment.RelativePoints[pointI];
-					var directionMask = segment.DirectionMasks[pointI];
-					var reverseDirectionMask = segment.ReverseDirectionMasks[pointI];
-					if (!deviations.ContainsXY(point))
+					if (!deviations.ContainsXY(point) || deviations[point] == OVER_DEVIATION)
 					{
-						// Intermediate point escapes bounds.
+						// Point escapes bounds or is in an excluded position.
 						return MAX_SCORE;
 					}
 
 					if (pointI < lastPointI)
 					{
-						if ((traversables[point] & directionMask) == 0)
+						var pointNext = from + segment.RelativePoints[pointI + 1];
+						if (!deviations.ContainsXY(pointNext) || deviations[pointNext] == OVER_DEVIATION)
 						{
-							// Next point escapes traversable area.
+							// Next point escapes bounds or is in an excluded position.
 							return MAX_SCORE;
 						}
 
-						if ((directions[point] & directionMask) == directionMask)
+						var lowProgression = Progress(lowProgress[point], lowProgress[pointNext]);
+						var highProgression = Progress(highProgress[point], highProgress[pointNext]);
+						if (Math.Abs(lowProgression) > maxSkip ||
+							Math.Abs(highProgression) > maxSkip)
 						{
-							progressionAcc++;
+							// Fails skip rule.
+							return MAX_SCORE;
 						}
-						else if ((directions[point] & reverseDirectionMask) == reverseDirectionMask)
-						{
-							progressionAcc--;
-						}
+
+						lowProgressionAcc += lowProgression;
+						highProgressionAcc += highProgression;
 					}
 
 					// pointI > 0 is needed to avoid double-counting the segments's start with the
@@ -497,9 +590,9 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 				}
 
-				if (progressionAcc < 0)
+				if (lowProgressionAcc < 0 || highProgressionAcc < 0)
 				{
-					// It's moved backwards
+					// Fails progression rule.
 					return MAX_SCORE;
 				}
 
@@ -519,7 +612,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 
 					// Most likely to fail. Check first.
-					if (deviations[to] == MAX_DEVIATION)
+					if (deviations[to] == OVER_DEVIATION)
 					{
 						// End escapes bounds.
 						continue;
@@ -581,7 +674,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 
 					// Most likely to fail. Check first.
-					if (deviations[from] == MAX_DEVIATION)
+					if (deviations[from] == OVER_DEVIATION)
 					{
 						// Start escapes bounds.
 						continue;
