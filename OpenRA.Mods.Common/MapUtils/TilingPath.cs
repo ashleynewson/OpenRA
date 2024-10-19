@@ -79,25 +79,48 @@ namespace OpenRA.Mods.Common.MapUtils
 			{ }
 
 			// <summary>
-			// Find templates that use the given types at their start and ends.
-			//
-			// The start and end of a template don't have to match, so long as both are in the
-			// provided types list.
+			// Creates a PermittedTemplates using only the given types.
 			// </summary>
-			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, string[] types)
-				=> FindTemplates(templatedTerrainInfo, types, types);
+			public static PermittedTemplates FromInner(
+				ITemplatedTerrainInfo templatedTerrainInfo,
+				IEnumerable<string> types)
+				=> new(FindTemplates(templatedTerrainInfo, types));
 
 			// <summary>
-			// Find templates that use the given start and end types.
+			// Creates a PermittedTemplates suitable for a path with given inner and terminal types
+			// at the start and end.
 			// </summary>
-			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, string[] startTypes, string[] endTypes)
+			public static PermittedTemplates FromInnerAndTerminal(
+				ITemplatedTerrainInfo templatedTerrainInfo,
+				IEnumerable<string> innerTypes,
+				IEnumerable<string> terminalTypes)
+				=> new(
+					FindTemplates(templatedTerrainInfo, terminalTypes, innerTypes, innerTypes),
+					FindTemplates(templatedTerrainInfo, innerTypes),
+					FindTemplates(templatedTerrainInfo, innerTypes, innerTypes, terminalTypes));
+
+			// <summary>
+			// Equivalent to FindTempates(templatedTerrainInfo, types, types, types)
+			// </summary>
+			public static IEnumerable<TerrainTemplateInfo> FindTemplates(ITemplatedTerrainInfo templatedTerrainInfo, IEnumerable<string> types)
+				=> FindTemplates(templatedTerrainInfo, types, types, types);
+
+			// <summary>
+			// Find templates that use some combination of the given start, inner, end types.
+			// </summary>
+			public static IEnumerable<TerrainTemplateInfo> FindTemplates(
+				ITemplatedTerrainInfo templatedTerrainInfo,
+				IEnumerable<string> startTypes,
+				IEnumerable<string> innerTypes,
+				IEnumerable<string> endTypes)
 			{
 				return templatedTerrainInfo.Templates.Values
 					.Where(
 						template => template.Segments.Any(
 							segment =>
 								startTypes.Any(type => segment.HasStartType(type) &&
-								endTypes.Any(type => segment.HasEndType(type)))))
+								innerTypes.Any(type => segment.HasInnerType(type) &&
+								endTypes.Any(type => segment.HasEndType(type))))))
 					.ToArray();
 			}
 		}
