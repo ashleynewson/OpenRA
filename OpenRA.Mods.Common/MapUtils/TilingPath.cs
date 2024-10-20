@@ -56,8 +56,8 @@ namespace OpenRA.Mods.Common.MapUtils
 		}
 
 		// <summary>
-		// Describes the permitted start, middle, and end templates that can be used to tile the
-		// path.
+		// Describes the permitted start, middle, and end segments/templates that can be used to
+		// tile the path.
 		// </summary>
 		public sealed class PermittedSegments
 		{

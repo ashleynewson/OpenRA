@@ -108,6 +108,7 @@ namespace OpenRA.Mods.Common.Traits
 				)),
 				new MapGeneratorSetting("Roads", "Roads", new MapGeneratorSetting.BooleanValue(true)),
 				new MapGeneratorSetting("RoadSpacing", "Road spacing", new MapGeneratorSetting.IntegerValue(5)),
+				new MapGeneratorSetting("RoadShrink", "Road shrink", new MapGeneratorSetting.IntegerValue(0)),
 
 				new MapGeneratorSetting("#Entities", "Entity settings", new MapGeneratorSetting.SectionValue()),
 				new MapGeneratorSetting("CreateEntities", "Create entities", new MapGeneratorSetting.BooleanValue(true)),
@@ -195,6 +196,7 @@ namespace OpenRA.Mods.Common.Traits
 			var denyWalledAreas = settings["DenyWalledAreas"].Get<bool>();
 			var roads = settings["Roads"].Get<bool>();
 			var roadSpacing = settings["RoadSpacing"].Get<int>();
+			var roadShrink = settings["RoadShrink"].Get<int>();
 			var createEntities = settings["CreateEntities"].Get<bool>();
 			var players = settings["Players"].Get<int>();
 			var centralSpawnReservationFraction = settings["CentralSpawnReservationFraction"].Get<float>();
@@ -873,7 +875,7 @@ namespace OpenRA.Mods.Common.Traits
 						roadPermittedTemplates);
 					path
 						.ChirallyNormalize()
-						.Shrink(4, 12)
+						.Shrink(4 + roadShrink, 12)
 						.InertiallyExtend(2, 8)
 						.ExtendEdge(4);
 
