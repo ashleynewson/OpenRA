@@ -18,6 +18,7 @@ namespace OpenRA.Mods.Common.Terrain
 	{
 		string[] EditorTemplateOrder { get; }
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates { get; }
+		IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates { get; }
 	}
 
 	public interface ITerrainInfoNotifyMapCreated : ITerrainInfo

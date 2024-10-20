@@ -480,7 +480,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (beaches.Length > 0)
 			{
 				var beachPermittedTemplates =
-					TilingPath.PermittedTemplates.FromInner(tileset, new[] { "Beach" });
+					TilingPath.PermittedSegments.FromInner(tileset, new[] { "Beach" });
 				var tiledBeaches = new int2[beaches.Length][];
 				for (var i = 0; i < beaches.Length; i++)
 				{
@@ -523,10 +523,10 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			var nonLoopedCliffPermittedTemplates =
-				TilingPath.PermittedTemplates.FromInnerAndTerminal(
+				TilingPath.PermittedSegments.FromInnerAndTerminal(
 					tileset, new[] { "Cliff" }, new[] { "Clear" });
 			var loopedCliffPermittedTemplates =
-				TilingPath.PermittedTemplates.FromInner(
+				TilingPath.PermittedSegments.FromInner(
 					tileset, new[] { "Cliff" });
 			if (externalCircularBias > 0)
 			{
@@ -858,7 +858,7 @@ namespace OpenRA.Mods.Common.Traits
 				pointArrays = TilingPath.RetainDisjointPaths(pointArrays, size);
 
 				var roadPermittedTemplates =
-					TilingPath.PermittedTemplates.FromInnerAndTerminal(
+					TilingPath.PermittedSegments.FromInnerAndTerminal(
 						tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" });
 
 				foreach (var pointArray in pointArrays)
