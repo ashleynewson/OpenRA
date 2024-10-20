@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using OpenRA.FileSystem;
@@ -79,6 +80,7 @@ namespace OpenRA.Mods.Common.Terrain
 
 		[FieldLoader.Ignore]
 		public readonly IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates;
+		public readonly IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates;
 
 		[FieldLoader.Ignore]
 		public readonly TerrainTypeInfo[] TerrainInfo;
@@ -117,6 +119,11 @@ namespace OpenRA.Mods.Common.Terrain
 			// Templates
 			Templates = yaml["Templates"].ToDictionary().Values
 				.Select(y => (TerrainTemplateInfo)new DefaultTerrainTemplateInfo(this, y)).ToDictionary(t => t.Id);
+
+			SegmentsToTemplates = ImmutableDictionary.CreateRange(
+				Templates.Values.SelectMany(
+					template => template.Segments.Select(
+						segment => new KeyValuePair<TemplateSegment, TerrainTemplateInfo>(segment, template))));
 		}
 
 		public TerrainTypeInfo this[byte index] => TerrainInfo[index];
@@ -167,6 +174,7 @@ namespace OpenRA.Mods.Common.Terrain
 
 		string[] ITemplatedTerrainInfo.EditorTemplateOrder => EditorTemplateOrder;
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> ITemplatedTerrainInfo.Templates => Templates;
+		IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> ITemplatedTerrainInfo.SegmentsToTemplates => SegmentsToTemplates;
 
 		void ITerrainInfoNotifyMapCreated.MapCreated(Map map)
 		{
