@@ -62,10 +62,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			var size = map.MapSize;
 			var regions = new List<Region>();
 			var regionMap = new Matrix<int>(size).Fill(NULL_REGION);
-			var playable = new Matrix<Playability>(size);
-			for (var y = 0; y < size.Y; y++)
+			var playable = new Matrix<Playability>(size).Fill(Playability.Unplayable);
+			for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
 			{
-				for (var x = 0; x < size.X; x++)
+				for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
 				{
 					playable[x, y] = playabilityMap[map.Tiles[new MPos(x, y)]];
 				}
@@ -107,9 +107,9 @@ namespace OpenRA.Mods.Common.MapUtils
 				MatrixUtils.FloodFill(size, new[] { (start, true, Direction.NONE) }, Filler, Direction.SPREAD4_D);
 			}
 
-			for (var y = 0; y < size.Y; y++)
+			for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
 			{
-				for (var x = 0; x < size.X; x++)
+				for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
 				{
 					var start = new int2(x, y);
 					if (regionMap[start] == NULL_REGION && playable[start] == Playability.Playable)
