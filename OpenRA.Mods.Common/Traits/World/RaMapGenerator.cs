@@ -42,11 +42,6 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class RaMapGenerator : IMapGenerator
 	{
-		const ushort LAND_TILE = 255;
-		const ushort WATER_TILE = 1;
-
-		const float EXTERNAL_BIAS = 1000000.0f;
-
 		readonly RaMapGeneratorInfo info;
 
 		IMapGeneratorInfo IMapGenerator.Info => info;
@@ -67,12 +62,9 @@ namespace OpenRA.Mods.Common.Traits
 						new KeyValuePair<int, string>((int)Symmetry.Mirror.LeftMatchesRight, "Left matches right"),
 						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopLeftMatchesBottomRight, "Top-left matches bottom-right"),
 						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopMatchesBottom, "Top matches bottom"),
-						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopRightMatchesBottomLeft, "Top-right matches bottom-left")
-					),
-					(int)Symmetry.Mirror.None
-				)),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopRightMatchesBottomLeft, "Top-right matches bottom-left")),
+					(int)Symmetry.Mirror.None)),
 				new MapGeneratorSetting("Players", "Players per symmetry", new MapGeneratorSetting.IntegerValue(1)),
-
 				new MapGeneratorSetting("#Terrain", "Terrain settings", new MapGeneratorSetting.SectionValue()),
 				new MapGeneratorSetting("WavelengthScale", "Noise Wavelength Scale", new MapGeneratorSetting.FloatValue(0.2)),
 				new MapGeneratorSetting("Water", "Water fraction", new MapGeneratorSetting.FloatValue(0.2)),
@@ -83,10 +75,8 @@ namespace OpenRA.Mods.Common.Traits
 					ImmutableList.Create(
 						new KeyValuePair<string, string>("0", "Square"),
 						new KeyValuePair<string, string>("-1", "Circle (outside is water)"),
-						new KeyValuePair<string, string>("1", "Circle (outside is mountain)")
-					),
-					"0"
-				)),
+						new KeyValuePair<string, string>("1", "Circle (outside is mountain)")),
+					"0")),
 				new MapGeneratorSetting("TerrainSmoothing", "Terrain smoothing", new MapGeneratorSetting.IntegerValue(4)),
 				new MapGeneratorSetting("SmoothingThreshold", "Smoothing threshold", new MapGeneratorSetting.FloatValue(0.33)),
 				new MapGeneratorSetting("MinimumLandSeaThickness", "Minimum land/sea thickness", new MapGeneratorSetting.IntegerValue(5)),
@@ -102,14 +92,11 @@ namespace OpenRA.Mods.Common.Traits
 					ImmutableList.Create(
 						new KeyValuePair<string, string>("0", "None"),
 						new KeyValuePair<string, string>("1", "Match passability"),
-						new KeyValuePair<string, string>("2", "Match terrain type")
-					),
-					"0"
-				)),
+						new KeyValuePair<string, string>("2", "Match terrain type")),
+					"0")),
 				new MapGeneratorSetting("Roads", "Roads", new MapGeneratorSetting.BooleanValue(true)),
 				new MapGeneratorSetting("RoadSpacing", "Road spacing", new MapGeneratorSetting.IntegerValue(5)),
 				new MapGeneratorSetting("RoadShrink", "Road shrink", new MapGeneratorSetting.IntegerValue(0)),
-
 				new MapGeneratorSetting("#Entities", "Entity settings", new MapGeneratorSetting.SectionValue()),
 				new MapGeneratorSetting("CreateEntities", "Create entities", new MapGeneratorSetting.BooleanValue(true)),
 				new MapGeneratorSetting("CentralSpawnReservationFraction", "Central reservation against spawns", new MapGeneratorSetting.FloatValue(0.3)),
@@ -136,19 +123,72 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("WeightHosp", "Building weight: Hospital", new MapGeneratorSetting.FloatValue(2)),
 				new MapGeneratorSetting("WeightMiss", "Building weight: Communications Center", new MapGeneratorSetting.FloatValue(1)),
 				new MapGeneratorSetting("WeightBio", "Building weight: Biological Lab", new MapGeneratorSetting.FloatValue(0)),
-				new MapGeneratorSetting("WeightOilb", "Building weight: Oil Derrick", new MapGeneratorSetting.FloatValue(9))
-			);
+				new MapGeneratorSetting("WeightOilb", "Building weight: Oil Derrick", new MapGeneratorSetting.FloatValue(9)));
 		}
 
 		public IEnumerable<MapGeneratorSetting> GetPresetSettings(Map map, ModData modData, string preset)
 		{
-			var settings = GetDefaultSettings(map, modData);
+			var settings = (ImmutableList<MapGeneratorSetting>)GetDefaultSettings(map, modData);
 			switch (preset)
 			{
 				case null:
+				case "lakes":
+					break;
+				case "puddles":
+					settings.First(s => s.Name == "Water").Set(0.1);
 					break;
 				case "plains":
 					settings.First(s => s.Name == "Water").Set(0.0);
+					break;
+				case "parks":
+					settings.First(s => s.Name == "Water").Set(0.0);
+					settings.First(s => s.Name == "Forests").Set(0.1);
+					break;
+				case "woodlands":
+					settings.First(s => s.Name == "Water").Set(0.0);
+					settings.First(s => s.Name == "Forests").Set(0.3);
+					settings.First(s => s.Name == "EnforceSymmetry").Set(2);
+					break;
+				case "overgrown":
+					settings.First(s => s.Name == "Water").Set(0.0);
+					settings.First(s => s.Name == "Forests").Set(0.5);
+					settings.First(s => s.Name == "EnforceSymmetry").Set(2);
+					settings.First(s => s.Name == "Mountains").Set(0.5);
+					settings.First(s => s.Name == "Roughness").Set(0.25);
+					break;
+				case "mountains":
+					settings.First(s => s.Name == "Water").Set(0.0);
+					settings.First(s => s.Name == "Mountains").Set(1.0);
+					settings.First(s => s.Name == "Roughness").Set(0.85);
+					settings.First(s => s.Name == "MinimumTerrainContourSpacing").Set(5);
+					break;
+				case "mountain-lakes":
+					settings.First(s => s.Name == "Water").Set(0.2);
+					settings.First(s => s.Name == "Mountains").Set(1.0);
+					settings.First(s => s.Name == "Roughness").Set(0.85);
+					settings.First(s => s.Name == "MinimumTerrainContourSpacing").Set(5);
+					break;
+				case "oceanic":
+					settings.First(s => s.Name == "Water").Set(0.8);
+					settings.First(s => s.Name == "Forests").Set(0.0);
+					break;
+				case "large-islands":
+					settings.First(s => s.Name == "Water").Set(0.75);
+					settings.First(s => s.Name == "WavelengthScale").Set(0.5);
+					settings.First(s => s.Name == "Forests").Set(0.0);
+					break;
+				case "continents":
+					settings.First(s => s.Name == "Water").Set(0.5);
+					settings.First(s => s.Name == "WavelengthScale").Set(1.0);
+					break;
+				case "wetlands":
+					settings.First(s => s.Name == "Water").Set(0.5);
+					break;
+				case "narrow-wetlands":
+					settings.First(s => s.Name == "Water").Set(0.5);
+					settings.First(s => s.Name == "WavelengthScale").Set(0.05);
+					settings.First(s => s.Name == "Forests").Set(0.0);
+					settings.First(s => s.Name == "SpawnBuildSize").Set(6);
 					break;
 				default:
 					throw new ArgumentException("Invalid preset.");
@@ -160,11 +200,28 @@ namespace OpenRA.Mods.Common.Traits
 		public IEnumerable<KeyValuePair<string, string>> GetPresets(Map map, ModData modData)
 		{
 			return ImmutableList.Create(
-				new KeyValuePair<string, string>("plains", "Plains"));
+				new KeyValuePair<string, string>("lakes", "Lakes"),
+				new KeyValuePair<string, string>("puddles", "Puddles"),
+				new KeyValuePair<string, string>("plains", "Plains"),
+				new KeyValuePair<string, string>("parks", "Parks"),
+				new KeyValuePair<string, string>("woodlands", "Woodlands"),
+				new KeyValuePair<string, string>("overgrown", "Overgrown"),
+				new KeyValuePair<string, string>("mountains", "Mountains"),
+				new KeyValuePair<string, string>("mountain-lakes", "Mountain Lakes"),
+				new KeyValuePair<string, string>("oceanic", "Oceanic"),
+				new KeyValuePair<string, string>("large-islands", "Large Islands"),
+				new KeyValuePair<string, string>("continents", "Continents"),
+				new KeyValuePair<string, string>("wetlands", "Wetlands"),
+				new KeyValuePair<string, string>("narrow-wetlands", "Narrow Wetlands"));
 		}
 
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)
 		{
+			const ushort LAND_TILE = 255;
+			const ushort WATER_TILE = 1;
+
+			const float EXTERNAL_BIAS = 1000000.0f;
+
 			// TODO: translate exception messages?
 			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
 			var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
@@ -400,8 +457,6 @@ namespace OpenRA.Mods.Common.Traits
 				throw new MapGenerationException("forestClumpiness setting must be >= 0");
 			if (mountains < 0.0 || mountains > 1.0)
 				throw new MapGenerationException("mountains fraction must be between 0 and 1 inclusive");
-			if (water + mountains > 1.0)
-				throw new MapGenerationException("water and mountains fractions combined must not exceed 1");
 
 			Log.Write("debug", "deriving random generators");
 
@@ -980,7 +1035,7 @@ namespace OpenRA.Mods.Common.Traits
 					};
 
 					var radius2 = MathF.Min(spawnRegionSize, room);
-					var radius1 = MathF.Min(MathF.Min(spawnBuildSize, room), radius2 - 2);
+					var radius1 = MathF.Min(MathF.Min(spawnBuildSize, room), radius2);
 					if (radius1 >= 2.0f)
 					{
 						var mineWeights = new Matrix<float>(size);
@@ -1581,7 +1636,7 @@ namespace OpenRA.Mods.Common.Traits
 								preferences[x, y] = 1;
 							break;
 						case Symmetry.Mirror.TopLeftMatchesBottomRight:
-							if (MathF.Abs((x - center.X) + (y - center.Y)) <= centralReservation * SQRT2)
+							if (MathF.Abs(x - center.X + (y - center.Y)) <= centralReservation * SQRT2)
 								preferences[x, y] = 1;
 							break;
 						case Symmetry.Mirror.TopMatchesBottom:
@@ -1589,7 +1644,7 @@ namespace OpenRA.Mods.Common.Traits
 								preferences[x, y] = 1;
 							break;
 						case Symmetry.Mirror.TopRightMatchesBottomLeft:
-							if (MathF.Abs((x - center.X) - (y - center.Y)) <= centralReservation * SQRT2)
+							if (MathF.Abs(x - center.X - (y - center.Y)) <= centralReservation * SQRT2)
 								preferences[x, y] = 1;
 							break;
 						default:
