@@ -1197,7 +1197,7 @@ namespace OpenRA.Mods.Common.Traits
 						if (actorPlan.Reference.Type == "mpspawn")
 							orePlan.DrawCircle(
 								center: actorPlan.Int2Location,
-								radius: 3,
+								radius: spawnBuildSize,
 								setTo: (_, _) => float.NegativeInfinity,
 								invert: false);
 					}
