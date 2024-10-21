@@ -360,16 +360,6 @@ namespace OpenRA.Mods.Common.Traits
 					basic.Clone().WithTemplate(106).WithWeight(0.05f),
 					basic.Clone().WithTemplate(109),
 					basic.Clone().WithTemplate(110),
-					basic.Clone().WithTemplate(580).WithWeight(0.1f),
-					basic.Clone().WithTemplate(581).WithWeight(0.1f),
-					basic.Clone().WithTemplate(582).WithWeight(0.1f),
-					basic.Clone().WithTemplate(583).WithWeight(0.1f),
-					basic.Clone().WithTemplate(584).WithWeight(0.1f),
-					basic.Clone().WithTemplate(585).WithWeight(0.1f),
-					basic.Clone().WithTemplate(586).WithWeight(0.1f),
-					basic.Clone().WithTemplate(587).WithWeight(0.1f),
-					basic.Clone().WithTemplate(588).WithWeight(0.1f),
-					basic.Clone().WithTemplate(400).WithWeight(0.1f),
 					basic.Clone().WithActor(new ActorPlan(map, "t01").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
 					basic.Clone().WithActor(new ActorPlan(map, "t02").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
 					basic.Clone().WithActor(new ActorPlan(map, "t03").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
@@ -385,6 +375,23 @@ namespace OpenRA.Mods.Common.Traits
 					basic.Clone().WithActor(new ActorPlan(map, "t15").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
 					basic.Clone().WithActor(new ActorPlan(map, "t16").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
 					basic.Clone().WithActor(new ActorPlan(map, "t17").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f));
+				switch (map.Tileset)
+				{
+					case "TEMPERAT":
+						unplayableObstacles = unplayableObstacles.AddRange(new[]
+						{
+							basic.Clone().WithTemplate(580).WithWeight(0.1f),
+							basic.Clone().WithTemplate(581).WithWeight(0.1f),
+							basic.Clone().WithTemplate(582).WithWeight(0.1f),
+							basic.Clone().WithTemplate(583).WithWeight(0.1f),
+							basic.Clone().WithTemplate(584).WithWeight(0.1f),
+							basic.Clone().WithTemplate(585).WithWeight(0.1f),
+							basic.Clone().WithTemplate(586).WithWeight(0.1f),
+							basic.Clone().WithTemplate(587).WithWeight(0.1f),
+							basic.Clone().WithTemplate(588).WithWeight(0.1f)
+						});
+						break;
+				}
 			}
 
 			var replaceabilityMap = new Dictionary<TerrainTile, MultiBrush.Replaceability>();
@@ -1667,13 +1674,12 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			switch (map.Tileset)
 			{
+				case "SNOW":
 				case "TEMPERAT":
-					break;
+					return true;
 				default:
 					return false;
 			}
-
-			return true;
 		}
 	}
 }
