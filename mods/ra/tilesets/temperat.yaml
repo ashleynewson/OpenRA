@@ -3001,6 +3001,17 @@ Templates:
 		Tiles:
 			0: Road
 			3: Road
+		Segments:
+			Segment@1:
+				End: RoadIn.RU
+				Inner: Road
+				Points: 1,2, 2,2, 2,1
+				Start: RoadOut.RU
+			Segment@2:
+				End: RoadIn.LD
+				Inner: Road
+				Points: 1,0, 0,0, 0,1
+				Start: RoadOut.LD
 	Template@210:
 		Id: 210
 		Images: d38.tem

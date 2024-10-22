@@ -218,7 +218,7 @@ namespace OpenRA.Mods.Common.Traits
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)
 		{
 			const ushort LAND_TILE = 255;
-			const ushort WATER_TILE = 1;
+			var waterTile = map.Tileset == "DESERT" ? (ushort)256 : (ushort)1;
 
 			const float EXTERNAL_BIAS = 1000000.0f;
 
@@ -290,107 +290,162 @@ namespace OpenRA.Mods.Common.Traits
 			var roadIndex = tileset.GetTerrainIndex("Road");
 			var rockIndex = tileset.GetTerrainIndex("Rock");
 			var roughIndex = tileset.GetTerrainIndex("Rough");
+			var treeIndex = tileset.GetTerrainIndex("Tree");
 			var waterIndex = tileset.GetTerrainIndex("Water");
 
 			ImmutableArray<MultiBrush> forestObstacles;
 			ImmutableArray<MultiBrush> unplayableObstacles;
 			{
+				var clear = new TerrainTile(LAND_TILE, 0);
 				var basic = new MultiBrush(map, modData).WithWeight(1.0f);
 				var husk = basic.Clone().WithWeight(0.1f);
-				forestObstacles = ImmutableArray.Create(
-					basic.Clone().WithActor(new ActorPlan(map, "t01").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t02").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t03").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t05").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t06").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t07").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t10").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t11").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t12").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t13").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t14").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t15").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t16").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "t17").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "tc01").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "tc02").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "tc03").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "tc04").AlignFootprint()),
-					basic.Clone().WithActor(new ActorPlan(map, "tc05").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t01.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t02.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t03.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t05.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t06.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t07.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t08.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t10.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t11.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t12.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t13.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t14.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t15.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t16.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "t17.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "tc01.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "tc02.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "tc03.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "tc04.husk").AlignFootprint()),
-					husk.Clone().WithActor(new ActorPlan(map, "tc05.husk").AlignFootprint()));
-
-				var clear = new TerrainTile(LAND_TILE, 0);
-				unplayableObstacles = ImmutableArray.Create(
-					basic.Clone().WithTemplate(97),
-					basic.Clone().WithTemplate(98),
-					basic.Clone().WithTemplate(99),
-					basic.Clone().WithTemplate(217),
-					basic.Clone().WithTemplate(218),
-					basic.Clone().WithTemplate(219),
-					basic.Clone().WithTemplate(220),
-					basic.Clone().WithTemplate(221),
-					basic.Clone().WithTemplate(222),
-					basic.Clone().WithTemplate(223),
-					basic.Clone().WithTemplate(224),
-					basic.Clone().WithTemplate(225),
-					basic.Clone().WithTemplate(226),
-					basic.Clone().WithTemplate(103),
-					basic.Clone().WithTemplate(104),
-					basic.Clone().WithTemplate(105).WithWeight(0.05f),
-					basic.Clone().WithTemplate(106).WithWeight(0.05f),
-					basic.Clone().WithTemplate(109),
-					basic.Clone().WithTemplate(110),
-					basic.Clone().WithActor(new ActorPlan(map, "t01").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t02").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t03").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t05").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t06").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t07").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t10").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t11").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t12").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t13").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t14").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t15").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t16").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
-					basic.Clone().WithActor(new ActorPlan(map, "t17").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f));
 				switch (map.Tileset)
 				{
-					case "TEMPERAT":
-						unplayableObstacles = unplayableObstacles.AddRange(new[]
-						{
-							basic.Clone().WithTemplate(580).WithWeight(0.1f),
-							basic.Clone().WithTemplate(581).WithWeight(0.1f),
-							basic.Clone().WithTemplate(582).WithWeight(0.1f),
-							basic.Clone().WithTemplate(583).WithWeight(0.1f),
-							basic.Clone().WithTemplate(584).WithWeight(0.1f),
-							basic.Clone().WithTemplate(585).WithWeight(0.1f),
-							basic.Clone().WithTemplate(586).WithWeight(0.1f),
-							basic.Clone().WithTemplate(587).WithWeight(0.1f),
-							basic.Clone().WithTemplate(588).WithWeight(0.1f)
-						});
+					case "DESERT":
+						forestObstacles = ImmutableArray.Create(
+							basic.Clone().WithTemplate(14),
+							basic.Clone().WithTemplate(15),
+							basic.Clone().WithTemplate(16),
+							basic.Clone().WithTemplate(17),
+							basic.Clone().WithTemplate(18),
+							basic.Clone().WithTemplate(19),
+							basic.Clone().WithTemplate(20),
+							basic.Clone().WithTemplate(21),
+							basic.Clone().WithTemplate(22),
+							basic.Clone().WithTemplate(23),
+							basic.Clone().WithActor(new ActorPlan(map, "t04").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t09").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "tc01").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t04.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t08.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t09.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "tc01.husk").AlignFootprint()));
+						unplayableObstacles = ImmutableArray.Create(
+							basic.Clone().WithTemplate(2),
+							basic.Clone().WithTemplate(3),
+							basic.Clone().WithTemplate(4),
+							basic.Clone().WithTemplate(5),
+							basic.Clone().WithTemplate(6),
+							basic.Clone().WithTemplate(7),
+							basic.Clone().WithTemplate(14).WithWeight(0.5f),
+							basic.Clone().WithTemplate(15).WithWeight(0.5f),
+							basic.Clone().WithTemplate(16).WithWeight(0.5f),
+							basic.Clone().WithTemplate(17).WithWeight(0.5f),
+							basic.Clone().WithTemplate(18).WithWeight(0.5f),
+							basic.Clone().WithTemplate(19).WithWeight(0.5f),
+							basic.Clone().WithTemplate(20).WithWeight(0.5f),
+							basic.Clone().WithTemplate(21).WithWeight(0.5f),
+							basic.Clone().WithTemplate(22).WithWeight(0.5f),
+							basic.Clone().WithTemplate(23).WithWeight(0.5f),
+							basic.Clone().WithTemplate(35),
+							basic.Clone().WithTemplate(36),
+							basic.Clone().WithTemplate(37),
+							basic.Clone().WithTemplate(38),
+							basic.Clone().WithTemplate(43),
+							basic.Clone().WithActor(new ActorPlan(map, "t04").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t09").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "tc01").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							husk.Clone().WithActor(new ActorPlan(map, "t04.husk").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							husk.Clone().WithActor(new ActorPlan(map, "t08.husk").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							husk.Clone().WithActor(new ActorPlan(map, "t09.husk").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							husk.Clone().WithActor(new ActorPlan(map, "tc01.husk").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f));
 						break;
+					case "SNOW":
+					case "TEMPERAT":
+						forestObstacles = ImmutableArray.Create(
+							basic.Clone().WithActor(new ActorPlan(map, "t01").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t02").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t03").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t05").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t06").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t07").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t10").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t11").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t12").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t13").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t14").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t15").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t16").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "t17").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "tc01").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "tc02").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "tc03").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "tc04").AlignFootprint()),
+							basic.Clone().WithActor(new ActorPlan(map, "tc05").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t01.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t02.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t03.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t05.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t06.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t07.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t08.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t10.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t11.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t12.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t13.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t14.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t15.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t16.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "t17.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "tc01.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "tc02.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "tc03.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "tc04.husk").AlignFootprint()),
+							husk.Clone().WithActor(new ActorPlan(map, "tc05.husk").AlignFootprint()));
+						unplayableObstacles = ImmutableArray.Create(
+							basic.Clone().WithTemplate(97),
+							basic.Clone().WithTemplate(98),
+							basic.Clone().WithTemplate(99),
+							basic.Clone().WithTemplate(217),
+							basic.Clone().WithTemplate(218),
+							basic.Clone().WithTemplate(219),
+							basic.Clone().WithTemplate(220),
+							basic.Clone().WithTemplate(221),
+							basic.Clone().WithTemplate(222),
+							basic.Clone().WithTemplate(223),
+							basic.Clone().WithTemplate(224),
+							basic.Clone().WithTemplate(225),
+							basic.Clone().WithTemplate(226),
+							basic.Clone().WithTemplate(103),
+							basic.Clone().WithTemplate(104),
+							basic.Clone().WithTemplate(105).WithWeight(0.05f),
+							basic.Clone().WithTemplate(106).WithWeight(0.05f),
+							basic.Clone().WithTemplate(109),
+							basic.Clone().WithTemplate(110),
+							basic.Clone().WithActor(new ActorPlan(map, "t01").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t02").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t03").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t05").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t06").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t07").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t08").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t10").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t11").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t12").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t13").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t14").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t15").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t16").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f),
+							basic.Clone().WithActor(new ActorPlan(map, "t17").AlignFootprint()).WithBackingTile(clear).WithWeight(0.1f));
+						if (map.Tileset == "TEMPERAT")
+							unplayableObstacles = unplayableObstacles.AddRange(new[]
+							{
+								basic.Clone().WithTemplate(580).WithWeight(0.1f),
+								basic.Clone().WithTemplate(581).WithWeight(0.1f),
+								basic.Clone().WithTemplate(582).WithWeight(0.1f),
+								basic.Clone().WithTemplate(583).WithWeight(0.1f),
+								basic.Clone().WithTemplate(584).WithWeight(0.1f),
+								basic.Clone().WithTemplate(585).WithWeight(0.1f),
+								basic.Clone().WithTemplate(586).WithWeight(0.1f),
+								basic.Clone().WithTemplate(587).WithWeight(0.1f),
+								basic.Clone().WithTemplate(588).WithWeight(0.1f)
+							});
+						break;
+					default:
+						throw new ArgumentException("Unexpected tileset");
 				}
 			}
 
@@ -416,12 +471,16 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						playabilityMap[tile] = PlayableSpace.Playability.Playable;
 					}
+					else if (type == treeIndex)
+					{
+						playabilityMap[tile] = PlayableSpace.Playability.Partial;
+					}
 					else
 					{
 						playabilityMap[tile] = PlayableSpace.Playability.Unplayable;
 					}
 
-					if (id == WATER_TILE)
+					if (id == waterTile)
 					{
 						replaceabilityMap[tile] = MultiBrush.Replaceability.Tile;
 					}
@@ -431,6 +490,10 @@ namespace OpenRA.Mods.Common.Traits
 							replaceabilityMap[tile] = MultiBrush.Replaceability.None;
 						else
 							replaceabilityMap[tile] = MultiBrush.Replaceability.Actor;
+					}
+					else if (template.Categories.Contains("Debris"))
+					{
+						replaceabilityMap[tile] = MultiBrush.Replaceability.None;
 					}
 					else if (template.Categories.Contains("Beach") || template.Categories.Contains("Road"))
 					{
@@ -572,13 +635,13 @@ namespace OpenRA.Mods.Common.Traits
 
 					// `map.Tiles[mpos].Index == LAND_TILE` avoids overwriting beach tiles.
 					if (beachChirality[mpos.U, mpos.V] < 0 && map.Tiles[mpos].Type == LAND_TILE)
-						map.Tiles[mpos] = PickTile(WATER_TILE);
+						map.Tiles[mpos] = PickTile(waterTile);
 				}
 			}
 			else
 			{
 				// There weren't any coastlines
-				var tileType = landPlan[0] ? LAND_TILE : WATER_TILE;
+				var tileType = landPlan[0] ? LAND_TILE : waterTile;
 				foreach (var cell in map.AllCells)
 				{
 					var mpos = cell.ToMPos(map);
@@ -796,15 +859,17 @@ namespace OpenRA.Mods.Common.Traits
 				Log.Write("debug", "symmatry enforcement: analysing");
 				if (!trivialRotate)
 					throw new MapGenerationException("cannot use symmetry enforcement on non-trivial rotations");
+
+				// This is not commutative. It can be true if main is impassable, even if other is.
 				bool CheckCompatibility(byte main, byte other)
 				{
 					if (main == other)
 						return true;
-					if (main == riverIndex || main == rockIndex || main == waterIndex)
+					else if (main == riverIndex || main == rockIndex || main == waterIndex || main == treeIndex)
 						return true;
 					else if (main == beachIndex || main == clearIndex || main == roughIndex)
 					{
-						if (other == riverIndex || other == rockIndex || other == waterIndex)
+						if (other == riverIndex || other == rockIndex || other == waterIndex || other == treeIndex)
 							return false;
 						if (other == beachIndex || other == clearIndex || other == roughIndex)
 							return enforceSymmetry < 2;
@@ -1674,6 +1739,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			switch (map.Tileset)
 			{
+				case "DESERT":
 				case "SNOW":
 				case "TEMPERAT":
 					return true;
