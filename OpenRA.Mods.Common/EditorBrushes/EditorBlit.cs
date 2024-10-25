@@ -115,11 +115,11 @@ namespace OpenRA.Mods.Common.EditorBrushes
 
 				var resourceLayerContents = resourceLayer?.GetResource(cell);
 				tiles.Add(cell, new BlitTile(mapTiles[cell], mapResources[cell], resourceLayerContents, mapHeight[cell]));
-
-				if (blitFilters.HasFlag(MapBlitFilters.Actors))
-					foreach (var preview in editorActorLayer.PreviewsInCellRegion(selection.CellCoords))
-						previews.TryAdd(preview.ID, preview);
 			}
+
+			if (blitFilters.HasFlag(MapBlitFilters.Actors))
+				foreach (var preview in editorActorLayer.PreviewsInCellRegion(selection.CellCoords))
+					previews.TryAdd(preview.ID, preview);
 
 			return new EditorBlitSource(selection, previews, tiles);
 		}
