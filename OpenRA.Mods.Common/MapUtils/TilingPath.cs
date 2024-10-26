@@ -62,9 +62,9 @@ namespace OpenRA.Mods.Common.MapUtils
 		public sealed class PermittedSegments
 		{
 			public readonly ITemplatedTerrainInfo TemplatedTerrainInfo;
-			public readonly IEnumerable<TemplateSegment> Start;
-			public readonly IEnumerable<TemplateSegment> Inner;
-			public readonly IEnumerable<TemplateSegment> End;
+			public readonly ImmutableArray<TemplateSegment> Start;
+			public readonly ImmutableArray<TemplateSegment> Inner;
+			public readonly ImmutableArray<TemplateSegment> End;
 			public IEnumerable<TemplateSegment> All => Start.Union(Inner).Union(End);
 
 			public PermittedSegments(
@@ -74,16 +74,21 @@ namespace OpenRA.Mods.Common.MapUtils
 				IEnumerable<TemplateSegment> end)
 			{
 				TemplatedTerrainInfo = templatedTerrainInfo;
-				Start = start;
-				Inner = inner;
-				End = end;
+				Start = start.ToImmutableArray();
+				Inner = inner.ToImmutableArray();
+				End = end.ToImmutableArray();
 			}
 
 			public PermittedSegments(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<TemplateSegment> all)
-				: this(templatedTerrainInfo, all, all, all)
-			{ }
+			{
+				TemplatedTerrainInfo = templatedTerrainInfo;
+				var array = all.ToImmutableArray();
+				Start = array;
+				Inner = array;
+				End = array;
+			}
 
 			// <summary>
 			// Creates a PermittedSegments using only the given types.
@@ -101,11 +106,15 @@ namespace OpenRA.Mods.Common.MapUtils
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> innerTypes,
 				IEnumerable<string> terminalTypes)
-				=> new(
+			{
+				var innerTypesArray = innerTypes.ToImmutableArray();
+				var terminalTypesArray = terminalTypes.ToImmutableArray();
+				return new(
 					templatedTerrainInfo,
-					FindSegments(templatedTerrainInfo, terminalTypes, innerTypes, innerTypes),
-					FindSegments(templatedTerrainInfo, innerTypes),
-					FindSegments(templatedTerrainInfo, innerTypes, innerTypes, terminalTypes));
+					FindSegments(templatedTerrainInfo, terminalTypesArray, innerTypesArray, innerTypesArray),
+					FindSegments(templatedTerrainInfo, innerTypesArray),
+					FindSegments(templatedTerrainInfo, innerTypesArray, innerTypesArray, terminalTypesArray));
+			}
 
 			// <summary>
 			// Equivalent to FindSegments(templatedTerrainInfo, types, types, types)
@@ -113,7 +122,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			public static IEnumerable<TemplateSegment> FindSegments(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> types)
-				=> FindSegments(templatedTerrainInfo, types, types, types);
+			{
+				var array = types.ToImmutableArray();
+				return FindSegments(templatedTerrainInfo, array, array, array);
+			}
 
 			// <summary>
 			// Find templates that use some combination of the given start, inner, end types.
@@ -125,7 +137,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				IEnumerable<string> endTypes)
 			{
 				var templates = new List<TemplateSegment>();
-				foreach (var templateInfo in templatedTerrainInfo.Templates.Values)
+				foreach (var templateInfo in templatedTerrainInfo.Templates.Values.OrderBy(tti => tti.Id))
 				{
 					foreach (var segment in templateInfo.Segments)
 					{
@@ -506,7 +518,8 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			var pathStart = points[0];
 			var pathEnd = points[^1];
-			var permittedSegments = Segments.All.ToImmutableHashSet();
+			var orderedPermittedSegments = Segments.All.ToImmutableArray();
+			var permittedSegments = orderedPermittedSegments.ToImmutableHashSet();
 
 			const int MAX_SCORE = int.MaxValue;
 			var segmentTypeToId = new Dictionary<string, int>();
@@ -524,7 +537,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					scores.Add(new Matrix<int>(size).Fill(MAX_SCORE));
 				}
 
-				foreach (var segment in permittedSegments)
+				foreach (var segment in orderedPermittedSegments)
 				{
 					var template = Segments.TemplatedTerrainInfo.SegmentsToTemplates[segment];
 					RegisterSegmentType(segment.Start);
