@@ -41,10 +41,12 @@ namespace OpenRA.Mods.Common.MapUtils
 				wavelengths[i] = (1 << i) * wavelengthScale;
 			}
 
-			// float AmpFunc(float wavelength) => wavelength / span / wavelengths.Length;
 			var noise = new Matrix<float>(size);
 			foreach (var wavelength in wavelengths)
 			{
+				if (wavelength <= 0.5)
+					continue;
+
 				var amps = ampFunc(wavelength);
 				var subSpan = (int)(span / wavelength) + 2;
 				var subNoise = PerlinNoise(random, subSpan);
