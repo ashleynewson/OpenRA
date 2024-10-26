@@ -78,7 +78,7 @@ namespace OpenRA.Mods.Common.Traits
 						new KeyValuePair<string, string>("1", "Circle (outside is mountain)")),
 					"0")),
 				new MapGeneratorSetting("TerrainSmoothing", "Terrain smoothing", new MapGeneratorSetting.IntegerValue(4)),
-				new MapGeneratorSetting("SmoothingThreshold", "Smoothing threshold", new MapGeneratorSetting.FloatValue(0.33)),
+				new MapGeneratorSetting("SmoothingThreshold", "Smoothing threshold", new MapGeneratorSetting.FloatValue(5f/6f)),
 				new MapGeneratorSetting("MinimumLandSeaThickness", "Minimum land/sea thickness", new MapGeneratorSetting.IntegerValue(5)),
 				new MapGeneratorSetting("MinimumMountainThickness", "Minimum mountain thickness", new MapGeneratorSetting.IntegerValue(5)),
 				new MapGeneratorSetting("MaximumAltitude", "Maximum mountain altitude", new MapGeneratorSetting.IntegerValue(8)),
@@ -600,7 +600,12 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			Log.Write("debug", "land planning: producing terrain");
-			var landPlan = ProduceTerrain(elevation, terrainSmoothing, smoothingThreshold, minimumLandSeaThickness, /*bias=*/water < 0.5, "land planning");
+			var landPlan = MatrixUtils.BooleanBlotch(
+				elevation.Map(v => v >= 0),
+				terrainSmoothing,
+				smoothingThreshold,
+				minimumLandSeaThickness,
+				/*bias=*/water < 0.5);
 
 			Log.Write("debug", "beaches");
 			var beaches = MatrixUtils.BordersToPoints(landPlan);
@@ -742,7 +747,12 @@ namespace OpenRA.Mods.Common.Traits
 						0.0f,
 						1.0f - availableFraction * mountains);
 					Log.Write("debug", $"mountains: altitude {altitude}: fixing terrain anomalies");
-					cliffPlan = ProduceTerrain(mountainElevation, terrainSmoothing, smoothingThreshold, minimumMountainThickness, false, $"mountains: altitude {altitude}");
+					cliffPlan = MatrixUtils.BooleanBlotch(
+						mountainElevation.Map(v => v >= 0),
+						terrainSmoothing,
+						smoothingThreshold,
+						minimumMountainThickness,
+						/*bias=*/false);
 					Log.Write("debug", $"mountains: altitude {altitude}: tracing cliffs");
 					var unmaskedCliffs = MatrixUtils.BordersToPoints(cliffPlan);
 					Log.Write("debug", $"mountains: altitude {altitude}: appling roughness mask to cliffs");
@@ -1464,198 +1474,6 @@ namespace OpenRA.Mods.Common.Traits
 			map.ActorDefinitions = actorPlans
 				.Select((plan, i) => new MiniYamlNode($"Actor{i}", plan.Reference.Save()))
 				.ToImmutableArray();
-		}
-
-		static Matrix<bool> ProduceTerrain(
-			Matrix<float> elevation,
-			int terrainSmoothing,
-			float smoothingThreshold,
-			int minimumThickness,
-			bool bias,
-			string debugLabel)
-		{
-			Log.Write("debug", $"{debugLabel}: fixing terrain anomalies: primary median blur");
-			var maxSpan = Math.Max(elevation.Size.X, elevation.Size.Y);
-			var landmass = elevation.Map(v => v >= 0);
-
-			(landmass, _) = MatrixUtils.BooleanBlur(landmass, terrainSmoothing, true, 0.0f);
-			for (var i1 = 0; i1 < /*max passes*/16; i1++)
-			{
-				for (var i2 = 0; i2 < maxSpan; i2++)
-				{
-					int changes;
-					var changesAcc = 0;
-					for (var r = 1; r <= terrainSmoothing; r++)
-					{
-						(landmass, changes) = MatrixUtils.BooleanBlur(landmass, r, true, smoothingThreshold);
-						changesAcc += changes;
-					}
-
-					if (changesAcc == 0)
-					{
-						break;
-					}
-				}
-
-				{
-					var changesAcc = 0;
-					int changes;
-					int thinnest;
-					(landmass, changes) = MatrixUtils.ErodeAndDilate(landmass, true, minimumThickness);
-					changesAcc += changes;
-					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, true, minimumThickness);
-					changesAcc += changes;
-
-					var midFixLandmass = landmass.Clone();
-
-					(landmass, changes) = MatrixUtils.ErodeAndDilate(landmass, false, minimumThickness);
-					changesAcc += changes;
-					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, false, minimumThickness);
-					changesAcc += changes;
-					if (changesAcc == 0)
-					{
-						break;
-					}
-
-					if (i1 >= 8 && i1 % 4 == 0)
-					{
-						var diff = Matrix<bool>.Zip(midFixLandmass, landmass, (a, b) => a != b);
-						for (var y = 0; y < elevation.Size.Y; y++)
-						{
-							for (var x = 0; x < elevation.Size.X; x++)
-							{
-								if (diff[x, y])
-									landmass.DrawCircle(
-										center: new float2(x, y),
-										radius: minimumThickness * 2,
-										setTo: (_, _) => bias,
-										invert: false);
-							}
-						}
-					}
-				}
-			}
-
-			return landmass;
-		}
-
-		static (int Thinnest, int Changes) FixThinMassesInPlaceFull(Matrix<bool> input, bool dilate, int width)
-		{
-			int thinnest;
-			int changes;
-			int changesAcc;
-			(thinnest, changes) = FixThinMassesInPlace(input, dilate, width);
-			changesAcc = changes;
-			while (changes > 0)
-			{
-				(_, changes) = FixThinMassesInPlace(input, dilate, width);
-				changesAcc += changes;
-			}
-
-			return (thinnest, changesAcc);
-		}
-
-		static (int Thinnest, int Changes) FixThinMassesInPlace(Matrix<bool> input, bool dilate, int width)
-		{
-			var sizeMinus1 = input.Size - new int2(1, 1);
-			var cornerMaskSpan = width + 1;
-
-			// Zero means ignore.
-			var cornerMask = new Matrix<int>(cornerMaskSpan, cornerMaskSpan);
-
-			for (var y = 0; y < cornerMaskSpan; y++)
-			{
-				for (var x = 0; x < cornerMaskSpan; x++)
-				{
-					cornerMask[x, y] = 1 + width + width - x - y;
-				}
-			}
-
-			cornerMask[0] = 0;
-
-			// Higher number indicates a thinner area.
-			var thinness = new Matrix<int>(input.Size);
-			void SetThinness(int x, int y, int v)
-			{
-				if (!input.ContainsXY(x, y)) return;
-				if (input[x, y] == dilate) return;
-				thinness[x, y] = Math.Max(v, thinness[x, y]);
-			}
-
-			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < input.Size.X; cx++)
-				{
-					if (input[cx, cy] == dilate)
-						continue;
-
-					// _L_eft _R_ight _U_p _D_own
-					var l = input[Math.Max(cx - 1, 0), cy] == dilate;
-					var r = input[Math.Min(cx + 1, sizeMinus1.X), cy] == dilate;
-					var u = input[cx, Math.Max(cy - 1, 0)] == dilate;
-					var d = input[cx, Math.Min(cy + 1, sizeMinus1.Y)] == dilate;
-					var lu = l && u;
-					var ru = r && u;
-					var ld = l && d;
-					var rd = r && d;
-					for (var ry = 0; ry < cornerMaskSpan; ry++)
-					{
-						for (var rx = 0; rx < cornerMaskSpan; rx++)
-						{
-							if (rd)
-							{
-								var x = cx + rx;
-								var y = cy + ry;
-								SetThinness(x, y, cornerMask[rx, ry]);
-							}
-
-							if (ru)
-							{
-								var x = cx + rx;
-								var y = cy - ry;
-								SetThinness(x, y, cornerMask[rx, ry]);
-							}
-
-							if (ld)
-							{
-								var x = cx - rx;
-								var y = cy + ry;
-								SetThinness(x, y, cornerMask[rx, ry]);
-							}
-
-							if (lu)
-							{
-								var x = cx - rx;
-								var y = cy - ry;
-								SetThinness(x, y, cornerMask[rx, ry]);
-							}
-						}
-					}
-				}
-			}
-
-			var thinnest = thinness.Data.Max();
-			if (thinnest == 0)
-			{
-				// No fixes
-				return (0, 0);
-			}
-
-			var changes = 0;
-			for (var y = 0; y < input.Size.Y; y++)
-			{
-				for (var x = 0; x < input.Size.X; x++)
-				{
-					if (thinness[x, y] == thinnest)
-					{
-						input[x, y] = dilate;
-						changes++;
-					}
-				}
-			}
-
-			// Fixes made, with potentially more that can be in another pass.
-			return (thinnest, changes);
 		}
 
 		static Matrix<MultiBrush.Replaceability> IdentifyReplaceableTiles(
