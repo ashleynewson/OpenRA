@@ -584,6 +584,11 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public static (Matrix<bool> Output, int Changes) ErodeAndDilate(Matrix<bool> input, bool foreground, int amount)
 		{
+			// TODO: We can achieve the same time complexity as BooleanBlur,
+			//       basically by doing an extreme threshold blur.
+			//
+			//       But, this already seems quite fast in practice, which
+			//       surprises me. _Maybe_ optimize?
 			var output = new Matrix<bool>(input.Size).Fill(!foreground);
 			for (var cy = 1 - amount; cy < input.Size.Y; cy++)
 			{
@@ -1029,8 +1034,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		// of the true and false regions, making them "blotchy":
 		// - Smoothing via thresholded median blurs.
 		// - A minimum thickness is enforced for all true/false regions. More formally, eroding and
-		//   then dilating the true or false regions by minimumThickness results in no change. (Thin
-		//   regions are destroyed, not grown.) ???
+		//   then dilating the true or false regions by minimumThickness results in no change.
 		// - No grid points connect diagonally-crossing true and false regions. In other words,
 		//   these 2x2 patterns never appear in the output matrix:
 		//       10      01
@@ -1070,17 +1074,16 @@ namespace OpenRA.Mods.Common.MapUtils
 				{
 					var changesAcc = 0;
 					int changes;
-					int thinnest;
 					(landmass, changes) = ErodeAndDilate(landmass, true, minimumThickness);
 					changesAcc += changes;
-					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, true, minimumThickness);
+					changes = DilateThinRegionsInPlaceFull(landmass, true, minimumThickness);
 					changesAcc += changes;
 
 					var midFixLandmass = landmass.Clone();
 
 					(landmass, changes) = ErodeAndDilate(landmass, false, minimumThickness);
 					changesAcc += changes;
-					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, false, minimumThickness);
+					changes = DilateThinRegionsInPlaceFull(landmass, false, minimumThickness);
 					changesAcc += changes;
 					if (changesAcc == 0)
 					{
@@ -1109,23 +1112,34 @@ namespace OpenRA.Mods.Common.MapUtils
 			return landmass;
 		}
 
-		static (int Thinnest, int Changes) FixThinMassesInPlaceFull(Matrix<bool> input, bool dilate, int width)
+		// <summary>
+		// Repeatedly calls DilateThinRegionsInPlace until no changes are made.
+		// </summary>
+		static int DilateThinRegionsInPlaceFull(Matrix<bool> input, bool foreground, int width)
 		{
-			int thinnest;
 			int changes;
-			int changesAcc;
-			(thinnest, changes) = FixThinMassesInPlace(input, dilate, width);
-			changesAcc = changes;
-			while (changes > 0)
+			var changesAcc = 0;
+
+			do
 			{
-				(_, changes) = FixThinMassesInPlace(input, dilate, width);
+				changes = DilateThinRegionsInPlace(input, foreground, width);
 				changesAcc += changes;
 			}
+			while (changes > 0);
 
-			return (thinnest, changesAcc);
+			return changesAcc;
 		}
 
-		static (int Thinnest, int Changes) FixThinMassesInPlace(Matrix<bool> input, bool dilate, int width)
+		// <summary>
+		// If foreground true, finds the thinnest true regions and dilates them.
+		// If foreground false, finds the thinnest false regions and dilates them.
+		// Each call only dilates thin regions by one cell's thickness on each border.
+		//
+		// Only regions with a thickness less than width (in Chebychev distance) are considered.
+		//
+		// Returns the number of changes made.
+		// </summary>
+		static int DilateThinRegionsInPlace(Matrix<bool> input, bool foreground, int width)
 		{
 			var sizeMinus1 = input.Size - new int2(1, 1);
 			var cornerMaskSpan = width + 1;
@@ -1148,7 +1162,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			void SetThinness(int x, int y, int v)
 			{
 				if (!input.ContainsXY(x, y)) return;
-				if (input[x, y] == dilate) return;
+				if (input[x, y] == foreground) return;
 				thinness[x, y] = Math.Max(v, thinness[x, y]);
 			}
 
@@ -1156,14 +1170,14 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
-					if (input[cx, cy] == dilate)
+					if (input[cx, cy] == foreground)
 						continue;
 
 					// _L_eft _R_ight _U_p _D_own
-					var l = input[Math.Max(cx - 1, 0), cy] == dilate;
-					var r = input[Math.Min(cx + 1, sizeMinus1.X), cy] == dilate;
-					var u = input[cx, Math.Max(cy - 1, 0)] == dilate;
-					var d = input[cx, Math.Min(cy + 1, sizeMinus1.Y)] == dilate;
+					var l = input[Math.Max(cx - 1, 0), cy] == foreground;
+					var r = input[Math.Min(cx + 1, sizeMinus1.X), cy] == foreground;
+					var u = input[cx, Math.Max(cy - 1, 0)] == foreground;
+					var d = input[cx, Math.Min(cy + 1, sizeMinus1.Y)] == foreground;
 					var lu = l && u;
 					var ru = r && u;
 					var ld = l && d;
@@ -1208,7 +1222,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			if (thinnest == 0)
 			{
 				// No fixes
-				return (0, 0);
+				return 0;
 			}
 
 			var changes = 0;
@@ -1218,14 +1232,14 @@ namespace OpenRA.Mods.Common.MapUtils
 				{
 					if (thinness[x, y] == thinnest)
 					{
-						input[x, y] = dilate;
+						input[x, y] = foreground;
 						changes++;
 					}
 				}
 			}
 
-			// Fixes made, with potentially more that can be in another pass.
-			return (thinnest, changes);
+			// Fixes made, with potentially more that can be done in another pass.
+			return changes;
 		}
 	}
 }
