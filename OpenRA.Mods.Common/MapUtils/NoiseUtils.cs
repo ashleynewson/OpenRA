@@ -89,11 +89,11 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (x > 0 && y > 0)
 						noise[x - 1, y - 1] += vx * -D + vy * -D;
 					if (x < span && y > 0)
-						noise[x    , y - 1] += vx *  D + vy * -D;
+						noise[x, y - 1] += vx * D + vy * -D;
 					if (x > 0 && y < span)
-						noise[x - 1, y    ] += vx * -D + vy *  D;
+						noise[x - 1, y] += vx * -D + vy * D;
 					if (x < span && y < span)
-						noise[x    , y    ] += vx *  D + vy *  D;
+						noise[x, y] += vx * D + vy * D;
 				}
 			}
 
@@ -138,8 +138,8 @@ namespace OpenRA.Mods.Common.MapUtils
 						// R * ((xy - offset) * SQRT2) + to # corner temp space rotate
 						const float SQRT2 = 1.4142135623730951f;
 						var midt = (xy - offset) * (float)SQRT2;
-						var tx = (midt.X * cosAngle - midt.Y * sinAngle) + templateOffset.X;
-						var ty = (midt.X * sinAngle + midt.Y * cosAngle) + templateOffset.Y;
+						var tx = midt.X * cosAngle - midt.Y * sinAngle + templateOffset.X;
+						var ty = midt.X * sinAngle + midt.Y * cosAngle + templateOffset.Y;
 						unmirrored[x, y] +=
 							MatrixUtils.Interpolate(
 								template,
