@@ -73,12 +73,12 @@ label-marker-layer-num-sides = Number of Sides
 label-marker-alpha = Tile Alpha
 label-marker-mirror-mode = Mirror Mode
 label-marker-axis-angle = Axis Angle
-label-random-map-generator = Generator
-label-random-map-seed = Seed
-button-random-map-clear = Clear
-button-random-map-generate = Generate
-button-random-map-generate-random = Generate Random
-dropdownbutton-random-map-presets = Load settings preset
+label-map-generator-generator = Generator
+label-map-generator-seed = Seed
+button-map-generator-clear = Clear
+button-map-generator-generate = Generate
+button-map-generator-generate-random = Generate Random
+dropdownbutton-map-generator-presets = Settings Presets
 
 button-map-editor-tab-container-select-tooltip = Selection
 button-map-editor-tab-container-tiles-tooltip = Tiles
@@ -107,16 +107,12 @@ button-editor-world-root-redo =
    .label = Redo
    .tooltip = Redo last step
 
-button-editor-world-root-random =
-   .label = Random
-   .tooltip = Random map generator
-
 dropdownbutton-editor-world-root-overlay-button = Overlays
 button-select-categories-buttons-all = All
 button-select-categories-buttons-none = None
 
 label-tool-marker-tiles = Marker Tiles
-label-tool-random-map = Random Map
+label-tool-map-generator = Map Generator
 
 ## gamesave-browser.yaml
 label-gamesave-browser-panel-load-title = Load game

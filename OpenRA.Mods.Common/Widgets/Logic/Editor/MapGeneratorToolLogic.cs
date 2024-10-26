@@ -22,7 +22,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
-	public class MapRandomMapToolLogic : ChromeLogic
+	public class MapGeneratorToolLogic : ChromeLogic
 	{
 		readonly EditorActionManager editorActionManager;
 		readonly ButtonWidget generateButtonWidget;
@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly Widget dropDownSettingTemplate;
 
 		[ObjectCreator.UseCtor]
-		public MapRandomMapToolLogic(Widget widget, World world, WorldRenderer worldRenderer, ModData modData)
+		public MapGeneratorToolLogic(Widget widget, World world, WorldRenderer worldRenderer, ModData modData)
 		{
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
 
@@ -128,9 +128,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		sealed class RandomMapEditorAction : IEditorAction
 		{
-			[TranslationReference("amount")]
-			const string GeneratedRandomMap = "notification-generated-random-map";
-
 			public string Text { get; }
 
 			readonly EditorBlit editorBlit;
