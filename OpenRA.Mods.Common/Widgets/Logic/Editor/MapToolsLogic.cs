@@ -20,19 +20,19 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		[FluentReference]
 		const string MarkerTiles = "label-tool-marker-tiles";
 		[TranslationReference]
-		const string RandomMap = "label-tool-random-map";
+		const string MapGenerator = "label-tool-map-generator";
 
 		enum MapTool
 		{
 			MarkerTiles,
-			RandomMap
+			MapGenerator
 		}
 
 		readonly DropDownButtonWidget toolsDropdown;
 		readonly Dictionary<MapTool, string> toolNames = new()
 		{
 			{ MapTool.MarkerTiles, MarkerTiles },
-			{ MapTool.RandomMap, RandomMap }
+			{ MapTool.MapGenerator, MapGenerator }
 		};
 
 		readonly Dictionary<MapTool, Widget> toolPanels = new();
@@ -46,8 +46,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var markerToolPanel = widget.Get("MARKER_TOOL_PANEL");
 			toolPanels.Add(MapTool.MarkerTiles, markerToolPanel);
-			var randomMapToolPanel = widget.Get<ScrollPanelWidget>("RANDOM_MAP_TOOL_PANEL");
-			toolPanels.Add(MapTool.RandomMap, randomMapToolPanel);
+			var mapGeneratorToolPanel = widget.Get<ScrollPanelWidget>("MAP_GENERATOR_TOOL_PANEL");
+			toolPanels.Add(MapTool.MapGenerator, mapGeneratorToolPanel);
 
 			toolsDropdown.OnMouseDown = _ => ShowToolsDropDown(toolsDropdown);
 			toolsDropdown.GetText = () => TranslationProvider.GetString(toolNames[selectedTool]);
@@ -66,7 +66,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				return item;
 			}
 
-			var options = new[] { MapTool.MarkerTiles, MapTool.RandomMap };
+			var options = new[] { MapTool.MarkerTiles, MapTool.MapGenerator };
 			dropdown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", 150, options, SetupItem);
 		}
 
