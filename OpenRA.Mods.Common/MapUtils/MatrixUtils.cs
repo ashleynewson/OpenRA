@@ -826,6 +826,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public static Matrix<int> PointsChirality(int2 size, IEnumerable<int2[]> pointArrayArray)
 		{
+			// TODO: Use FloodFill?
 			var chirality = new Matrix<int>(size);
 			var next = new List<int2>();
 			void SeedChirality(int2 point, int value, bool firstPass)
@@ -860,19 +861,19 @@ namespace OpenRA.Mods.Common.MapUtils
 					switch (direction)
 					{
 						case Direction.R:
-							SeedChirality(new int2(fx    , fy    ),  1, true);
-							SeedChirality(new int2(fx    , fy - 1), -1, true);
+							SeedChirality(new int2(fx, fy), 1, true);
+							SeedChirality(new int2(fx, fy - 1), -1, true);
 							break;
 						case Direction.D:
-							SeedChirality(new int2(fx - 1, fy    ),  1, true);
-							SeedChirality(new int2(fx    , fy    ), -1, true);
+							SeedChirality(new int2(fx - 1, fy), 1, true);
+							SeedChirality(new int2(fx, fy), -1, true);
 							break;
 						case Direction.L:
-							SeedChirality(new int2(fx - 1, fy - 1),  1, true);
-							SeedChirality(new int2(fx - 1, fy    ), -1, true);
+							SeedChirality(new int2(fx - 1, fy - 1), 1, true);
+							SeedChirality(new int2(fx - 1, fy), -1, true);
 							break;
 						case Direction.U:
-							SeedChirality(new int2(fx    , fy - 1),  1, true);
+							SeedChirality(new int2(fx, fy - 1), 1, true);
 							SeedChirality(new int2(fx - 1, fy - 1), -1, true);
 							break;
 						default:
