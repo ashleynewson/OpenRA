@@ -482,74 +482,102 @@ namespace OpenRA.Mods.Common.MapUtils
 			return output;
 		}
 
-		// TODO: Use circles rather than squares maybe?
-		// TODO: ExtendOut usage?
 		// <summary>
 		// Blur a boolean matrix using a square kernel, only changing the value
 		// if the neighborhood is significantly different based on a threshold.
 		//
-		// If extendOut is true, the space outside of the matrix is treated as
-		// if the border was extended out. Otherwise, the outside does not
-		// contribute any influence.
+		// For example, a threshold of 0.75 means any change requires a 75%
+		// majority within the kernel.
+		//
+		// The space outside of the matrix is treated as if the border was
+		// extended out.
 		//
 		// Along with the blured matrix, the number of changes compared to the
 		// original is returned.
+		//
+		// Runtime complexity is approximately O(input.Size) for small radii:
+		//   O((input.Size.X + radius) * input.Size.Y +
+		//     input.Size.X            * (input.Size.Y + radius))
 		// </summary>
-		public static (Matrix<bool> Output, int Changes) BooleanBlur(Matrix<bool> input, int radius, bool extendOut, float threshold)
+		public static (Matrix<bool> Output, int Changes) BooleanBlur(
+			Matrix<bool> input, int radius, float threshold)
 		{
-			// var halfThreshold = threshold / 2.0f;
+			if (threshold < 0.5f || threshold > 1.0f)
+				throw new ArgumentException("threshold must between 0.5 and 1.0 inclusive");
+
 			var output = new Matrix<bool>(input.Size);
 			var changes = 0;
 
+			// Sum radius-by-1 kernels first in O((size.X + radius) * size.Y) time using a diffing sliding
+			// window, then sum 1-by-radius kernels in O(size.X * (size.Y + radius)) time.
+			var hTrueCounts = new Matrix<int>(input.Size);
+			var kernelArea = (2 * radius + 1) * (2 * radius + 1);
+			var trueThreshold = (int)MathF.Ceiling(kernelArea * threshold);
+			var falseThreshold = kernelArea - trueThreshold;
+
 			for (var cy = 0; cy < input.Size.Y; cy++)
 			{
-				for (var cx = 0; cx < input.Size.X; cx++)
+				var trueCount = 0;
 				{
-					var falseCount = 0;
-					var trueCount = 0;
-					for (var oy = -radius; oy <= radius; oy++)
+					for (var ox = -radius; ox <= radius; ox++)
 					{
-						for (var ox = -radius; ox <= radius; ox++)
-						{
-							var x = cx + ox;
-							var y = cy + oy;
-							if (extendOut)
-							{
-								(x, y) = input.ClampXY(x, y);
-							}
-							else
-							{
-								if (!input.ContainsXY(x, y)) continue;
-							}
-
-							if (input[x, y])
-								trueCount++;
-							else
-								falseCount++;
-						}
+						if (input[input.ClampXY(new int2(ox, cy))])
+							trueCount++;
 					}
 
-					var sampleCount = falseCount + trueCount;
-					var requirement = (int)(sampleCount * threshold);
-					var thisInput = input[cx, cy];
-					bool thisOutput;
-					if (trueCount - falseCount > requirement)
-						thisOutput = true;
-					else if (falseCount - trueCount > requirement)
-						thisOutput = false;
-					else
-						thisOutput = input[cx, cy];
+					hTrueCounts[0, cy] = trueCount;
+				}
 
-					output[cx, cy] = thisOutput;
-					if (thisOutput != thisInput)
-						changes++;
+				for (var cx = 1; cx < input.Size.X; cx++)
+				{
+					if (input[input.ClampXY(new int2(cx - radius - 1, cy))])
+						trueCount--;
+					if (input[input.ClampXY(new int2(cx + radius, cy))])
+						trueCount++;
+
+					hTrueCounts[cx, cy] = trueCount;
+				}
+			}
+
+			void OutputForXY(int x, int y, int trueCount)
+			{
+				var thisInput = input[x, y];
+				bool thisOutput;
+				if (trueCount <= falseThreshold)
+					thisOutput = false;
+				else if (trueCount >= trueThreshold)
+					thisOutput = true;
+				else
+					thisOutput = thisInput;
+				output[x, y] = thisOutput;
+				if (thisOutput != thisInput)
+					changes++;
+			}
+
+			for (var cx = 0; cx < input.Size.X; cx++)
+			{
+				var trueCount = 0;
+				{
+					for (var oy = -radius; oy <= radius; oy++)
+					{
+						trueCount += hTrueCounts[hTrueCounts.ClampXY(new int2(cx, oy))];
+					}
+
+					OutputForXY(cx, 0, trueCount);
+				}
+
+				for (var cy = 1; cy < input.Size.X; cy++)
+				{
+					trueCount -= hTrueCounts[hTrueCounts.ClampXY(new int2(cx, cy - radius - 1))];
+					trueCount += hTrueCounts[hTrueCounts.ClampXY(new int2(cx, cy + radius))];
+
+					OutputForXY(cx, cy, trueCount);
 				}
 			}
 
 			return (output, changes);
 		}
 
-		// TODO: Maybe circles?
 		// <summary>
 		// Shrink then grow either the (foreground) true or false regions of an
 		// input matrix by a given amount.
@@ -994,6 +1022,210 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 
 			return paths.ToArray();
+		}
+
+		// <summary>
+		// Takes an input boolean matrix and performs adjustments to improve the local consistency
+		// of the true and false regions, making them "blotchy":
+		// - Smoothing via thresholded median blurs.
+		// - A minimum thickness is enforced for all true/false regions. More formally, eroding and
+		//   then dilating the true or false regions by minimumThickness results in no change. (Thin
+		//   regions are destroyed, not grown.) ???
+		// - No grid points connect diagonally-crossing true and false regions. In other words,
+		//   these 2x2 patterns never appear in the output matrix:
+		//       10      01
+		//       01  or  10
+		//
+		// A new matrix is returned. The input is unmodified.
+		// </summary>
+		public static Matrix<bool> BooleanBlotch(
+			Matrix<bool> input,
+			int terrainSmoothing,
+			float smoothingThreshold,
+			int minimumThickness,
+			bool bias)
+		{
+			var maxSpan = Math.Max(input.Size.X, input.Size.Y);
+			var landmass = input;
+
+			(landmass, _) = BooleanBlur(landmass, terrainSmoothing, 0.5f);
+			for (var i1 = 0; i1 < /*max passes*/16; i1++)
+			{
+				for (var i2 = 0; i2 < maxSpan; i2++)
+				{
+					int changes;
+					var changesAcc = 0;
+					for (var r = 1; r <= terrainSmoothing; r++)
+					{
+						(landmass, changes) = BooleanBlur(landmass, r, smoothingThreshold);
+						changesAcc += changes;
+					}
+
+					if (changesAcc == 0)
+					{
+						break;
+					}
+				}
+
+				{
+					var changesAcc = 0;
+					int changes;
+					int thinnest;
+					(landmass, changes) = ErodeAndDilate(landmass, true, minimumThickness);
+					changesAcc += changes;
+					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, true, minimumThickness);
+					changesAcc += changes;
+
+					var midFixLandmass = landmass.Clone();
+
+					(landmass, changes) = ErodeAndDilate(landmass, false, minimumThickness);
+					changesAcc += changes;
+					(thinnest, changes) = FixThinMassesInPlaceFull(landmass, false, minimumThickness);
+					changesAcc += changes;
+					if (changesAcc == 0)
+					{
+						break;
+					}
+
+					if (i1 >= 8 && i1 % 4 == 0)
+					{
+						var diff = Matrix<bool>.Zip(midFixLandmass, landmass, (a, b) => a != b);
+						for (var y = 0; y < landmass.Size.Y; y++)
+						{
+							for (var x = 0; x < landmass.Size.X; x++)
+							{
+								if (diff[x, y])
+									landmass.DrawCircle(
+										center: new float2(x, y),
+										radius: minimumThickness * 2,
+										setTo: (_, _) => bias,
+										invert: false);
+							}
+						}
+					}
+				}
+			}
+
+			return landmass;
+		}
+
+		static (int Thinnest, int Changes) FixThinMassesInPlaceFull(Matrix<bool> input, bool dilate, int width)
+		{
+			int thinnest;
+			int changes;
+			int changesAcc;
+			(thinnest, changes) = FixThinMassesInPlace(input, dilate, width);
+			changesAcc = changes;
+			while (changes > 0)
+			{
+				(_, changes) = FixThinMassesInPlace(input, dilate, width);
+				changesAcc += changes;
+			}
+
+			return (thinnest, changesAcc);
+		}
+
+		static (int Thinnest, int Changes) FixThinMassesInPlace(Matrix<bool> input, bool dilate, int width)
+		{
+			var sizeMinus1 = input.Size - new int2(1, 1);
+			var cornerMaskSpan = width + 1;
+
+			// Zero means ignore.
+			var cornerMask = new Matrix<int>(cornerMaskSpan, cornerMaskSpan);
+
+			for (var y = 0; y < cornerMaskSpan; y++)
+			{
+				for (var x = 0; x < cornerMaskSpan; x++)
+				{
+					cornerMask[x, y] = 1 + width + width - x - y;
+				}
+			}
+
+			cornerMask[0] = 0;
+
+			// Higher number indicates a thinner area.
+			var thinness = new Matrix<int>(input.Size);
+			void SetThinness(int x, int y, int v)
+			{
+				if (!input.ContainsXY(x, y)) return;
+				if (input[x, y] == dilate) return;
+				thinness[x, y] = Math.Max(v, thinness[x, y]);
+			}
+
+			for (var cy = 0; cy < input.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					if (input[cx, cy] == dilate)
+						continue;
+
+					// _L_eft _R_ight _U_p _D_own
+					var l = input[Math.Max(cx - 1, 0), cy] == dilate;
+					var r = input[Math.Min(cx + 1, sizeMinus1.X), cy] == dilate;
+					var u = input[cx, Math.Max(cy - 1, 0)] == dilate;
+					var d = input[cx, Math.Min(cy + 1, sizeMinus1.Y)] == dilate;
+					var lu = l && u;
+					var ru = r && u;
+					var ld = l && d;
+					var rd = r && d;
+					for (var ry = 0; ry < cornerMaskSpan; ry++)
+					{
+						for (var rx = 0; rx < cornerMaskSpan; rx++)
+						{
+							if (rd)
+							{
+								var x = cx + rx;
+								var y = cy + ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+
+							if (ru)
+							{
+								var x = cx + rx;
+								var y = cy - ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+
+							if (ld)
+							{
+								var x = cx - rx;
+								var y = cy + ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+
+							if (lu)
+							{
+								var x = cx - rx;
+								var y = cy - ry;
+								SetThinness(x, y, cornerMask[rx, ry]);
+							}
+						}
+					}
+				}
+			}
+
+			var thinnest = thinness.Data.Max();
+			if (thinnest == 0)
+			{
+				// No fixes
+				return (0, 0);
+			}
+
+			var changes = 0;
+			for (var y = 0; y < input.Size.Y; y++)
+			{
+				for (var x = 0; x < input.Size.X; x++)
+				{
+					if (thinness[x, y] == thinnest)
+					{
+						input[x, y] = dilate;
+						changes++;
+					}
+				}
+			}
+
+			// Fixes made, with potentially more that can be in another pass.
+			return (thinnest, changes);
 		}
 	}
 }
