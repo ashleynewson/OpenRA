@@ -566,7 +566,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					OutputForXY(cx, 0, trueCount);
 				}
 
-				for (var cy = 1; cy < input.Size.X; cy++)
+				for (var cy = 1; cy < input.Size.Y; cy++)
 				{
 					trueCount -= hTrueCounts[hTrueCounts.ClampXY(new int2(cx, cy - radius - 1))];
 					trueCount += hTrueCounts[hTrueCounts.ClampXY(new int2(cx, cy + radius))];
