@@ -23,6 +23,7 @@ namespace OpenRA.Mods.Common.MapUtils
 	{
 		// <summary>Underlying matrix data.</summary>
 		public readonly T[] Data;
+
 		// <summary>Matrix dimensions.</summary>
 		public readonly int2 Size;
 
@@ -150,7 +151,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		// <summary>
 		// Apply func to each value in the matrix in place, returning this.
 		// </summary>
-		public Matrix<T> Foreach(Func<T, T> func)
+		public Matrix<T> Transform(Func<T, T> func)
 		{
 			for (var i = 0; i < Data.Length; i++)
 			{
@@ -252,7 +253,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			var best = this[0];
 			for (var n = 0; n < Data.Length; n++)
 			{
-				int rank = comparison(this[n], best);
+				var rank = comparison(this[n], best);
 				if (rank > 0)
 				{
 					best = this[n];
@@ -262,10 +263,10 @@ namespace OpenRA.Mods.Common.MapUtils
 				if (rank >= 0)
 					candidates.Add(n);
 			}
+
 			var choice = candidates[random.Next(candidates.Count)];
 			var xy = XY(choice);
 			return (xy, best);
 		}
-
 	}
 }
