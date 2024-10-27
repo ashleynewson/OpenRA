@@ -88,7 +88,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			ChangeGenerator(mapGenerators.FirstOrDefault((IMapGenerator)null));
 			if (selectedGenerator != null)
 			{
-				generatorDropDown.GetText = () => selectedGenerator.Info.Name;
+				generatorDropDown.GetText = () => TranslationProvider.GetString(selectedGenerator.Info.Name);
 				generatorDropDown.OnMouseDown = _ =>
 				{
 					ScrollItemWidget SetupItem(IMapGenerator g, ScrollItemWidget template)
@@ -96,7 +96,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						bool IsSelected() => g.Info.Type == selectedGenerator.Info.Type;
 						void OnClick() => ChangeGenerator(mapGenerators.First(generator => generator.Info.Type == g.Info.Type));
 						var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
-						item.Get<LabelWidget>("LABEL").GetText = () => g.Info.Name;
+						item.Get<LabelWidget>("LABEL").GetText = () => TranslationProvider.GetString(g.Info.Name);
 						return item;
 					}
 
