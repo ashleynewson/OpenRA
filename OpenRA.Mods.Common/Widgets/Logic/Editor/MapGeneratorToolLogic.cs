@@ -26,6 +26,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	{
 		[TranslationReference]
 		const string StrDefaultSettings = "label-map-generator-default-settings";
+		[TranslationReference("name", "seed")]
+		const string StrGenerated = "notification-map-generator-generated";
+		[TranslationReference]
+		const string StrFailed = "notification-map-generator-failed";
+		[TranslationReference]
+		const string StrFailedCancel = "label-map-generator-failed-cancel";
+
 		readonly EditorActionManager editorActionManager;
 		readonly ButtonWidget generateButtonWidget;
 		readonly ButtonWidget generateRandomButtonWidget;
@@ -39,7 +46,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		IMapGenerator selectedGenerator;
 
 		// Should settings be part of the IMapGenerator itself?
-		Dictionary<IMapGenerator, IEnumerable<MapGeneratorSetting>> generatorsToSettings;
+		readonly Dictionary<IMapGenerator, IEnumerable<MapGeneratorSetting>> generatorsToSettings;
 
 		readonly ScrollPanelWidget settingsPanel;
 		readonly Widget unknownSettingTemplate;
@@ -87,7 +94,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					ScrollItemWidget SetupItem(IMapGenerator g, ScrollItemWidget template)
 					{
 						bool IsSelected() => g.Info.Type == selectedGenerator.Info.Type;
-						void OnClick() => ChangeGenerator(mapGenerators.Where(generator => generator.Info.Type == g.Info.Type).First());
+						void OnClick() => ChangeGenerator(mapGenerators.First(generator => generator.Info.Type == g.Info.Type));
 						var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
 						item.Get<LabelWidget>("LABEL").GetText = () => g.Info.Name;
 						return item;
@@ -187,6 +194,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						label.GetText = () => setting.Label;
 						break;
 					}
+
 					case MapGeneratorSetting.BooleanValue value:
 					{
 						settingWidget = checkboxSettingTemplate.Clone();
@@ -196,6 +204,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						checkbox.OnClick = () => value.Value = !value.Value;
 						break;
 					}
+
 					case MapGeneratorSetting.StringValue value:
 					{
 						settingWidget = textSettingTemplate.Clone();
@@ -206,6 +215,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						input.OnTextEdited = () => value.Value = input.Text;
 						break;
 					}
+
 					case MapGeneratorSetting.IntegerValue value:
 					{
 						settingWidget = textSettingTemplate.Clone();
@@ -220,6 +230,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						};
 						break;
 					}
+
 					case MapGeneratorSetting.FloatValue value:
 					{
 						settingWidget = textSettingTemplate.Clone();
@@ -234,6 +245,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						};
 						break;
 					}
+
 					case MapGeneratorSetting.EnumValue value:
 					{
 						settingWidget = dropDownSettingTemplate.Clone();
@@ -256,14 +268,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						};
 						break;
 					}
+
 					default:
 					{
 						settingWidget = unknownSettingTemplate.Clone();
-						// TODO: translate
 						settingWidget.Get<LabelWidget>("PLACEHOLDER").GetText = () => $"(?) {setting.Label}";
 						break;
 					}
 				}
+
 				settingWidget.IsVisible = () => true;
 				settingsPanel.AddChild(settingWidget);
 			}
@@ -272,12 +285,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void DisplayError(MapGenerationException e)
 		{
 			Log.Write("debug", e);
-			// TODO: translate
 			ConfirmationDialogs.ButtonPrompt(modData,
-				title: "Map generation failed",
+				title: StrFailed,
 				text: e.Message,
-				onCancel: () => {},
-				cancelText: "Dismiss");
+				onCancel: () => { },
+				cancelText: StrFailedCancel);
 		}
 
 		void RandomSeedThenGenerateMap()
@@ -352,6 +364,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					// TODO: present error, translate
 					throw new MapGenerationException("Generator produced mismatching player and actor definitions.");
 				}
+
 				var preview = new EditorActorPreview(worldRenderer, kv.Key, actorReference, owner);
 				previews.Add(kv.Key, preview);
 			}
@@ -365,9 +378,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				blitSource,
 				editorActorLayer,
 				false);
-			// TODO: translate
-			// TranslationProvider.GetString(GeneratedRandomMap)
-			var description = $"Generate {selectedGenerator.Info.Name} map ({seed})";
+
+			var description = TranslationProvider.GetString(StrGenerated,
+				Translation.Arguments(
+					"name", selectedGenerator.Info.Name,
+					"seed", seed));
 			var action = new RandomMapEditorAction(editorBlit, description);
 			editorActionManager.Add(action);
 		}
