@@ -24,6 +24,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class MapGeneratorToolLogic : ChromeLogic
 	{
+		[TranslationReference]
+		const string StrDefaultSettings = "label-map-generator-default-settings";
 		readonly EditorActionManager editorActionManager;
 		readonly ButtonWidget generateButtonWidget;
 		readonly ButtonWidget generateRandomButtonWidget;
@@ -98,7 +100,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				{
 					// TODO: Perhaps migrate to some MiniYAML defined structure.
 					var presets = selectedGenerator.GetPresets(world.Map, modData)
-						.Prepend(new KeyValuePair<string, string>(null, "Default settings"));
+						.Prepend(new KeyValuePair<string, string>(null, TranslationProvider.GetString(StrDefaultSettings)));
 					ScrollItemWidget SetupItem(KeyValuePair<string, string> preset, ScrollItemWidget template)
 					{
 						bool IsSelected() => false;
