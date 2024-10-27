@@ -338,11 +338,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			return output;
 		}
 
-		// TODO: Add a convenience method for doing a 2D gaussian blur.
 		// <summary>
 		// Create a one-dimensional gaussian kernel.
 		//
 		// This can be applied once, transposed, then applied again to perform a full gaussian blur.
+		// (See GaussianBlur.)
 		// </summary>
 		public static Matrix<float> GaussianKernel1D(int radius, float standardDeviation)
 		{
@@ -434,7 +434,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// TODO: Improve documentation
 		// <summary>
 		// Finds the local variance of points in a grid (using a square sample area).
 		// Sample areas are centered on data point corners, so output is (size + 1) * (size + 1).
@@ -640,7 +639,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			return (output, changes);
 		}
 
-		// TODO: Unused?!
 		// <summary>Read a linearly interpolated value between the cells of a matrix.</summary>
 		public static float Interpolate(Matrix<float> matrix, float x, float y)
 		{
