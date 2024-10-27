@@ -25,8 +25,10 @@ namespace OpenRA.Mods.Common.Traits
 	[TraitLocation(SystemActors.World)]
 	public sealed class RaMapGeneratorInfo : TraitInfo, IMapGeneratorInfo
 	{
+		[FieldLoader.Require]
 		[Desc("Human-readable name this generator uses.")]
-		public readonly string Name = "OpenRA Red Alert";
+		[TranslationReference]
+		public readonly string Name = null;
 
 		[FieldLoader.Require]
 		[Desc("Internal id for this map generator.")]

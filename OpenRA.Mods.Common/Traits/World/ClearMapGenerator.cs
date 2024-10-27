@@ -23,8 +23,10 @@ namespace OpenRA.Mods.Common.Traits
 	[TraitLocation(SystemActors.World)]
 	public sealed class ClearMapGeneratorInfo : TraitInfo, IMapGeneratorInfo
 	{
+		[FieldLoader.Require]
 		[Desc("Human-readable name this generator uses.")]
-		public readonly string Name = "Clear";
+		[TranslationReference]
+		public readonly string Name = null;
 
 		[FieldLoader.Require]
 		[Desc("Internal id for this map generator.")]

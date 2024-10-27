@@ -160,12 +160,12 @@
 				Sequences: gem01, gem02, gem03, gem04
 				Palette: player
 				Name: resource-minerals
-	ClearMapGenerator@clear:
-		Type: clear
-		Name: Clear
 	RaMapGenerator@ra:
 		Type: ra
-		Name: OpenRA Red Alert
+		Name: map-generator-ra
+	ClearMapGenerator@clear:
+		Type: clear
+		Name: map-generator-clear
 
 World:
 	Inherits: ^BaseWorld
