@@ -1605,6 +1605,9 @@ namespace OpenRA.Mods.Common.Traits
 						var chosenXY = resources.XY(n);
 						foreach (var square in Symmetry.RotateAndMirrorGridSquare(chosenXY, size, rotations, mirror))
 						{
+							if (!resources.ContainsXY(square))
+								continue;
+
 							if (oreStrength[n] >= gemStrength[n])
 								remaining -= AddResource(square, ORE_RESOURCE, ORE_DENSITY);
 							else
