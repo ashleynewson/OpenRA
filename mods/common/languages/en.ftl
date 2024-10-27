@@ -1122,6 +1122,9 @@ keycode =
 
 ## MapGeneratorToolLogic
 label-map-generator-default-settings = Default settings
+label-map-generator-failed-cancel = Dismiss
+notification-map-generator-generated = Generated { $name } map ({ $seed })
+notification-map-generator-failed = Map generation failed
 
 ## RaMapGenerator
 label-ra-map-generator-primary = Primary settings
