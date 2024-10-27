@@ -259,7 +259,7 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("CentralSpawnReservationFraction", TranslationProvider.GetString(StrCentralSpawnReservationFraction), new MapGeneratorSetting.FloatValue(0.3)),
 				new MapGeneratorSetting("CentralExpansionReservationFraction", TranslationProvider.GetString(StrCentralExpansionReservationFraction), new MapGeneratorSetting.FloatValue(0.1)),
 				new MapGeneratorSetting("MineReservation", TranslationProvider.GetString(StrMineReservation), new MapGeneratorSetting.IntegerValue(8)),
-				new MapGeneratorSetting("SpawnRegionSize", TranslationProvider.GetString(StrSpawnRegionSize), new MapGeneratorSetting.IntegerValue(16)),
+				new MapGeneratorSetting("SpawnRegionSize", TranslationProvider.GetString(StrSpawnRegionSize), new MapGeneratorSetting.IntegerValue(12)),
 				new MapGeneratorSetting("SpawnBuildSize", TranslationProvider.GetString(StrSpawnBuildSize), new MapGeneratorSetting.IntegerValue(8)),
 				new MapGeneratorSetting("SpawnMines", TranslationProvider.GetString(StrSpawnMines), new MapGeneratorSetting.IntegerValue(3)),
 				new MapGeneratorSetting("SpawnReservation", TranslationProvider.GetString(StrSpawnReservation), new MapGeneratorSetting.IntegerValue(20)),
@@ -1239,7 +1239,7 @@ namespace OpenRA.Mods.Common.Traits
 				for (var iteration = 0; iteration < players; iteration++)
 				{
 					var roominess = MatrixUtils.ChebyshevRoom(zoneable, false)
-						.Foreach((v) => Math.Min(v, spawnRegionSize));
+						.Transform(v => Math.Min(v, spawnRegionSize));
 					var spawnPreference =
 						CalculateSpawnPreferences(
 							roominess,
@@ -1270,33 +1270,33 @@ namespace OpenRA.Mods.Common.Traits
 						templatePlayer
 					};
 
-					var radius2 = MathF.Min(spawnRegionSize, room);
-					var radius1 = MathF.Min(MathF.Min(spawnBuildSize, room), radius2);
-					if (radius1 >= 2.0f)
-					{
-						var mineWeights = new Matrix<float>(size);
-						var radius1Sq = radius1 * radius1;
-						mineWeights.DrawCircle(
-							center: chosenXY,
-							radius: radius2,
-							setTo: (rSq, _) => rSq >= radius1Sq ? (1.0f * rSq) : 0.0f,
-							invert: false);
-						for (var mine = 0; mine < spawnMines; mine++)
+					var mineWeights = MatrixUtils.WalkingDistances(
+						zoneable,
+						new[] { chosenXY },
+						spawnRegionSize);
+					mineWeights.Transform(v =>
 						{
-							var xy = mineWeights.XY(playerRandom.PickWeighted(mineWeights.Data));
-							var minePlan =
-								playerRandom.NextFloat() < gemUpgrade
-									? new ActorPlan(map, "gmine")
-									: new ActorPlan(map, "mine");
-							minePlan.ZoningRadius = mineReservation;
-							minePlan.Int2Location = xy;
-							spawnActorPlans.Add(minePlan);
-							mineWeights.DrawCircle(
-								center: minePlan.Int2Location,
-								radius: 1.0f,
-								setTo: (_, _) => 0.0f,
-								invert: false);
-						}
+							var preferedRange = (spawnBuildSize + spawnRegionSize * 2) / 2;
+							return MathF.Ceiling(v > preferedRange ? 2 * preferedRange - v : v);
+						});
+
+					for (var mine = 0; mine < spawnMines; mine++)
+					{
+						var (xy, value) = mineWeights.FindRandomBest(playerRandom, (a, b) => a.CompareTo(b));
+						if (value <= 1.0f)
+							break;
+						var minePlan =
+							playerRandom.NextFloat() < gemUpgrade
+								? new ActorPlan(map, "gmine")
+								: new ActorPlan(map, "mine");
+						minePlan.ZoningRadius = mineReservation;
+						minePlan.Int2Location = xy;
+						spawnActorPlans.Add(minePlan);
+						mineWeights.DrawCircle(
+							center: minePlan.Int2Location,
+							radius: 1.0f,
+							setTo: (_, _) => 0.0f,
+							invert: false);
 					}
 
 					Symmetry.RotateAndMirrorActorPlans(actorPlans, spawnActorPlans, rotations, mirror);
@@ -1320,7 +1320,7 @@ namespace OpenRA.Mods.Common.Traits
 						}
 
 						var expansionRoominess = MatrixUtils.ChebyshevRoom(expansionZoneable, false)
-							.Foreach((v) => Math.Min(v, maximumExpansionSize + expansionBorder));
+							.Transform((v) => Math.Min(v, maximumExpansionSize + expansionBorder));
 						var (chosenXY, chosenValue) = expansionRoominess.FindRandomBest(
 							expansionRandom,
 							(a, b) => a.CompareTo(b));
@@ -1377,7 +1377,7 @@ namespace OpenRA.Mods.Common.Traits
 					for (var i = 0; i < targetBuildingCount; i++)
 					{
 						var roominess = MatrixUtils.ChebyshevRoom(zoneable, false)
-							.Foreach((v) => Math.Min(v, 3));
+							.Transform((v) => Math.Min(v, 3));
 						var (chosenXY, chosenValue) = roominess.FindRandomBest(
 							buildingRandom,
 							(a, b) => a.CompareTo(b));
@@ -1473,13 +1473,14 @@ namespace OpenRA.Mods.Common.Traits
 						}
 					}
 
+					var spawnBuildSizeSq = spawnBuildSize * spawnBuildSize;
 					foreach (var actorPlan in actorPlans)
 					{
 						if (actorPlan.Reference.Type == "mpspawn")
 							orePlan.DrawCircle(
 								center: actorPlan.Int2Location,
-								radius: 32,
-								setTo: (rSq, v) => v * (1.0f + spawnResourceBias / rSq),
+								radius: spawnRegionSize * 2,
+								setTo: (rSq, v) => v * (1.0f + spawnResourceBias * spawnBuildSizeSq / rSq),
 								invert: false);
 					}
 

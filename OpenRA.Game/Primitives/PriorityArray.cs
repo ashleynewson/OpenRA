@@ -18,17 +18,20 @@ namespace OpenRA.Primitives
 	// </summary>
 	public sealed class PriorityArray<T> where T : IComparable<T>
 	{
-		T[] items;
+		readonly T[] items;
 
-		int[] itemIndexToHeapIndex;
-		int[] heapOfItemIndices;
+		readonly int[] itemIndexToHeapIndex;
+		readonly int[] heapOfItemIndices;
 
+		// <summary>
+		// Create a new PriorityArray of given size with all values preset to the given init value.
+		// </summary>
 		public PriorityArray(int size, T init)
 		{
 			items = new T[size];
 			itemIndexToHeapIndex = new int[size];
 			heapOfItemIndices = new int[size];
-			Array.Fill(this.items, init);
+			Array.Fill(items, init);
 			for (var i = 0; i < size; i++)
 			{
 				items[i] = init;
@@ -39,6 +42,7 @@ namespace OpenRA.Primitives
 
 		public int Length => items.Length;
 
+		// <summary>Get the index of the minimum element</summary>
 		public int GetMinIndex() => heapOfItemIndices[0];
 
 		public T this[int itemIndex]
@@ -62,16 +66,12 @@ namespace OpenRA.Primitives
 		bool BubbleUp(int heapIndex)
 		{
 			if (heapIndex == 0)
-			{
 				return false;
-			}
 			var itemIndex = heapOfItemIndices[heapIndex];
 			var upHeapIndex = ((heapIndex + 1) >> 1) - 1;
 			var upItemIndex = heapOfItemIndices[upHeapIndex];
 			if (items[itemIndex].CompareTo(items[upItemIndex]) >= 0)
-			{
 				return false;
-			}
 			Swap(heapIndex, upHeapIndex, itemIndex, upItemIndex);
 			BubbleUp(upHeapIndex);
 			return true;
@@ -83,9 +83,7 @@ namespace OpenRA.Primitives
 			var leftDownHeapIndex = ((heapIndex + 1) << 1) - 1;
 			var rightDownHeapIndex = leftDownHeapIndex + 1;
 			if (leftDownHeapIndex >= Length)
-			{
 				return false;
-			}
 			var item = items[itemIndex];
 			if (rightDownHeapIndex < Length)
 			{
@@ -94,9 +92,7 @@ namespace OpenRA.Primitives
 				var leftDownItem = items[leftDownItemIndex];
 				var rightDownItem = items[rightDownItemIndex];
 				if (item.CompareTo(leftDownItem) <= 0 && item.CompareTo(rightDownItem) <= 0)
-				{
 					return false;
-				}
 				if (leftDownItem.CompareTo(rightDownItem) <= 0)
 				{
 					Swap(heapIndex, leftDownHeapIndex, itemIndex, leftDownItemIndex);
@@ -107,6 +103,7 @@ namespace OpenRA.Primitives
 					Swap(heapIndex, rightDownHeapIndex, itemIndex, rightDownItemIndex);
 					BubbleDown(rightDownHeapIndex);
 				}
+
 				return true;
 			}
 			else
@@ -115,9 +112,7 @@ namespace OpenRA.Primitives
 				var leftDownItemIndex = heapOfItemIndices[leftDownHeapIndex];
 				var leftDownItem = items[leftDownItemIndex];
 				if (item.CompareTo(leftDownItem) <= 0)
-				{
 					return false;
-				}
 				Swap(heapIndex, leftDownHeapIndex, itemIndex, leftDownItemIndex);
 				BubbleDown(leftDownHeapIndex);
 				return true;
