@@ -804,9 +804,6 @@ notification-copied-tiles =
       *[other] Copied { $amount } tiles
     }
 
-## EditorRandomMapTool
-notification-generated-random-map = Generated random map
-
 ## EditorDefaultBrush
 notification-selected-area = Selected area { $x },{ $y } ({ $width },{ $height })
 notification-selected-actor = Selected actor { $id }
@@ -874,3 +871,86 @@ enumerated-bot-name =
        *[zero] {""}
         [other] { $number }
     }
+
+## MapGeneratorToolLogic
+label-map-generator-default-settings = Default settings
+
+## RaMapGenerator
+label-ra-map-generator-primary = Primary settings
+label-ra-map-generator-rotations = Rotations
+label-ra-map-generator-mirror = Mirror
+label-ra-map-generator-mirror-none = None
+label-ra-map-generator-mirror-lr = Left matches right
+label-ra-map-generator-mirror-tlbr = Top-left matches bottom-right
+label-ra-map-generator-mirror-tb = Top matches bottom
+label-ra-map-generator-mirror-trbl = Top-right matches bottom-left
+label-ra-map-generator-players = Players per symmetry
+label-ra-map-generator-terrain = Terrain settings
+label-ra-map-generator-wavelength-scale = Noise Wavelength Scale
+label-ra-map-generator-water = Water fraction
+label-ra-map-generator-mountains = Mountain fraction (nesting)
+label-ra-map-generator-forests = Forest fraction
+label-ra-map-generator-forest-cutout = Forest path cutout size
+label-ra-map-generator-external-circular-bias = Square/circular map
+label-ra-map-generator-external-circular-bias-square = Square
+label-ra-map-generator-external-circular-bias-circle-water = Circle (outside is water)
+label-ra-map-generator-external-circular-bias-circle-mountain = Circle (outside is mountain)
+label-ra-map-generator-terrain-smoothing = Terrain smoothing
+label-ra-map-generator-smoothing-threshold = Smoothing threshold
+label-ra-map-generator-minimum-land-sea-thickness = Minimum land/sea thickness
+label-ra-map-generator-minimum-mountain-thickness = Minimum mountain thickness
+label-ra-map-generator-maximum-altitude = Maximum mountain altitude
+label-ra-map-generator-roughness-radius = Roughness sampling size
+label-ra-map-generator-roughness = Terrain roughness
+label-ra-map-generator-minimum-terrain-contour-spacing = Minimum contour spacing
+label-ra-map-generator-minimum-cliff-length = Minimum cliff length
+label-ra-map-generator-forest-clumpiness = Forest clumpiness
+label-ra-map-generator-deny-walled-areas = Deny areas with limited access
+label-ra-map-generator-enforce-symmetry = Symmetry Corrections
+label-ra-map-generator-enforce-symmetry-none = None
+label-ra-map-generator-enforce-symmetry-passability = Match passability
+label-ra-map-generator-enforce-symmetry-type = Match terrain type
+label-ra-map-generator-roads = Roads
+label-ra-map-generator-road-spacing = Road spacing
+label-ra-map-generator-road-shrink = Road shrink
+label-ra-map-generator-entities = Entity settings
+label-ra-map-generator-create-entities = Create entities
+label-ra-map-generator-central-spawn-reservation-fraction = Central reservation against spawns
+label-ra-map-generator-central-expansion-reservation-fraction = Central reservation against expansions
+label-ra-map-generator-mine-reservation = Unrelated mine spacing
+label-ra-map-generator-spawn-region-size = Spawn region size
+label-ra-map-generator-spawn-build-size = Spawn build size
+label-ra-map-generator-spawn-mines = Spawn mine count
+label-ra-map-generator-spawn-reservation = Spawn reservation size
+label-ra-map-generator-spawn-resource-bias = Spawn resource placement bias
+label-ra-map-generator-resources-per-player = Starting resource value per player
+label-ra-map-generator-gem-upgrade = Ore to gem upgrade probability
+label-ra-map-generator-ore-uniformity = Ore uniformity
+label-ra-map-generator-ore-clumpiness = Ore clumpiness
+label-ra-map-generator-maximum-expansion-mines = Expansion mines per player
+label-ra-map-generator-maximum-mines-per-expansion = Maximum mines per expansion
+label-ra-map-generator-minimum-expansion-size = Minimum expansion size
+label-ra-map-generator-maximum-expansion-size = Maximum expansion size
+label-ra-map-generator-expansion-inner = Expansion inner size
+label-ra-map-generator-expansion-border = Expansion border size
+label-ra-map-generator-minimum-buildings = Minimum building count per symmetry
+label-ra-map-generator-maximum-buildings = Maximum building count per symmetry
+label-ra-map-generator-weight-fcom = Building weight: Forward Command
+label-ra-map-generator-weight-hosp = Building weight: Hospital
+label-ra-map-generator-weight-miss = Building weight: Communications Center
+label-ra-map-generator-weight-bio = Building weight: Biological Lab
+label-ra-map-generator-weight-oilb = Building weight: Oil Derrick
+
+label-ra-map-generator-preset-lakes = Lakes
+label-ra-map-generator-preset-puddles = Puddles
+label-ra-map-generator-preset-plains = Plains
+label-ra-map-generator-preset-parks = Parks
+label-ra-map-generator-preset-woodlands = Woodlands
+label-ra-map-generator-preset-overgrown = Overgrown
+label-ra-map-generator-preset-mountains = Mountains
+label-ra-map-generator-preset-mountain-lakes = Mountain Lakes
+label-ra-map-generator-preset-oceanic = Oceanic
+label-ra-map-generator-preset-large-islands = Large Islands
+label-ra-map-generator-preset-continents = Continents
+label-ra-map-generator-preset-wetlands = Wetlands
+label-ra-map-generator-preset-narrow-wetlands = Narrow Wetlands
