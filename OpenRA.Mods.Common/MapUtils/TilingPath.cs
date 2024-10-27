@@ -696,11 +696,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				var (fromTypeId, from, priority) = GetNextPriority();
 
-				// TODO: Break if we're on the end point?
-				if (priority == MAX_SCORE)
-				{
+				if (priority == MAX_SCORE || from == pathEnd)
 					break;
-				}
 
 				UpdateFrom(from, fromTypeId);
 			}

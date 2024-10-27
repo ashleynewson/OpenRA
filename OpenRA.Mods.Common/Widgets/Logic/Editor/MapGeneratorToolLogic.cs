@@ -308,7 +308,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 			catch (MapGenerationException e)
 			{
-				// TODO: present error, translate
 				DisplayError(e);
 			}
 		}
@@ -361,7 +360,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var ownerInit = actorReference.Get<OwnerInit>();
 				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
 				{
-					// TODO: present error, translate
 					throw new MapGenerationException("Generator produced mismatching player and actor definitions.");
 				}
 
