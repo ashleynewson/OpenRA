@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
+using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.MapUtils
 {
@@ -154,6 +155,62 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 				}
 			}
+		}
+
+		// <summary>
+		// Compute the in-game walking distances from a set of seeds.
+		//
+		// The output matrix cells will contain either the distance (if reachable) or PositiveInfinity.
+		// </summary>
+		public static Matrix<float> WalkingDistances(Matrix<bool> passable, IEnumerable<int2> seeds, float maxDistance)
+		{
+			const float SQRT2 = 1.4142135623730951f;
+
+			if (maxDistance == float.PositiveInfinity)
+				maxDistance = float.MaxValue;
+
+			var output = new Matrix<float>(passable.Size).Fill(float.PositiveInfinity);
+			var unprocessed = new PriorityArray<float>(passable.Size.X * passable.Size.Y, float.PositiveInfinity);
+			foreach (var seed in seeds)
+			{
+				unprocessed[passable.Index(seed)] = 0;
+			}
+
+			while (true)
+			{
+				var i = unprocessed.GetMinIndex();
+				var distance = unprocessed[i];
+				var xy = passable.XY(i);
+
+				if (distance > maxDistance)
+					break;
+
+				if (distance <= maxDistance && output.ContainsXY(xy))
+					output[xy] = distance;
+				unprocessed[i] = float.PositiveInfinity;
+
+				foreach (var (offset, direction) in Direction.SPREAD8_D)
+				{
+					var nextXY = xy + offset;
+					if (!passable.ContainsXY(nextXY))
+						continue;
+					if (!passable[nextXY])
+						continue;
+					if (output[nextXY] != float.PositiveInfinity)
+						continue;
+					float nextDistance;
+					if (Direction.IsDiagonal(direction))
+						nextDistance = distance + SQRT2;
+					else
+						nextDistance = distance + 1;
+
+					var nextI = passable.Index(nextXY);
+					if (nextDistance < unprocessed[nextI])
+						unprocessed[nextI] = nextDistance;
+				}
+			}
+
+			return output;
 		}
 
 		// <summary>

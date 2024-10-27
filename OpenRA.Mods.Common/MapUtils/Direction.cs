@@ -226,5 +226,25 @@ namespace OpenRA.Mods.Common.MapUtils
 				default: return NONE;
 			}
 		}
+
+		// <summary>True if diagonal, false if horizontal/vertical, throws otherwise.</summary>
+		public static bool IsDiagonal(int direction)
+		{
+			switch (direction)
+			{
+				case R:
+				case D:
+				case L:
+				case U:
+					return false;
+				case RD:
+				case LD:
+				case LU:
+				case RU:
+					return true;
+				default:
+					throw new ArgumentException("NONE or bad direction");
+			}
+		}
 	}
 }
