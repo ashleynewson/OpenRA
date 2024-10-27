@@ -20,10 +20,8 @@ namespace OpenRA.Mods.Common.MapUtils
 	// <summary>A super template that can be used to paint both tiles and actors.</summary>
 	sealed class MultiBrush
 	{
-		// TODO: It may be better to delegate this logic to the caller.
 		public enum Replaceability
 		{
-
 			// Area cannot be replaced by a tile or obstructing actor.
 			None = 0,
 
@@ -38,8 +36,8 @@ namespace OpenRA.Mods.Common.MapUtils
 		}
 
 		public float Weight;
-		public readonly Map map;
-		public readonly ModData modData;
+		public readonly Map Map;
+		public readonly ModData ModData;
 		readonly List<(int2, TerrainTile)> tiles;
 		readonly List<ActorPlan> actorPlans;
 		int2[] shape;
@@ -70,8 +68,8 @@ namespace OpenRA.Mods.Common.MapUtils
 		public MultiBrush(Map map, ModData modData)
 		{
 			Weight = 1.0f;
-			this.map = map;
-			this.modData = modData;
+			Map = map;
+			ModData = modData;
 			tiles = new List<(int2, TerrainTile)>();
 			actorPlans = new List<ActorPlan>();
 			shape = Array.Empty<int2>();
@@ -80,8 +78,8 @@ namespace OpenRA.Mods.Common.MapUtils
 		MultiBrush(MultiBrush other)
 		{
 			Weight = other.Weight;
-			map = other.map;
-			modData = other.modData;
+			Map = other.Map;
+			ModData = other.ModData;
 			tiles = new List<(int2, TerrainTile)>(other.tiles);
 			actorPlans = new List<ActorPlan>(other.actorPlans);
 			shape = other.shape.ToArray();
@@ -108,7 +106,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				foreach (var cpos in actorPlan.Footprint())
 				{
-					var mpos = cpos.Key.ToMPos(map);
+					var mpos = cpos.Key.ToMPos(Map);
 					xys.Add(new int2(mpos.U, mpos.V));
 				}
 			}
@@ -123,7 +121,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public MultiBrush WithTemplate(ushort templateId, int2? offset = null)
 		{
-			var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
+			var tileset = ModData.DefaultTerrainInfo[Map.Tileset] as ITemplatedTerrainInfo;
 			var templateInfo = tileset.Templates[templateId];
 			if (templateInfo.PickAny)
 				throw new ArgumentException("PickAny not supported - create separate obstacles instead.");
@@ -226,8 +224,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			foreach (var (xy, tile) in tiles)
 			{
 				var mpos = new MPos(paintXY.X + xy.X, paintXY.Y + xy.Y);
-				if (map.Contains(mpos))
-					map.Tiles[mpos] = tile;
+				if (Map.Contains(mpos))
+					Map.Tiles[mpos] = tile;
 			}
 		}
 
@@ -238,7 +236,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				var plan = actorPlan.Clone();
 				var paintUV = new MPos(paintXY.X, paintXY.Y);
 				var offset = plan.Location;
-				plan.Location = paintUV.ToCPos(map) + new CVec(offset.X, offset.Y);
+				plan.Location = paintUV.ToCPos(Map) + new CVec(offset.X, offset.Y);
 				actorPlans.Add(plan);
 			}
 		}
@@ -249,7 +247,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		public static void PaintArea(
 			Map map,
 			List<ActorPlan> actorPlans,
-			Matrix<MultiBrush.Replaceability> replace,
+			Matrix<Replaceability> replace,
 			IReadOnlyList<MultiBrush> availableBrushes,
 			MersenneTwister random)
 		{
@@ -273,16 +271,14 @@ namespace OpenRA.Mods.Common.MapUtils
 					1,
 					availableBrushes.Where(o => o.HasActors && o.Area == 1).ToList()));
 			var size = map.MapSize;
-			var replaceIndices = new int[replace.Data.Length];
+			var replaceIndices = new List<int>();
 			var remaining = new Matrix<bool>(size);
-			var replaceArea = 0;
 			for (var n = 0; n < replace.Data.Length; n++)
 			{
-				if (replace[n] != MultiBrush.Replaceability.None)
+				if (replace[n] != Replaceability.None)
 				{
 					remaining[n] = true;
-					replaceIndices[replaceArea] = n;
-					replaceArea++;
+					replaceIndices.Add(n);
 				}
 				else
 				{
@@ -296,7 +292,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			void RefreshIndices()
 			{
 				indexCount = 0;
-				// TODO: Why is this array not truncated? Why is it even done this way?
 				foreach (var n in replaceIndices)
 				{
 					if (remaining[n])
@@ -309,7 +304,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				random.ShuffleInPlace(indices, 0, indexCount);
 			}
 
-			MultiBrush.Replaceability ReserveShape(int2 paintXY, IEnumerable<int2> shape, MultiBrush.Replaceability contract)
+			Replaceability ReserveShape(int2 paintXY, IEnumerable<int2> shape, Replaceability contract)
 			{
 				foreach (var shapeXY in shape)
 				{
@@ -319,15 +314,15 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (!remaining[xy])
 					{
 						// Can't reserve - not the right shape
-						return MultiBrush.Replaceability.None;
+						return Replaceability.None;
 					}
 
 					contract &= replace[xy];
-					if (contract == MultiBrush.Replaceability.None)
+					if (contract == Replaceability.None)
 					{
 						// Can't reserve - obstruction choice doesn't comply
 						// with replaceability of original tiles.
-						return MultiBrush.Replaceability.None;
+						return Replaceability.None;
 					}
 				}
 
@@ -356,14 +351,14 @@ namespace OpenRA.Mods.Common.MapUtils
 				var remainingQuota =
 					brushArea == 1
 						? int.MaxValue
-						: (int)Math.Ceiling(replaceArea * brushWeightForArea / brushTotalWeight);
+						: (int)Math.Ceiling(replaceIndices.Count * brushWeightForArea / brushTotalWeight);
 				RefreshIndices();
 				foreach (var n in indices)
 				{
 					var brush = brushes[random.PickWeighted(brushWeights)];
 					var paintXY = replace.XY(n);
 					var contract = ReserveShape(paintXY, brush.Shape, brush.Contract());
-					if (contract != MultiBrush.Replaceability.None)
+					if (contract != Replaceability.None)
 					{
 						brush.Paint(actorPlans, paintXY, contract);
 					}

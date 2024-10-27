@@ -19,7 +19,6 @@ using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
 
-// TODO: Sort out CPos, MPos, WPos, PPos?, int2, float2, *Vec, etc.
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Map generator for Red Alert maps.")]
@@ -378,7 +377,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			const float EXTERNAL_BIAS = 1000000.0f;
 
-			// TODO: translate exception messages?
 			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
 			var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
 			var size = map.MapSize;
@@ -1111,7 +1109,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (roads)
 			{
-				// TODO: merge with roads
 				var space = new Matrix<bool>(size);
 				for (var y = 0; y < size.Y; y++)
 				{
@@ -1193,11 +1190,10 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				Log.Write("debug", "entities: determining eligible space");
 
-				// TODO: remove map cordon from zoneable.
 				var zoneable = new Matrix<bool>(size);
-				for (var y = 0; y < size.Y; y++)
+				for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
 				{
-					for (var x = 0; x < size.X; x++)
+					for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
 					{
 						zoneable[x, y] = playableArea[x, y] && tileset.GetTerrainIndex(map.Tiles[new MPos(x, y)]) == clearIndex;
 					}

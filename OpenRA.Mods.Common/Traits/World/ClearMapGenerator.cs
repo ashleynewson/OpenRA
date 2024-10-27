@@ -39,6 +39,8 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class ClearMapGenerator : IMapGenerator
 	{
+		[TranslationReference]
+		const string StrTile = "label-clear-map-generator-tile";
 		readonly ClearMapGeneratorInfo info;
 
 		IMapGeneratorInfo IMapGenerator.Info => info;
@@ -52,13 +54,11 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 			return ImmutableList.Create(
-				new MapGeneratorSetting("tile", "Tile", new MapGeneratorSetting.IntegerValue(tileset.DefaultTerrainTile.Type))
-			);
+				new MapGeneratorSetting("tile", TranslationProvider.GetString(StrTile), new MapGeneratorSetting.IntegerValue(tileset.DefaultTerrainTile.Type)));
 		}
 
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)
 		{
-			// TODO: translate exception messages?
 			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 
@@ -82,10 +82,16 @@ namespace OpenRA.Mods.Common.Traits
 			// If the default terrain tile is part of a PickAny template, pick
 			// a random tile index. Otherwise, just use the default tile.
 			Func<TerrainTile> tilePicker;
-			if (map.Rules.TerrainInfo is ITemplatedTerrainInfo templatedTerrainInfo && templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
+			if (map.Rules.TerrainInfo is ITemplatedTerrainInfo templatedTerrainInfo &&
+				templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) &&
+				template.PickAny)
+			{
 				tilePicker = () => new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
+			}
 			else
+			{
 				tilePicker = () => tile;
+			}
 
 			foreach (var cell in map.AllCells)
 			{
