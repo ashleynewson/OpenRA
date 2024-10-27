@@ -283,7 +283,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void RandomSeedThenGenerateMap()
 		{
 			// Perhaps somewhat unsatisfactory?
-			seedTextFieldWidget.Text = Environment.TickCount.ToString();
+			var seed = Guid.NewGuid().GetHashCode();
+			seedTextFieldWidget.Text = seed.ToString();
 			GenerateMap();
 		}
 
