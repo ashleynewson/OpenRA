@@ -621,26 +621,25 @@ namespace OpenRA.Mods.Common.MapUtils
 		}
 
 		// <summary>
-		// Shrink then grow either the (foreground) true or false regions of an
-		// input matrix by a given amount.
+		// Preserves foreground cells that can be safely covered by a (possibly
+		// out-of-bound) span-by-span square that doesn't touch any !foreground
+		// cells, and sets any remaining cells to !foreground.
 		// </summary>
-		public static (Matrix<bool> Output, int Changes) ErodeAndDilate(Matrix<bool> input, bool foreground, int amount)
+		public static (Matrix<bool> Output, int Changes) RetainThickRegions(Matrix<bool> input, bool foreground, int span)
 		{
-			// TODO: We can achieve the same time complexity as BooleanBlur,
-			//       basically by doing an extreme threshold blur.
-			//
-			//       But, this already seems quite fast in practice, which
-			//       surprises me. _Maybe_ optimize?
+			// The time complexity could be improved to O(input.Size) by using
+			// a technique similar to BooleanBlur, but, in practice, this
+			// hasn't needed optimizing yet.
 			var output = new Matrix<bool>(input.Size).Fill(!foreground);
-			for (var cy = 1 - amount; cy < input.Size.Y; cy++)
+			for (var cy = 1 - span; cy < input.Size.Y; cy++)
 			{
-				for (var cx = 1 - amount; cx < input.Size.X; cx++)
+				for (var cx = 1 - span; cx < input.Size.X; cx++)
 				{
 					bool IsRetained()
 					{
-						for (var ry = 0; ry < amount; ry++)
+						for (var ry = 0; ry < span; ry++)
 						{
-							for (var rx = 0; rx < amount; rx++)
+							for (var rx = 0; rx < span; rx++)
 							{
 								var x = cx + rx;
 								var y = cy + ry;
@@ -658,9 +657,9 @@ namespace OpenRA.Mods.Common.MapUtils
 
 					if (!IsRetained()) continue;
 
-					for (var ry = 0; ry < amount; ry++)
+					for (var ry = 0; ry < span; ry++)
 					{
-						for (var rx = 0; rx < amount; rx++)
+						for (var rx = 0; rx < span; rx++)
 						{
 							var x = cx + rx;
 							var y = cy + ry;
@@ -1116,14 +1115,14 @@ namespace OpenRA.Mods.Common.MapUtils
 				{
 					var changesAcc = 0;
 					int changes;
-					(landmass, changes) = ErodeAndDilate(landmass, true, minimumThickness);
+					(landmass, changes) = RetainThickRegions(landmass, true, minimumThickness);
 					changesAcc += changes;
 					changes = DilateThinRegionsInPlaceFull(landmass, true, minimumThickness);
 					changesAcc += changes;
 
 					var midFixLandmass = landmass.Clone();
 
-					(landmass, changes) = ErodeAndDilate(landmass, false, minimumThickness);
+					(landmass, changes) = RetainThickRegions(landmass, false, minimumThickness);
 					changesAcc += changes;
 					changes = DilateThinRegionsInPlaceFull(landmass, false, minimumThickness);
 					changesAcc += changes;
