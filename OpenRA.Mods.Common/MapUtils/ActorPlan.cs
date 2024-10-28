@@ -22,9 +22,6 @@ namespace OpenRA.Mods.Common.MapUtils
 		public readonly Map Map;
 		public readonly ActorInfo Info;
 		public readonly ActorReference Reference;
-		// TODO: This concept is a bit weird here.
-		// <summary>A radius for planning actor placement</summary>
-		public float ZoningRadius;
 
 		public CPos Location
 		{
@@ -87,10 +84,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public ActorPlan Clone()
 		{
-			return new ActorPlan(Map, Reference.Clone())
-			{
-				ZoningRadius = ZoningRadius,
-			};
+			return new ActorPlan(Map, Reference.Clone());
 		}
 
 		static ActorReference ActorFromType(string type)

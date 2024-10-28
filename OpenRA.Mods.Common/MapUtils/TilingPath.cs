@@ -250,13 +250,13 @@ namespace OpenRA.Mods.Common.MapUtils
 				ReverseDirectionMasks = new int[RelativePoints.Length];
 
 				// Last point has no direction.
-				Directions[^1] = Direction.NONE;
+				Directions[^1] = Direction.None;
 				DirectionMasks[^1] = 0;
 				ReverseDirectionMasks[^1] = 0;
 				for (var i = 0; i < RelativePoints.Length - 1; i++)
 				{
 					var direction = Direction.FromOffset(RelativePoints[i + 1] - RelativePoints[i]);
-					if (direction == Direction.NONE)
+					if (direction == Direction.None)
 						throw new ArgumentException("TemplateSegment has duplicate points in sequence");
 					Directions[i] = direction;
 					DirectionMasks[i] = 1 << direction;
@@ -431,7 +431,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					highs.Clear();
 					for (var i = 0; i < 8; i++)
 					{
-						var offset = Direction.SPREAD8[i];
+						var offset = Direction.Spread8[i];
 						var neighbor = xy + offset;
 						if (!deviations.ContainsXY(neighbor) ||
 							deviations[neighbor] >= deviation ||
@@ -460,7 +460,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					size,
 					progressSeeds,
 					ProgressFiller,
-					Direction.SPREAD8);
+					Direction.Spread8);
 
 				var separationSeeds = new List<(int2, int)>();
 
@@ -480,7 +480,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 						if (MinSeparation > 0)
 						{
-							foreach (var offset in Direction.SPREAD8)
+							foreach (var offset in Direction.Spread8)
 							{
 								var neighbor = xy + offset;
 								if (!deviations.ContainsXY(neighbor) ||
@@ -513,7 +513,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					size,
 					separationSeeds,
 					SeparationFiller,
-					Direction.SPREAD8);
+					Direction.Spread8);
 			}
 
 			var pathStart = points[0];
@@ -1209,7 +1209,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (Direction.Count(dm) > 2)
 					{
 						output[cx, cy] = 0;
-						foreach (var (offset, d) in Direction.SPREAD8_D)
+						foreach (var (offset, d) in Direction.Spread8D)
 						{
 							var xy = new int2(cx + offset.X, cy + offset.Y);
 							if (!input.ContainsXY(xy))
@@ -1223,14 +1223,14 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			for (var x = 0; x < input.Size.X; x++)
 			{
-				output[x, 0] = (byte)(output[x, 0] & ~(Direction.M_LU | Direction.M_U | Direction.M_RU));
-				output[x, input.Size.Y - 1] = (byte)(output[x, input.Size.Y - 1] & ~(Direction.M_RD | Direction.M_D | Direction.M_LD));
+				output[x, 0] = (byte)(output[x, 0] & ~(Direction.MLU | Direction.MU | Direction.MRU));
+				output[x, input.Size.Y - 1] = (byte)(output[x, input.Size.Y - 1] & ~(Direction.MRD | Direction.MD | Direction.MLD));
 			}
 
 			for (var y = 0; y < input.Size.Y; y++)
 			{
-				output[0, y] = (byte)(output[0, y] & ~(Direction.M_LD | Direction.M_L | Direction.M_LU));
-				output[input.Size.X - 1, y] &= (byte)(output[input.Size.X - 1, y] & ~(Direction.M_RU | Direction.M_R | Direction.M_RD));
+				output[0, y] = (byte)(output[0, y] & ~(Direction.MLD | Direction.ML | Direction.MLU));
+				output[input.Size.X - 1, y] &= (byte)(output[input.Size.X - 1, y] & ~(Direction.MRU | Direction.MR | Direction.MRD));
 			}
 
 			return output;
@@ -1252,7 +1252,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				for (var sx = 0; sx < input.Size.X; sx++)
 				{
 					var sdm = input[sx, sy];
-					if (Direction.FromMask(sdm) != Direction.NONE)
+					if (Direction.FromMask(sdm) != Direction.None)
 					{
 						var points = new List<int2>();
 						var xy = new int2(sx, sy);
@@ -1262,7 +1262,7 @@ namespace OpenRA.Mods.Common.MapUtils
 						{
 							points.Add(xy);
 							var dm = input[xy] & ~reverseDm;
-							foreach (var (offset, d) in Direction.SPREAD8_D)
+							foreach (var (offset, d) in Direction.Spread8D)
 							{
 								if ((dm & (1 << d)) != 0)
 								{

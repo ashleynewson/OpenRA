@@ -17,43 +17,58 @@ namespace OpenRA.Mods.Common.MapUtils
 	public static class Direction
 	{
 		// <summary>No direction</summary>
-		public const int NONE = -1;
+		public const int None = -1;
+
 		// <summary>Right, 0 degrees, +X</summary>
 		public const int R = 0;
+
 		// <summary>Right-down, 45 degrees, +X+Y</summary>
 		public const int RD = 1;
+
 		// <summary>Down, 90 degrees, +Y</summary>
 		public const int D = 2;
+
 		// <summary>Left-down, 135 degrees, -X+Y</summary>
 		public const int LD = 3;
+
 		// <summary>Left, 180 degrees, -X</summary>
 		public const int L = 4;
+
 		// <summary>Left-up, 225 degrees, -X-Y</summary>
 		public const int LU = 5;
+
 		// <summary>Up, 270 degrees, -Y</summary>
 		public const int U = 6;
+
 		// <summary>Right-up, 315 degrees, +X-Y</summary>
 		public const int RU = 7;
 
 		// <summary>Bitmask right</summary>
-		public const int M_R = 1 << R;
+		public const int MR = 1 << R;
+
 		// <summary>Bitmask right-down</summary>
-		public const int M_RD = 1 << RD;
+		public const int MRD = 1 << RD;
+
 		// <summary>Bitmask down</summary>
-		public const int M_D = 1 << D;
+		public const int MD = 1 << D;
+
 		// <summary>Bitmask left-down</summary>
-		public const int M_LD = 1 << LD;
+		public const int MLD = 1 << LD;
+
 		// <summary>Bitmask left</summary>
-		public const int M_L = 1 << L;
+		public const int ML = 1 << L;
+
 		// <summary>Bitmask left-up</summary>
-		public const int M_LU = 1 << LU;
+		public const int MLU = 1 << LU;
+
 		// <summary>Bitmask up</summary>
-		public const int M_U = 1 << U;
+		public const int MU = 1 << U;
+
 		// <summary>Bitmask right-up</summary>
-		public const int M_RU = 1 << RU;
+		public const int MRU = 1 << RU;
 
 		// <summary>Adjacent offsets, excluding diagonals</summary>
-		public static readonly ImmutableArray<int2> SPREAD4 = ImmutableArray.Create(new[]
+		public static readonly ImmutableArray<int2> Spread4 = ImmutableArray.Create(new[]
 		{
 			new int2(1, 0),
 			new int2(0, 1),
@@ -62,7 +77,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		});
 
 		// <summary>Adjacent offsets with directions, excluding diagonals</summary>
-		public static readonly ImmutableArray<(int2, int)> SPREAD4_D = ImmutableArray.Create(new[]
+		public static readonly ImmutableArray<(int2, int)> Spread4D = ImmutableArray.Create(new[]
 		{
 			(new int2(1, 0), R),
 			(new int2(0, 1), D),
@@ -71,7 +86,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		});
 
 		// <summary>Adjacent offsets, including diagonals</summary>
-		public static readonly ImmutableArray<int2> SPREAD8 = ImmutableArray.Create(new[]
+		public static readonly ImmutableArray<int2> Spread8 = ImmutableArray.Create(new[]
 		{
 			new int2(1, 0),
 			new int2(1, 1),
@@ -84,7 +99,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		});
 
 		// <summary>Adjacent offsets with directions, including diagonals</summary>
-		public static readonly ImmutableArray<(int2, int)> SPREAD8_D = ImmutableArray.Create(new[]
+		public static readonly ImmutableArray<(int2, int)> Spread8D = ImmutableArray.Create(new[]
 		{
 			(new int2(1, 0), R),
 			(new int2(1, 1), RD),
@@ -100,7 +115,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		public static int2 ToOffset(int d)
 		{
 			if (d >= 0 && d < 8)
-				return SPREAD8[d];
+				return Spread8[d];
 			else
 				throw new ArgumentException("bad direction");
 		}
@@ -174,8 +189,8 @@ namespace OpenRA.Mods.Common.MapUtils
 		// <summary>Return the opposite direction.</summary>
 		public static int Reverse(int direction)
 		{
-			if (direction == NONE)
-				return NONE;
+			if (direction == None)
+				return None;
 			return direction ^ 4;
 		}
 
@@ -184,7 +199,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			switch (direction)
 			{
-				case NONE: return "None";
+				case None: return "None";
 				case R: return "R";
 				case RD: return "RD";
 				case D: return "D";
@@ -215,15 +230,15 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			switch (mask)
 			{
-				case M_R: return R;
-				case M_RD: return RD;
-				case M_D: return D;
-				case M_LD: return LD;
-				case M_L: return L;
-				case M_LU: return LU;
-				case M_U: return U;
-				case M_RU: return RU;
-				default: return NONE;
+				case MR: return R;
+				case MRD: return RD;
+				case MD: return D;
+				case MLD: return LD;
+				case ML: return L;
+				case MLU: return LU;
+				case MU: return U;
+				case MRU: return RU;
+				default: return None;
 			}
 		}
 
