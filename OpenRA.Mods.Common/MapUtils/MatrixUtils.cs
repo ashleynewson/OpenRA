@@ -184,7 +184,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					output[xy] = distance;
 				unprocessed[i] = float.PositiveInfinity;
 
-				foreach (var (offset, direction) in Direction.SPREAD8_D)
+				foreach (var (offset, direction) in Direction.Spread8D)
 				{
 					var nextXY = xy + offset;
 					if (!passable.ContainsXY(nextXY))
@@ -241,7 +241,7 @@ namespace OpenRA.Mods.Common.MapUtils
 							}
 						}
 
-						FloodFill(space.Size, new[] { (new int2(x, y), holeCount) }, Filler, Direction.SPREAD4);
+						FloodFill(space.Size, new[] { (new int2(x, y), holeCount) }, Filler, Direction.Spread4);
 					}
 				}
 			}
@@ -317,7 +317,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 				}
 
-				FloodFill(size, seeds, Filler, Direction.SPREAD4);
+				FloodFill(size, seeds, Filler, Direction.Spread4);
 			}
 
 			var deflatedSize = size + new int2(1, 1);
@@ -342,10 +342,10 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 
 					deflated[cx, cy] = (byte)(
-						(neighborhood[0] != neighborhood[1] ? Direction.M_U : 0) |
-						(neighborhood[1] != neighborhood[3] ? Direction.M_R : 0) |
-						(neighborhood[3] != neighborhood[2] ? Direction.M_D : 0) |
-						(neighborhood[2] != neighborhood[0] ? Direction.M_L : 0));
+						(neighborhood[0] != neighborhood[1] ? Direction.MU : 0) |
+						(neighborhood[1] != neighborhood[3] ? Direction.MR : 0) |
+						(neighborhood[3] != neighborhood[2] ? Direction.MD : 0) |
+						(neighborhood[2] != neighborhood[0] ? Direction.ML : 0));
 				}
 			}
 
@@ -460,10 +460,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			return stage2;
 		}
 
-		// TODO: Refactor zoning radius out of this.
 		// <summary>
-		// Set positions occupied by entities to a given value, accounting for both their footprint
-		// and zoning radius.
+		// Set positions occupied by entities to a given value, accounting for their footprint.
 		// </summary>
 		public static void ReserveForEntitiesInPlace<T>(Matrix<T> matrix, IEnumerable<ActorPlan> actorPlans, Func<T, T> setTo)
 		{
@@ -476,13 +474,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (matrix.ContainsXY(xy))
 						matrix[xy] = setTo(matrix[xy]);
 				}
-
-				if (actorPlan.ZoningRadius > 0.0f)
-					matrix.DrawCircle(
-						center: actorPlan.Int2Location,
-						radius: actorPlan.ZoningRadius,
-						setTo: (_, v) => setTo(v),
-						invert: false);
 			}
 		}
 
@@ -938,7 +929,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				next = new List<int2>();
 				foreach (var point in current)
 				{
-					foreach (var offset in Direction.SPREAD4)
+					foreach (var offset in Direction.Spread4)
 					{
 						SeedChirality(point + offset, chirality[point], false);
 					}

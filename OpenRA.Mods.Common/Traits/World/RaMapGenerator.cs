@@ -1260,14 +1260,9 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					var room = chosenValue - 1;
-					var templatePlayer = new ActorPlan(map, "mpspawn")
+					var spawn = new ActorPlan(map, "mpspawn")
 					{
-						ZoningRadius = spawnReservation,
 						Int2Location = chosenXY,
-					};
-					var spawnActorPlans = new List<ActorPlan>
-					{
-						templatePlayer
 					};
 
 					var mineWeights = MatrixUtils.WalkingDistances(
@@ -1280,6 +1275,7 @@ namespace OpenRA.Mods.Common.Traits
 							return MathF.Ceiling(v > preferedRange ? 2 * preferedRange - v : v);
 						});
 
+					var mines = new List<ActorPlan>();
 					for (var mine = 0; mine < spawnMines; mine++)
 					{
 						var (xy, value) = mineWeights.FindRandomBest(playerRandom, (a, b) => a.CompareTo(b));
@@ -1289,9 +1285,8 @@ namespace OpenRA.Mods.Common.Traits
 							playerRandom.NextFloat() < gemUpgrade
 								? new ActorPlan(map, "gmine")
 								: new ActorPlan(map, "mine");
-						minePlan.ZoningRadius = mineReservation;
 						minePlan.Int2Location = xy;
-						spawnActorPlans.Add(minePlan);
+						mines.Add(minePlan);
 						mineWeights.DrawCircle(
 							center: minePlan.Int2Location,
 							radius: 1.0f,
@@ -1299,8 +1294,27 @@ namespace OpenRA.Mods.Common.Traits
 							invert: false);
 					}
 
-					Symmetry.RotateAndMirrorActorPlans(actorPlans, spawnActorPlans, rotations, mirror);
-					MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+					var projectedSpawns = Symmetry.RotateAndMirrorActorPlan(spawn, rotations, mirror);
+					actorPlans.AddRange(projectedSpawns);
+					foreach (var projectedSpawn in projectedSpawns)
+					{
+						zoneable.DrawCircle(
+							center: projectedSpawn.Int2Location,
+							radius: spawnReservation,
+							setTo: (_, _) => false,
+							invert: false);
+					}
+
+					var projectedMines = Symmetry.RotateAndMirrorActorPlans(mines, rotations, mirror);
+					actorPlans.AddRange(projectedMines);
+					foreach (var projectedMine in projectedMines)
+					{
+						zoneable.DrawCircle(
+							center: projectedMine.Int2Location,
+							radius: mineReservation,
+							setTo: (_, _) => false,
+							invert: false);
+					}
 				}
 
 				// Expansions
@@ -1337,7 +1351,7 @@ namespace OpenRA.Mods.Common.Traits
 						if (radius1 < 1.0f)
 							break;
 
-						var expansionActorPlans = new List<ActorPlan>();
+						var mines = new List<ActorPlan>();
 						var mineWeights = new Matrix<float>(size);
 						var radius1Sq = radius1 * radius1;
 						mineWeights.DrawCircle(
@@ -1352,9 +1366,8 @@ namespace OpenRA.Mods.Common.Traits
 								expansionRandom.NextFloat() < gemUpgrade
 									? new ActorPlan(map, "gmine")
 									: new ActorPlan(map, "mine");
-							minePlan.ZoningRadius = mineReservation;
 							minePlan.Int2Location = xy;
-							expansionActorPlans.Add(minePlan);
+							mines.Add(minePlan);
 							mineWeights.DrawCircle(
 								center: minePlan.Int2Location,
 								radius: 1.0f,
@@ -1362,8 +1375,16 @@ namespace OpenRA.Mods.Common.Traits
 								invert: false);
 						}
 
-						Symmetry.RotateAndMirrorActorPlans(actorPlans, expansionActorPlans, rotations, mirror);
-						MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+						var projectedMines = Symmetry.RotateAndMirrorActorPlans(mines, rotations, mirror);
+						actorPlans.AddRange(projectedMines);
+						foreach (var projectedMine in projectedMines)
+						{
+							zoneable.DrawCircle(
+								center: projectedMine.Int2Location,
+								radius: mineReservation,
+								setTo: (_, _) => false,
+								invert: false);
+						}
 					}
 				}
 
@@ -1403,12 +1424,19 @@ namespace OpenRA.Mods.Common.Traits
 						var type = types[typeChoice];
 						var actorPlan = new ActorPlan(map, type)
 						{
-							ZoningRadius = 2.0f,
 							CenterLocation = new float2(chosenXY.X + 0.5f, chosenXY.Y + 0.5f),
 						};
 
-						Symmetry.RotateAndMirrorActorPlan(actorPlans, actorPlan, rotations, mirror);
-						MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+						var projectedBuildings = Symmetry.RotateAndMirrorActorPlan(actorPlan, rotations, mirror);
+						actorPlans.AddRange(projectedBuildings);
+						foreach (var projectedBuilding in projectedBuildings)
+						{
+							zoneable.DrawCircle(
+								center: projectedBuilding.Int2Location,
+								radius: 2.0f,
+								setTo: (_, _) => false,
+								invert: false);
+						}
 					}
 				}
 
