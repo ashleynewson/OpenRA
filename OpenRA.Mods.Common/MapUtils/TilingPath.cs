@@ -382,13 +382,13 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 
 			{
-				var progressSeeds = new List<(int2, int, int)>();
+				var progressSeeds = new List<(int2, int)>();
 				for (var pointI = 0; pointI < progressModulus; pointI++)
 				{
 					var point = points[pointI];
 					lowProgress[point] = pointI;
 					highProgress[point] = pointI;
-					progressSeeds.Add((point, 0, Direction.NONE));
+					progressSeeds.Add((point, 0));
 				}
 
 				(int Low, int High) FindLowAndHigh(List<int> values)
@@ -416,7 +416,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 				var lows = new List<int>(8);
 				var highs = new List<int>(8);
-				int? ProgressFiller(int2 xy, int deviation, int direction)
+				int? ProgressFiller(int2 xy, int deviation)
 				{
 					if (deviations[xy] != OVER_DEVIATION)
 						return null;
@@ -460,9 +460,9 @@ namespace OpenRA.Mods.Common.MapUtils
 					size,
 					progressSeeds,
 					ProgressFiller,
-					Direction.SPREAD8_D);
+					Direction.SPREAD8);
 
-				var separationSeeds = new List<(int2, int, int)>();
+				var separationSeeds = new List<(int2, int)>();
 
 				for (var y = 0; y < size.Y; y++)
 				{
@@ -474,7 +474,7 @@ namespace OpenRA.Mods.Common.MapUtils
 						if (low == INVALID_PROGRESS ||
 							high == INVALID_PROGRESS)
 						{
-							separationSeeds.Add((xy, MinSeparation, Direction.NONE));
+							separationSeeds.Add((xy, MinSeparation));
 							continue;
 						}
 
@@ -487,19 +487,19 @@ namespace OpenRA.Mods.Common.MapUtils
 									Math.Abs(Progress(low, lowProgress[neighbor])) > maxSkip ||
 									Math.Abs(Progress(high, highProgress[neighbor])) > maxSkip)
 								{
-									separationSeeds.Add((xy, MinSeparation - 1, Direction.NONE));
+									separationSeeds.Add((xy, MinSeparation - 1));
 									break;
 								}
 							}
 
 							// Last so that any greater range seeds take priority.
 							if (deviations[xy] > MaxDeviation)
-								separationSeeds.Add((xy, 0, Direction.NONE));
+								separationSeeds.Add((xy, 0));
 						}
 					}
 				}
 
-				int? SeparationFiller(int2 xy, int range, int direction)
+				int? SeparationFiller(int2 xy, int range)
 				{
 					if (deviations[xy] == 0 || deviations[xy] == OVER_DEVIATION)
 						return null;
@@ -513,7 +513,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					size,
 					separationSeeds,
 					SeparationFiller,
-					Direction.SPREAD8_D);
+					Direction.SPREAD8);
 			}
 
 			var pathStart = points[0];

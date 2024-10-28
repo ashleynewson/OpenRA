@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.MapUtils
 						region.PlayableArea++;
 				}
 
-				bool? Filler(int2 xy, bool fullyPlayable, int _)
+				bool? Filler(int2 xy, bool fullyPlayable)
 				{
 					if (regionMap[xy] == NULL_REGION)
 					{
@@ -104,7 +104,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					return null;
 				}
 
-				MatrixUtils.FloodFill(size, new[] { (start, true, Direction.NONE) }, Filler, Direction.SPREAD4_D);
+				MatrixUtils.FloodFill(size, new[] { (start, true) }, Filler, Direction.SPREAD4);
 			}
 
 			for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)

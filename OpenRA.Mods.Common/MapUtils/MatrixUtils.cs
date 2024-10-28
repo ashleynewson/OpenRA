@@ -96,21 +96,16 @@ namespace OpenRA.Mods.Common.MapUtils
 			Console.Error.Flush();
 		}
 
-		// Perform a generic flood fill starting at seeds [(xy, prop, d), ...].
+		// Perform a generic flood fill starting at seeds [(xy, prop), ...].
 		//
-		// The prop (propagation value) and d (propagation direction) values of
-		// the seed are optional.
-		//
-		// For each point being considered for fill, filler(xy, prop, d) is
-		// called with the current position (xy), propagation value (prop),
-		// and propagation direction (d). filler should return the value to be
-		// propagated or null if not to be propagated. Propagation happens to
-		// all non-diagonally adjacent neighbours, regardless of whether they
-		// have previously been visited, so filler is responsible for
-		// terminating propagation.
-		//
-		// The spread argument defines the propagation pattern from a point.
-		// Usually, Direction.SPREAD4_D is appropriate.
+		// For each point being considered for fill, filler(xy, prop) is
+		// called with the current position (xy) and propagation value (prop).
+		// filler should return the value to be propagated or null if not to be
+		// propagated. Propagation happens to all neighbours (offsets) defined
+		// by spread, regardless of whether they have previously been visited,
+		// so filler is responsible for terminating propagation by returning
+		// nulls. Usually, Direction.SPREAD4 or Direction.SPREAD8 is
+		// appropriate as a spread pattern.
 		//
 		// filler should capture and manipulate any necessary input and output
 		// arrays.
@@ -130,27 +125,27 @@ namespace OpenRA.Mods.Common.MapUtils
 		// size EXCEPT for points being processed as seed values.
 		public static void FloodFill<P>(
 			int2 size,
-			IEnumerable<(int2 XY, P Prop, int D)> seeds,
-			Func<int2, P, int, P?> filler,
-			ImmutableArray<(int2 Offset, int Direction)> spread) where P : struct
+			IEnumerable<(int2 XY, P Prop)> seeds,
+			Func<int2, P, P?> filler,
+			ImmutableArray<int2> spread) where P : struct
 		{
 			var next = seeds.ToList();
 			while (next.Count != 0)
 			{
 				var current = next;
-				next = new List<(int2, P, int)>();
-				foreach (var (source, prop, d) in current)
+				next = new List<(int2, P)>();
+				foreach (var (source, prop) in current)
 				{
-					var newProp = filler(source, prop, d);
+					var newProp = filler(source, prop);
 					if (newProp != null)
 					{
-						foreach (var (offset, direction) in spread)
+						foreach (var offset in spread)
 						{
 							var destination = source + offset;
 							if (destination.X < 0 || destination.X >= size.X || destination.Y < 0 || destination.Y >= size.Y)
 								continue;
 
-							next.Add((destination, (P)newProp, direction));
+							next.Add((destination, (P)newProp));
 						}
 					}
 				}
@@ -233,7 +228,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (!space[x, y] && holes[x, y] == 0)
 					{
 						holeCount++;
-						int? Filler(int2 xy, int holeId, int direction)
+						int? Filler(int2 xy, int holeId)
 						{
 							if (!space[xy] && holes[xy] == 0)
 							{
@@ -246,7 +241,7 @@ namespace OpenRA.Mods.Common.MapUtils
 							}
 						}
 
-						FloodFill(space.Size, new[] { (new int2(x, y), holeCount, Direction.NONE) }, Filler, Direction.SPREAD4_D);
+						FloodFill(space.Size, new[] { (new int2(x, y), holeCount) }, Filler, Direction.SPREAD4);
 					}
 				}
 			}
@@ -256,14 +251,14 @@ namespace OpenRA.Mods.Common.MapUtils
 			var distances = new Matrix<int>(size).Fill(UNASSIGNED);
 			var closestN = new Matrix<int>(size).Fill(UNASSIGNED);
 			var midN = (size.X * size.Y + 1) / 2;
-			var seeds = new List<(int2, (int, int2, int), int)>();
+			var seeds = new List<(int2, (int, int2, int))>();
 			for (var y = 0; y < size.Y; y++)
 			{
 				for (var x = 0; x < size.X; x++)
 				{
 					var xy = new int2(x, y);
 					if (holes[xy] != 0)
-						seeds.Add((xy, (holes[xy], xy, closestN.Index(x, y)), Direction.NONE));
+						seeds.Add((xy, (holes[xy], xy, closestN.Index(x, y))));
 				}
 			}
 
@@ -273,20 +268,20 @@ namespace OpenRA.Mods.Common.MapUtils
 				for (var x = 0; x < size.X; x++)
 				{
 					// Hack: closestN is actually inside, but starting x, y are outside.
-					seeds.Add((new int2(x, 0), (holeCount, new int2(x, -1), closestN.Index(x, 0)), Direction.NONE));
-					seeds.Add((new int2(x, size.Y - 1), (holeCount, new int2(x, size.Y), closestN.Index(x, size.Y - 1)), Direction.NONE));
+					seeds.Add((new int2(x, 0), (holeCount, new int2(x, -1), closestN.Index(x, 0))));
+					seeds.Add((new int2(x, size.Y - 1), (holeCount, new int2(x, size.Y), closestN.Index(x, size.Y - 1))));
 				}
 
 				for (var y = 0; y < size.Y; y++)
 				{
 					// Hack: closestN is actually inside, but starting x, y are outside.
-					seeds.Add((new int2(0, y), (holeCount, new int2(-1, y), closestN.Index(0, y)), Direction.NONE));
-					seeds.Add((new int2(size.X - 1, y), (holeCount, new int2(size.X, y), closestN.Index(size.X - 1, y)), Direction.NONE));
+					seeds.Add((new int2(0, y), (holeCount, new int2(-1, y), closestN.Index(0, y))));
+					seeds.Add((new int2(size.X - 1, y), (holeCount, new int2(size.X, y), closestN.Index(size.X - 1, y))));
 				}
 			}
 
 			{
-				(int HoleId, int2 StartXY, int StartN)? Filler(int2 xy, (int HoleId, int2 StartXY, int StartN) prop, int direction)
+				(int HoleId, int2 StartXY, int StartN)? Filler(int2 xy, (int HoleId, int2 StartXY, int StartN) prop)
 				{
 					var n = closestN.Index(xy);
 					var distance = (xy - prop.StartXY).LengthSquared;
@@ -322,7 +317,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 				}
 
-				FloodFill(size, seeds, Filler, Direction.SPREAD4_D);
+				FloodFill(size, seeds, Filler, Direction.SPREAD4);
 			}
 
 			var deflatedSize = size + new int2(1, 1);
