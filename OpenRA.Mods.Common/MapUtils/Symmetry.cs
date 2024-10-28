@@ -11,42 +11,43 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace OpenRA.Mods.Common.MapUtils
 {
 	public static class Symmetry
 	{
-		const double DEGREES_0   = 0.0;
-		const double DEGREES_90  = Math.Tau * 0.25;
-		const double DEGREES_180 = Math.Tau * 0.5;
-		const double DEGREES_270 = Math.Tau * 0.75;
-		const double DEGREES_360 = Math.Tau * 1.0;
-		const double DEGREES_120 = Math.Tau * (1.0 / 3.0);
-		const double DEGREES_240 = Math.Tau * (2.0 / 3.0);
+		const double Degrees0 = 0.0;
+		const double Degrees90 = Math.Tau * 0.25;
+		const double Degrees180 = Math.Tau * 0.5;
+		const double Degrees270 = Math.Tau * 0.75;
+		const double Degrees360 = Math.Tau * 1.0;
+		const double Degrees120 = Math.Tau * (1.0 / 3.0);
+		const double Degrees240 = Math.Tau * (2.0 / 3.0);
 
-		const float DEGREESF_0   = 0.0f;
-		const float DEGREESF_90  = MathF.Tau * 0.25f;
-		const float DEGREESF_180 = MathF.Tau * 0.5f;
-		const float DEGREESF_270 = MathF.Tau * 0.75f;
-		const float DEGREESF_360 = MathF.Tau * 1.0f;
-		const float DEGREESF_120 = MathF.Tau * (1.0f / 3.0f);
-		const float DEGREESF_240 = MathF.Tau * (2.0f / 3.0f);
+		const float DegreesF0 = 0.0f;
+		const float DegreesF90 = MathF.Tau * 0.25f;
+		const float DegreesF180 = MathF.Tau * 0.5f;
+		const float DegreesF270 = MathF.Tau * 0.75f;
+		const float DegreesF360 = MathF.Tau * 1.0f;
+		const float DegreesF120 = MathF.Tau * (1.0f / 3.0f);
+		const float DegreesF240 = MathF.Tau * (2.0f / 3.0f);
 
-		const double COS_0   = 1.0;
-		const double COS_90  = 0.0;
-		const double COS_180 = -1.0;
-		const double COS_270 = 0.0;
-		const double COS_360 = 1.0;
-		const double COS_120 = -0.5;
-		const double COS_240 = -0.5;
+		const double Cos0 = 1.0;
+		const double Cos90 = 0.0;
+		const double Cos180 = -1.0;
+		const double Cos270 = 0.0;
+		const double Cos360 = 1.0;
+		const double Cos120 = -0.5;
+		const double Cos240 = -0.5;
 
-		const double SIN_0   = 0.0;
-		const double SIN_90  = 1.0;
-		const double SIN_180 = 0.0;
-		const double SIN_270 = -1.0;
-		const double SIN_360 = 0.0;
-		const double SIN_120 = 0.86602540378443864676;
-		const double SIN_240 = -0.86602540378443864676;
+		const double Sin0 = 0.0;
+		const double Sin90 = 1.0;
+		const double Sin180 = 0.0;
+		const double Sin270 = -1.0;
+		const double Sin360 = 0.0;
+		const double Sin120 = 0.86602540378443864676;
+		const double Sin240 = -0.86602540378443864676;
 
 		public enum Mirror
 		{
@@ -64,20 +65,20 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			switch (angle)
 			{
-				case DEGREES_0:
-					return COS_0;
-				case DEGREES_90:
-					return COS_90;
-				case DEGREES_180:
-					return COS_180;
-				case DEGREES_270:
-					return COS_270;
-				case DEGREES_360:
-					return COS_360;
-				case DEGREES_120:
-					return COS_120;
-				case DEGREES_240:
-					return COS_240;
+				case Degrees0:
+					return Cos0;
+				case Degrees90:
+					return Cos90;
+				case Degrees180:
+					return Cos180;
+				case Degrees270:
+					return Cos270;
+				case Degrees360:
+					return Cos360;
+				case Degrees120:
+					return Cos120;
+				case Degrees240:
+					return Cos240;
 				default:
 					return Math.Cos(angle);
 			}
@@ -90,20 +91,20 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			switch (angle)
 			{
-				case DEGREES_0:
-					return SIN_0;
-				case DEGREES_90:
-					return SIN_90;
-				case DEGREES_180:
-					return SIN_180;
-				case DEGREES_270:
-					return SIN_270;
-				case DEGREES_360:
-					return SIN_360;
-				case DEGREES_120:
-					return SIN_120;
-				case DEGREES_240:
-					return SIN_240;
+				case Degrees0:
+					return Sin0;
+				case Degrees90:
+					return Sin90;
+				case Degrees180:
+					return Sin180;
+				case Degrees270:
+					return Sin270;
+				case Degrees360:
+					return Sin360;
+				case Degrees120:
+					return Sin120;
+				case Degrees240:
+					return Sin240;
 				default:
 					return Math.Sin(angle);
 			}
@@ -116,20 +117,20 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			switch (angle)
 			{
-				case DEGREESF_0:
-					return (float)COS_0;
-				case DEGREESF_90:
-					return (float)COS_90;
-				case DEGREESF_180:
-					return (float)COS_180;
-				case DEGREESF_270:
-					return (float)COS_270;
-				case DEGREESF_360:
-					return (float)COS_360;
-				case DEGREESF_120:
-					return (float)COS_120;
-				case DEGREESF_240:
-					return (float)COS_240;
+				case DegreesF0:
+					return (float)Cos0;
+				case DegreesF90:
+					return (float)Cos90;
+				case DegreesF180:
+					return (float)Cos180;
+				case DegreesF270:
+					return (float)Cos270;
+				case DegreesF360:
+					return (float)Cos360;
+				case DegreesF120:
+					return (float)Cos120;
+				case DegreesF240:
+					return (float)Cos240;
 				default:
 					return MathF.Cos(angle);
 			}
@@ -142,20 +143,20 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			switch (angle)
 			{
-				case DEGREESF_0:
-					return (float)SIN_0;
-				case DEGREESF_90:
-					return (float)SIN_90;
-				case DEGREESF_180:
-					return (float)SIN_180;
-				case DEGREESF_270:
-					return (float)SIN_270;
-				case DEGREESF_360:
-					return (float)SIN_360;
-				case DEGREESF_120:
-					return (float)SIN_120;
-				case DEGREESF_240:
-					return (float)SIN_240;
+				case DegreesF0:
+					return (float)Sin0;
+				case DegreesF90:
+					return (float)Sin90;
+				case DegreesF180:
+					return (float)Sin180;
+				case DegreesF270:
+					return (float)Sin270;
+				case DegreesF360:
+					return (float)Sin360;
+				case DegreesF120:
+					return (float)Sin120;
+				case DegreesF240:
+					return (float)Sin240;
 				default:
 					return MathF.Sin(angle);
 			}
@@ -329,28 +330,35 @@ namespace OpenRA.Mods.Common.MapUtils
 		// <summary>
 		// Rotate and mirror multiple actor plans. See RotateAndMirrorActorPlan.
 		// </summary>
-		public static void RotateAndMirrorActorPlans(IList<ActorPlan> accumulator, IReadOnlyList<ActorPlan> originals, int rotations, Mirror mirror)
+		public static ImmutableArray<ActorPlan> RotateAndMirrorActorPlans(IReadOnlyList<ActorPlan> originals, int rotations, Mirror mirror)
 		{
+			var projections = new List<ActorPlan>(
+				originals.Count * RotateAndMirrorProjectionCount(rotations, mirror));
 			foreach (var original in originals)
 			{
-				RotateAndMirrorActorPlan(accumulator, original, rotations, mirror);
+				projections.AddRange(RotateAndMirrorActorPlan(original, rotations, mirror));
 			}
+
+			return projections.ToImmutableArray();
 		}
 
 		// <summary>
 		// Rotate and mirror a single actor plan, adding to an accumulator list.
 		// Locations (CPos) are necessarily snapped to grid.
 		// </summary>
-		public static void RotateAndMirrorActorPlan(IList<ActorPlan> accumulator, ActorPlan original, int rotations, Mirror mirror)
+		public static ImmutableArray<ActorPlan> RotateAndMirrorActorPlan(ActorPlan original, int rotations, Mirror mirror)
 		{
+			var projections = new List<ActorPlan>(RotateAndMirrorProjectionCount(rotations, mirror));
 			var size = original.Map.MapSize;
 			var points = RotateAndMirrorPoint(original.CenterLocation, size, rotations, mirror);
 			foreach (var point in points)
 			{
 				var plan = original.Clone();
 				plan.CenterLocation = point;
-				accumulator.Add(plan);
+				projections.Add(plan);
 			}
+
+			return projections.ToImmutableArray();
 		}
 
 		// <summary>
@@ -359,14 +367,14 @@ namespace OpenRA.Mods.Common.MapUtils
 		// point. For non-trivial rotations, sources may be outside the bounds
 		// defined by size.
 		// </summary>
-		public static void RotateAndMirrorOverGridSquares(int2 size, int rotations, Symmetry.Mirror mirror, Action<int2[], int2> action)
+		public static void RotateAndMirrorOverGridSquares(int2 size, int rotations, Mirror mirror, Action<int2[], int2> action)
 		{
 			for (var y = 0; y < size.Y; y++)
 			{
 				for (var x = 0; x < size.X; x++)
 				{
 					var destination = new int2(x, y);
-					var sources = Symmetry.RotateAndMirrorGridSquare(destination, size, rotations, mirror);
+					var sources = RotateAndMirrorGridSquare(destination, size, rotations, mirror);
 					action(sources, destination);
 				}
 			}

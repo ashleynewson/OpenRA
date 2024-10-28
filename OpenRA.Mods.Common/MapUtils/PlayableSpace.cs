@@ -104,7 +104,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					return null;
 				}
 
-				MatrixUtils.FloodFill(size, new[] { (start, true) }, Filler, Direction.SPREAD4);
+				MatrixUtils.FloodFill(size, new[] { (start, true) }, Filler, Direction.Spread4);
 			}
 
 			for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
