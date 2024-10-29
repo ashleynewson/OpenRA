@@ -1551,7 +1551,6 @@ namespace OpenRA.Mods.Common.Traits
 						priorities[n] = -orePlan[n];
 					}
 
-					// TODO: Reuse EditorResourceLayer logic.
 					const byte ORE_RESOURCE = 1;
 					const byte GEM_RESOURCE = 2;
 					const byte ORE_DENSITY = 12;
