@@ -71,9 +71,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			return noise;
 		}
 
-		// TODO: This could accept a scale input and use interpolation.
 		// <summary>
-		// 2D Perlin Noise generator, producing a span-by-span sized matrix.
+		// 2D Perlin Noise generator without interpolation, producing a span-by-span sized matrix.
 		// </summary>
 		public static Matrix<float> PerlinNoise(MersenneTwister random, int span)
 		{
