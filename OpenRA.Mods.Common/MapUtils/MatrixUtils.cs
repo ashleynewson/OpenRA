@@ -866,27 +866,17 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public static Matrix<int> PointsChirality(int2 size, IEnumerable<int2[]> pointArrayArray)
 		{
-			// TODO: Use FloodFill?
+			const int FirstPassSentinel = int.MinValue;
+
 			var chirality = new Matrix<int>(size);
-			var next = new List<int2>();
-			void SeedChirality(int2 point, int value, bool firstPass)
+			var seeds = new List<(int2, int)>();
+
+			void SeedChirality(int2 point, int value)
 			{
 				if (!chirality.ContainsXY(point))
 					return;
-				if (firstPass)
-				{
-					// Some paths which overlap or go back on themselves
-					// might fight for chirality. Vote on it.
-					chirality[point] += value;
-				}
-				else
-				{
-					if (chirality[point] != 0)
-						return;
-					chirality[point] = value;
-				}
-
-				next.Add(point);
+				chirality[point] += value;
+				seeds.Add((point, FirstPassSentinel));
 			}
 
 			foreach (var pointArray in pointArrayArray)
@@ -901,20 +891,20 @@ namespace OpenRA.Mods.Common.MapUtils
 					switch (direction)
 					{
 						case Direction.R:
-							SeedChirality(new int2(fx, fy), 1, true);
-							SeedChirality(new int2(fx, fy - 1), -1, true);
+							SeedChirality(new int2(fx, fy), 1);
+							SeedChirality(new int2(fx, fy - 1), -1);
 							break;
 						case Direction.D:
-							SeedChirality(new int2(fx - 1, fy), 1, true);
-							SeedChirality(new int2(fx, fy), -1, true);
+							SeedChirality(new int2(fx - 1, fy), 1);
+							SeedChirality(new int2(fx, fy), -1);
 							break;
 						case Direction.L:
-							SeedChirality(new int2(fx - 1, fy - 1), 1, true);
-							SeedChirality(new int2(fx - 1, fy), -1, true);
+							SeedChirality(new int2(fx - 1, fy - 1), 1);
+							SeedChirality(new int2(fx - 1, fy), -1);
 							break;
 						case Direction.U:
-							SeedChirality(new int2(fx, fy - 1), 1, true);
-							SeedChirality(new int2(fx - 1, fy - 1), -1, true);
+							SeedChirality(new int2(fx, fy - 1), 1);
+							SeedChirality(new int2(fx - 1, fy - 1), -1);
 							break;
 						default:
 							throw new ArgumentException("Unsupported direction for chirality");
@@ -922,18 +912,18 @@ namespace OpenRA.Mods.Common.MapUtils
 				}
 			}
 
-			while (next.Count != 0)
+			int? FillChirality(int2 point, int prop)
 			{
-				var current = next;
-				next = new List<int2>();
-				foreach (var point in current)
-				{
-					foreach (var offset in Direction.Spread4)
-					{
-						SeedChirality(point + offset, chirality[point], false);
-					}
-				}
+				if (prop == FirstPassSentinel)
+					return chirality[point];
+
+				if (chirality[point] != 0)
+					return null;
+				chirality[point] = prop;
+				return prop;
 			}
+
+			FloodFill(size, seeds, FillChirality, Direction.Spread4);
 
 			return chirality;
 		}
