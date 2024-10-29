@@ -303,8 +303,11 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				case "woodlands":
 					settings.First(s => s.Name == "Water").Set(0.0);
-					settings.First(s => s.Name == "Forests").Set(0.3);
+					settings.First(s => s.Name == "Forests").Set(0.4);
+					settings.First(s => s.Name == "ForestCutout").Set(3);
 					settings.First(s => s.Name == "EnforceSymmetry").Set(2);
+					settings.First(s => s.Name == "RoadSpacing").Set(3);
+					settings.First(s => s.Name == "RoadShrink").Set(4);
 					break;
 				case "overgrown":
 					settings.First(s => s.Name == "Water").Set(0.0);
@@ -374,10 +377,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)
 		{
-			const ushort LAND_TILE = 255;
+			const ushort LandTile = 255;
 			var waterTile = map.Tileset == "DESERT" ? (ushort)256 : (ushort)1;
 
-			const float EXTERNAL_BIAS = 1000000.0f;
+			const float ExternalBias = 1000000.0f;
 
 			var settings = Enumerable.ToDictionary(settingsEnumerable, s => s.Name);
 			var tileset = modData.DefaultTerrainInfo[map.Tileset] as ITemplatedTerrainInfo;
@@ -421,8 +424,8 @@ namespace OpenRA.Mods.Common.Traits
 			var gemUpgrade = settings["GemUpgrade"].Get<float>();
 			var mineReservation = settings["MineReservation"].Get<int>();
 			var maximumExpansionMines = settings["MaximumExpansionMines"].Get<int>();
-			var maximumExpansionSize = settings["MaximumExpansionSize"].Get<int>();
 			var minimumExpansionSize = settings["MinimumExpansionSize"].Get<int>();
+			var maximumExpansionSize = settings["MaximumExpansionSize"].Get<int>();
 			var expansionBorder = settings["ExpansionBorder"].Get<int>();
 			var expansionInner = settings["ExpansionInner"].Get<int>();
 			var maximumMinesPerExpansion = settings["MaximumMinesPerExpansion"].Get<int>();
@@ -438,6 +441,108 @@ namespace OpenRA.Mods.Common.Traits
 			var oreUniformity = settings["OreUniformity"].Get<float>();
 			var oreClumpiness = settings["OreClumpiness"].Get<float>();
 
+			if (rotations < 1)
+				throw new MapGenerationException("rotations must be >= 1");
+			if (wavelengthScale <= 0.0f)
+				throw new MapGenerationException("wavelengthScale must be > 0");
+			if (terrainSmoothing < 1)
+				throw new MapGenerationException("terrainSmoothing must be < 1");
+			if (smoothingThreshold < 0.5f || smoothingThreshold > 1.0f)
+				throw new MapGenerationException("smoothingThreshold must be between 0.5 and 1.0 inclusive");
+			if (minimumLandSeaThickness < 1)
+				throw new MapGenerationException("minimumLandSeaThickness must be >= 1");
+			if (minimumMountainThickness < 1)
+				throw new MapGenerationException("minimumMountainThickness must be >= 1");
+			if (water < 0.0f || water > 1.0f)
+				throw new MapGenerationException("water setting must be between 0 and 1 inclusive");
+			if (forests < 0.0f || forests > 1.0f)
+				throw new MapGenerationException("forest setting must be between 0 and 1 inclusive");
+			if (forestClumpiness < 0.0f)
+				throw new MapGenerationException("forestClumpiness setting must be >= 0");
+			if (mountains < 0.0f || mountains > 1.0f)
+				throw new MapGenerationException("mountains fraction must be between 0 and 1 inclusive");
+			if (roughness < 0.0f || roughness > 1.0f)
+				throw new MapGenerationException("roughness must be between 0.0 and 1.0");
+			if (roughnessRadius < 1)
+				throw new MapGenerationException("roughnessRadius must be >= 1");
+			if (maximumAltitude < 0)
+				throw new MapGenerationException("maximumAltitude must be >= 0");
+			if (minimumTerrainContourSpacing < 0)
+				throw new MapGenerationException("minimumTerrainContourSpacing must be >= 0");
+			if (minimumCliffLength < 1)
+				throw new MapGenerationException("minimumCliffLength must be >= 1");
+			if (roadSpacing < 0)
+				throw new MapGenerationException("roadSpacing must be >= 0");
+			if (roadShrink < 0)
+				throw new MapGenerationException("roadShrink must be >= 0");
+			if (players < 1)
+				throw new MapGenerationException("players must be >= 1");
+			if (centralSpawnReservationFraction < 0.0f)
+				throw new MapGenerationException("centralSpawnReservationFraction must be >= 0.0");
+			if (centralExpansionReservationFraction < 0.0f)
+				throw new MapGenerationException("centralExpansionReservationFraction must be >= 0.0");
+			if (spawnRegionSize < 1)
+				throw new MapGenerationException("spawnRegionSize must be >= 1");
+			if (spawnReservation < 1)
+				throw new MapGenerationException("spawnReservation must be >= 1");
+			if (spawnBuildSize < 1)
+				throw new MapGenerationException("spawnBuildSize must be >= 1");
+			if (spawnMines < 0)
+				throw new MapGenerationException("spawnMines must be >= 0");
+			if (gemUpgrade < 0.0f || gemUpgrade > 1.0f)
+				throw new MapGenerationException("gemUpgrade must be between 0.0 and 1.0");
+			if (mineReservation < 1)
+				throw new MapGenerationException("mineReservation must be >= 1");
+			if (maximumExpansionMines < 1)
+				throw new MapGenerationException("maximumExpansionMines must be >= 1");
+			if (minimumExpansionSize < 1)
+				throw new MapGenerationException("minimumExpansionSize must be >= 1");
+			if (maximumExpansionSize < 1)
+				throw new MapGenerationException("maximumExpansionSize must be >= 1");
+			if (minimumExpansionSize > maximumExpansionSize)
+				throw new MapGenerationException("minimumExpansionSize must be <= maximumExpansionSize");
+			if (expansionBorder < 1)
+				throw new MapGenerationException("expansionBorder must be >= 1");
+			if (expansionInner < 1)
+				throw new MapGenerationException("expansionInner must be >= 1");
+			if (maximumMinesPerExpansion < 1)
+				throw new MapGenerationException("maximumMinesPerExpansion must be >= 1");
+			if (minimumBuildings < 0)
+				throw new MapGenerationException("minimumBuildings must be >= 0");
+			if (maximumBuildings < 1)
+				throw new MapGenerationException("maximumBuildings must be >= 0");
+			if (minimumBuildings > maximumBuildings)
+				throw new MapGenerationException("minimumBuildings must be <= maximumBuildings");
+			if (weightFcom < 0.0f)
+				throw new MapGenerationException("weightFcom must be >= 0.0");
+			if (weightHosp < 0.0f)
+				throw new MapGenerationException("weightHosp must be >= 0.0");
+			if (weightMiss < 0.0f)
+				throw new MapGenerationException("weightMiss must be >= 0.0");
+			if (weightBio < 0.0f)
+				throw new MapGenerationException("weightBio must be >= 0.0");
+			if (weightOilb < 0.0f)
+				throw new MapGenerationException("weightOilb must be >= 0.0");
+			if (resourcesPerPlayer < 0)
+				throw new MapGenerationException("resourcesPerPlayer must be >= 0");
+			if (oreUniformity < 0.0f)
+				throw new MapGenerationException("oreUniformity must be >= 0.0");
+			if (oreClumpiness < 0.0f)
+				throw new MapGenerationException("oreClumpiness must be >= 0.0");
+
+			bool trivialRotate;
+			switch (rotations)
+			{
+				case 1:
+				case 2:
+				case 4:
+					trivialRotate = true;
+					break;
+				default:
+					trivialRotate = false;
+					break;
+			}
+
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
 			var gemsIndex = tileset.GetTerrainIndex("Gems");
@@ -452,7 +557,7 @@ namespace OpenRA.Mods.Common.Traits
 			ImmutableArray<MultiBrush> forestObstacles;
 			ImmutableArray<MultiBrush> unplayableObstacles;
 			{
-				var clear = new TerrainTile(LAND_TILE, 0);
+				var clear = new TerrainTile(LandTile, 0);
 				var basic = new MultiBrush(map, modData).WithWeight(1.0f);
 				var husk = basic.Clone().WithWeight(0.1f);
 				switch (map.Tileset)
@@ -660,30 +765,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			bool trivialRotate;
-			switch (rotations)
-			{
-				case 1:
-				case 2:
-				case 4:
-					trivialRotate = true;
-					break;
-				default:
-					trivialRotate = false;
-					break;
-			}
-
-			if (water < 0.0f || water > 1.0f)
-				throw new MapGenerationException("water setting must be between 0 and 1 inclusive");
-
-			if (forests < 0.0f || forests > 1.0f)
-				throw new MapGenerationException("forest setting must be between 0 and 1 inclusive");
-
-			if (forestClumpiness < 0.0f)
-				throw new MapGenerationException("forestClumpiness setting must be >= 0");
-			if (mountains < 0.0 || mountains > 1.0)
-				throw new MapGenerationException("mountains fraction must be between 0 and 1 inclusive");
-
 			Log.Write("debug", "deriving random generators");
 
 			// Use `random` to derive separate independent random number generators.
@@ -718,7 +799,7 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
-				map.Tiles[mpos] = PickTile(LAND_TILE);
+				map.Tiles[mpos] = PickTile(LandTile);
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
 			}
@@ -751,7 +832,7 @@ namespace OpenRA.Mods.Common.Traits
 				elevation.DrawCircle(
 					center: mapCenter,
 					radius: externalCircleRadius,
-					setTo: (_, _) => externalCircularBias * EXTERNAL_BIAS,
+					setTo: (_, _) => externalCircularBias * ExternalBias,
 					invert: true);
 			}
 
@@ -795,14 +876,14 @@ namespace OpenRA.Mods.Common.Traits
 					var point = new int2(mpos.U, mpos.V);
 
 					// `map.Tiles[mpos].Index == LAND_TILE` avoids overwriting beach tiles.
-					if (beachChirality[mpos.U, mpos.V] < 0 && map.Tiles[mpos].Type == LAND_TILE)
+					if (beachChirality[mpos.U, mpos.V] < 0 && map.Tiles[mpos].Type == LandTile)
 						map.Tiles[mpos] = PickTile(waterTile);
 				}
 			}
 			else
 			{
 				// There weren't any coastlines
-				var tileType = landPlan[0] ? LAND_TILE : waterTile;
+				var tileType = landPlan[0] ? LandTile : waterTile;
 				foreach (var cell in map.AllCells)
 				{
 					var mpos = cell.ToMPos(map);
