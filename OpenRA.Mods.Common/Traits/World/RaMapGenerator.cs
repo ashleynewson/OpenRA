@@ -451,12 +451,12 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (rotations < 1)
 				throw new MapGenerationException("rotations must be >= 1");
-			if (terrainFeatureSize <= 0.0f)
-				throw new MapGenerationException("terrainFeatureSize must be > 0.0");
-			if (forestFeatureSize <= 0.0f)
-				throw new MapGenerationException("forestFeatureSize must be > 0.0");
-			if (resourceFeatureSize <= 0.0f)
-				throw new MapGenerationException("resourceFeatureSize must be > 0.0");
+			if (terrainFeatureSize < 1.0f)
+				throw new MapGenerationException("terrainFeatureSize must be >= 1.0");
+			if (forestFeatureSize < 1.0f)
+				throw new MapGenerationException("forestFeatureSize must be >= 1.0");
+			if (resourceFeatureSize < 1.0f)
+				throw new MapGenerationException("resourceFeatureSize must be >= 1.0");
 			if (terrainSmoothing < 1)
 				throw new MapGenerationException("terrainSmoothing must be < 1");
 			if (smoothingThreshold < 0.5f || smoothingThreshold > 1.0f)
@@ -554,6 +554,12 @@ namespace OpenRA.Mods.Common.Traits
 					trivialRotate = false;
 					break;
 			}
+
+			var trivialMirror =
+				size.X == size.Y ||
+				mirror == Symmetry.Mirror.None ||
+				mirror == Symmetry.Mirror.LeftMatchesRight ||
+				mirror == Symmetry.Mirror.TopMatchesBottom;
 
 			var beachIndex = tileset.GetTerrainIndex("Beach");
 			var clearIndex = tileset.GetTerrainIndex("Clear");
@@ -1088,7 +1094,9 @@ namespace OpenRA.Mods.Common.Traits
 							rotations,
 							mirror,
 							(sources, destination)
-								=> newSpace[destination] = sources.All(source => space[source]));
+								=> newSpace.SetIfWithin(
+									destination,
+									sources.All(source => space.GetOrDefault(source, true))));
 						space = newSpace;
 					}
 
@@ -1222,7 +1230,9 @@ namespace OpenRA.Mods.Common.Traits
 						rotations,
 						mirror,
 						(sources, destination)
-							=> newSpace[destination] = sources.All(source => space[source]));
+							=> newSpace.SetIfWithin(
+								destination,
+								sources.All(source => space.GetOrDefault(source, true))));
 					space = newSpace;
 				}
 
@@ -1304,12 +1314,14 @@ namespace OpenRA.Mods.Common.Traits
 						rotations,
 						mirror,
 						(sources, destination)
-							=> newZoneable[destination] = sources.All(source => zoneable[source]));
+							=> newZoneable.SetIfWithin(
+								destination,
+								sources.All(source => zoneable.GetOrDefault(source, true))));
 					zoneable = newZoneable;
 				}
-				else
+
+				if (!trivialRotate || !trivialMirror)
 				{
-					// Non 1, 2, 4 rotations need entity placement confined to a circle, regardless of externalCircularBias
 					zoneable.DrawCircle(
 						center: mapCenter,
 						radius: minSpan / 2.0f - 1.0f,
@@ -1634,7 +1646,9 @@ namespace OpenRA.Mods.Common.Traits
 							rotations,
 							mirror,
 							(sources, destination)
-								=> orePlan[destination] = sources.Min(source => orePlan[source]));
+								=> orePlan.SetIfWithin(
+									destination,
+									sources.Min(source => orePlan.GetOrDefault(source, float.PositiveInfinity))));
 					}
 
 					var remaining = resourcesPerPlayer * players * Symmetry.RotateAndMirrorProjectionCount(rotations, mirror);

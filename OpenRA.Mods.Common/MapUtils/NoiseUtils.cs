@@ -99,6 +99,13 @@ namespace OpenRA.Mods.Common.MapUtils
 			return noise;
 		}
 
+		// <summary>
+		// Produce symmetric 2D noise by repeatedly applying some generated Perlin noise under
+		// rotation and mirroring.
+		//
+		// Note that the combination of multiple noise values with varying correlations creates a
+		// noise with different properties to simple Perlin noise.
+		// </summary>
 		public static Matrix<float> SymmetricFractalNoise(
 			MersenneTwister random,
 			int2 size,
@@ -114,54 +121,39 @@ namespace OpenRA.Mods.Common.MapUtils
 			var templateSpan = Math.Max(size.X, size.Y) * 2 + 2;
 			var templateSize = new int2(templateSpan, templateSpan);
 			var template = FractalNoise(random, templateSize, featureSize, ampFunc);
-			var unmirrored = new Matrix<float>(size);
 
-			// This -1 is required to compensate for the top-left vs the center of a grid square.
-			var offset = new float2((size.X - 1) / 2.0f, (size.Y - 1) / 2.0f);
-			var templateOffset = new float2(templateSpan / 2.0f, templateSpan / 2.0f);
-			for (var rotation = 0; rotation < rotations; rotation++)
-			{
-				var angle = rotation * MathF.Tau / rotations;
-				var cosAngle = Symmetry.CosSnapF(angle);
-				var sinAngle = Symmetry.SinSnapF(angle);
-				for (var y = 0; y < size.Y; y++)
-				{
-					for (var x = 0; x < size.X; x++)
-					{
-						var xy = new float2(x, y);
+			var output = new Matrix<float>(size);
 
-						// xy # corner noise space
-						// xy - offset # middle noise space
-						// (xy - offset) * SQRT2 # middle temp space
-						// R * ((xy - offset) * SQRT2) # middle temp space rotate
-						// R * ((xy - offset) * SQRT2) + to # corner temp space rotate
-						const float SQRT2 = 1.4142135623730951f;
-						var midt = (xy - offset) * (float)SQRT2;
-						var tx = midt.X * cosAngle - midt.Y * sinAngle + templateOffset.X;
-						var ty = midt.X * sinAngle + midt.Y * cosAngle + templateOffset.Y;
-						unmirrored[x, y] +=
-							MatrixUtils.Interpolate(
-								template,
-								tx,
-								ty) / rotations;
-					}
-				}
-			}
+			var inclusiveOutputSize = size - new int2(1, 1);
+			var outputMid = new float2(inclusiveOutputSize) / 2.0f;
+			var inclusiveTemplateSize = templateSize - new int2(1, 1);
+			var templateMid = new float2(inclusiveTemplateSize) / 2.0f;
 
-			if (mirror == Symmetry.Mirror.None)
-				return unmirrored;
-
-			var mirrored = new Matrix<float>(size);
 			for (var y = 0; y < size.Y; y++)
 			{
 				for (var x = 0; x < size.X; x++)
 				{
-					var txy = Symmetry.MirrorGridSquare(mirror, new int2(x, y), size);
-					mirrored[x, y] = unmirrored[x, y] + unmirrored[txy];
+					const float Sqrt2 = 1.4142135623730951f;
+					var outputXy = new float2(x, y);
+					var outputXyFromCenter = outputXy - outputMid;
+					var templateXyFromCenter = outputXyFromCenter * Sqrt2;
+					var templateXy = templateXyFromCenter + templateMid;
+
+					var projections = Symmetry.RotateAndMirrorPoint(
+						templateXy, inclusiveTemplateSize, rotations, mirror);
+
+					foreach (var projection in projections)
+					{
+						output[x, y] +=
+							MatrixUtils.Interpolate(
+								template,
+								projection.X,
+								projection.Y);
+					}
 				}
 			}
 
-			return mirrored;
+			return output;
 		}
 	}
 }
