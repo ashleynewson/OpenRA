@@ -64,7 +64,11 @@ namespace OpenRA.Mods.Common.Traits
 		[TranslationReference]
 		const string StrTerrain = "label-ra-map-generator-terrain";
 		[TranslationReference]
-		const string StrWavelengthScale = "label-ra-map-generator-wavelength-scale";
+		const string StrTerrainFeatureSize = "label-ra-map-generator-terrain-feature-size";
+		[TranslationReference]
+		const string StrForestFeatureSize = "label-ra-map-generator-forest-feature-size";
+		[TranslationReference]
+		const string StrResourceFeatureSize = "label-ra-map-generator-resource-feature-size";
 		[TranslationReference]
 		const string StrWater = "label-ra-map-generator-water";
 		[TranslationReference]
@@ -223,7 +227,9 @@ namespace OpenRA.Mods.Common.Traits
 					(int)Symmetry.Mirror.None)),
 				new MapGeneratorSetting("Players", TranslationProvider.GetString(StrPlayers), new MapGeneratorSetting.IntegerValue(1)),
 				new MapGeneratorSetting("#Terrain", TranslationProvider.GetString(StrTerrain), new MapGeneratorSetting.SectionValue()),
-				new MapGeneratorSetting("WavelengthScale", TranslationProvider.GetString(StrWavelengthScale), new MapGeneratorSetting.FloatValue(0.2)),
+				new MapGeneratorSetting("TerrainFeatureSize", TranslationProvider.GetString(StrTerrainFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
+				new MapGeneratorSetting("ForestFeatureSize", TranslationProvider.GetString(StrForestFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
+				new MapGeneratorSetting("ResourceFeatureSize", TranslationProvider.GetString(StrResourceFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
 				new MapGeneratorSetting("Water", TranslationProvider.GetString(StrWater), new MapGeneratorSetting.FloatValue(0.2)),
 				new MapGeneratorSetting("Mountains", TranslationProvider.GetString(StrMountains), new MapGeneratorSetting.FloatValue(0.1)),
 				new MapGeneratorSetting("Forests", TranslationProvider.GetString(StrForests), new MapGeneratorSetting.FloatValue(0.025)),
@@ -334,19 +340,19 @@ namespace OpenRA.Mods.Common.Traits
 					break;
 				case "large-islands":
 					settings.First(s => s.Name == "Water").Set(0.75);
-					settings.First(s => s.Name == "WavelengthScale").Set(0.5);
+					settings.First(s => s.Name == "TerrainFeatureSize").Set(50.0f);
 					settings.First(s => s.Name == "Forests").Set(0.0);
 					break;
 				case "continents":
 					settings.First(s => s.Name == "Water").Set(0.5);
-					settings.First(s => s.Name == "WavelengthScale").Set(1.0);
+					settings.First(s => s.Name == "TerrainFeatureSize").Set(100.0f);
 					break;
 				case "wetlands":
 					settings.First(s => s.Name == "Water").Set(0.5);
 					break;
 				case "narrow-wetlands":
 					settings.First(s => s.Name == "Water").Set(0.5);
-					settings.First(s => s.Name == "WavelengthScale").Set(0.05);
+					settings.First(s => s.Name == "TerrainFeatureSize").Set(5.0f);
 					settings.First(s => s.Name == "Forests").Set(0.0);
 					settings.First(s => s.Name == "SpawnBuildSize").Set(6);
 					break;
@@ -392,7 +398,9 @@ namespace OpenRA.Mods.Common.Traits
 
 			var rotations = settings["Rotations"].Get<int>();
 			var mirror = (Symmetry.Mirror)settings["Mirror"].Get<int>();
-			var wavelengthScale = settings["WavelengthScale"].Get<float>();
+			var terrainFeatureSize = settings["TerrainFeatureSize"].Get<float>();
+			var forestFeatureSize = settings["ForestFeatureSize"].Get<float>();
+			var resourceFeatureSize = settings["ResourceFeatureSize"].Get<float>();
 			var terrainSmoothing = settings["TerrainSmoothing"].Get<int>();
 			var smoothingThreshold = settings["SmoothingThreshold"].Get<float>();
 			var externalCircularBias = settings["ExternalCircularBias"].Get<int>();
@@ -443,8 +451,12 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (rotations < 1)
 				throw new MapGenerationException("rotations must be >= 1");
-			if (wavelengthScale <= 0.0f)
-				throw new MapGenerationException("wavelengthScale must be > 0");
+			if (terrainFeatureSize <= 0.0f)
+				throw new MapGenerationException("terrainFeatureSize must be > 0.0");
+			if (forestFeatureSize <= 0.0f)
+				throw new MapGenerationException("forestFeatureSize must be > 0.0");
+			if (resourceFeatureSize <= 0.0f)
+				throw new MapGenerationException("resourceFeatureSize must be > 0.0");
 			if (terrainSmoothing < 1)
 				throw new MapGenerationException("terrainSmoothing must be < 1");
 			if (smoothingThreshold < 0.5f || smoothingThreshold > 1.0f)
@@ -810,7 +822,7 @@ namespace OpenRA.Mods.Common.Traits
 				size,
 				rotations,
 				mirror,
-				wavelengthScale,
+				terrainFeatureSize,
 				NoiseUtils.PinkAmplitude);
 
 			if (terrainSmoothing > 0)
@@ -1035,7 +1047,7 @@ namespace OpenRA.Mods.Common.Traits
 					size,
 					rotations,
 					mirror,
-					wavelengthScale,
+					forestFeatureSize,
 					wavelength => MathF.Pow(wavelength, forestClumpiness));
 				MatrixUtils.CalibrateQuantileInPlace(
 					forestNoise,
@@ -1529,7 +1541,7 @@ namespace OpenRA.Mods.Common.Traits
 						size,
 						rotations,
 						mirror,
-						wavelengthScale,
+						resourceFeatureSize,
 						wavelength => MathF.Pow(wavelength, oreClumpiness));
 					{
 						MatrixUtils.CalibrateQuantileInPlace(

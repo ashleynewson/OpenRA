@@ -31,21 +31,21 @@ namespace OpenRA.Mods.Common.MapUtils
 		public static Matrix<float> FractalNoise(
 			MersenneTwister random,
 			int2 size,
-			float wavelengthScale,
+			float featureSize,
 			Func<float, float> ampFunc)
 		{
 			var span = Math.Max(size.X, size.Y);
 			var wavelengths = new float[(int)Math.Log2(span)];
 			for (var i = 0; i < wavelengths.Length; i++)
 			{
-				wavelengths[i] = (1 << i) * wavelengthScale;
+				wavelengths[i] = featureSize / (1 << i);
 			}
 
 			var noise = new Matrix<float>(size);
 			foreach (var wavelength in wavelengths)
 			{
 				if (wavelength <= 0.5)
-					continue;
+					break;
 
 				var amps = ampFunc(wavelength);
 				var subSpan = (int)(span / wavelength) + 2;
@@ -104,7 +104,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			int2 size,
 			int rotations,
 			Symmetry.Mirror mirror,
-			float wavelengthScale,
+			float featureSize,
 			Func<float, float> ampFunc)
 		{
 			if (rotations < 1)
@@ -113,7 +113,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			// Need higher resolution due to cropping and rotation artifacts
 			var templateSpan = Math.Max(size.X, size.Y) * 2 + 2;
 			var templateSize = new int2(templateSpan, templateSpan);
-			var template = FractalNoise(random, templateSize, wavelengthScale, ampFunc);
+			var template = FractalNoise(random, templateSize, featureSize, ampFunc);
 			var unmirrored = new Matrix<float>(size);
 
 			// This -1 is required to compensate for the top-left vs the center of a grid square.
