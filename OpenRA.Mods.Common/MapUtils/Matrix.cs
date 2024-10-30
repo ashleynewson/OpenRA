@@ -99,6 +99,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			return x >= 0 && x < Size.X && y >= 0 && y < Size.Y;
 		}
 
+		public T GetOrDefault(int2 xy, T fallback)
+			=> ContainsXY(xy) ? this[xy] : fallback;
+
+		public void SetIfWithin(int2 xy, T value)
+		{
+			if (ContainsXY(xy))
+				this[xy] = value;
+		}
+
 		// <summary>Clamp xy to be the closest index within the matrix.</summary>
 		public int2 ClampXY(int2 xy)
 		{

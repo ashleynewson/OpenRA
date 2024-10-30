@@ -188,11 +188,6 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public static int2 MirrorPoint(Mirror mirror, int2 original, int2 size)
 		{
-			if (size.X != size.Y)
-			{
-				throw new NotImplementedException("Size.X must match Size.Y for now");
-			}
-
 			switch (mirror)
 			{
 				case Mirror.None:
@@ -200,11 +195,15 @@ namespace OpenRA.Mods.Common.MapUtils
 				case Mirror.LeftMatchesRight:
 					return new int2(size.X - original.X, original.Y);
 				case Mirror.TopLeftMatchesBottomRight:
-					return new int2(size.Y - original.Y, size.X - original.X);
+					return new int2(
+						(size.Y - 2 * original.Y + size.X) / 2,
+						(size.X - 2 * original.X + size.Y) / 2);
 				case Mirror.TopMatchesBottom:
 					return new int2(original.X, size.Y - original.Y);
 				case Mirror.TopRightMatchesBottomLeft:
-					return new int2(original.Y, original.X);
+					return new int2(
+						(size.X + 2 * original.Y - size.Y) / 2,
+						(size.Y + 2 * original.X - size.X) / 2);
 				default:
 					throw new ArgumentException("Bad mirror");
 			}
@@ -218,11 +217,6 @@ namespace OpenRA.Mods.Common.MapUtils
 		// </summary>
 		public static float2 MirrorPoint(Mirror mirror, float2 original, float2 size)
 		{
-			if (size.X != size.Y)
-			{
-				throw new NotImplementedException("Size.X must match Size.Y for now");
-			}
-
 			switch (mirror)
 			{
 				case Mirror.None:
@@ -230,11 +224,15 @@ namespace OpenRA.Mods.Common.MapUtils
 				case Mirror.LeftMatchesRight:
 					return new float2(size.X - original.X, original.Y);
 				case Mirror.TopLeftMatchesBottomRight:
-					return new float2(size.Y - original.Y, size.X - original.X);
+					return new float2(
+						(size.Y - 2.0f * original.Y + size.X) / 2.0f,
+						(size.X - 2.0f * original.X + size.Y) / 2.0f);
 				case Mirror.TopMatchesBottom:
 					return new float2(original.X, size.Y - original.Y);
 				case Mirror.TopRightMatchesBottomLeft:
-					return new float2(original.Y, original.X);
+					return new float2(
+						(size.X + 2.0f * original.Y - size.Y) / 2.0f,
+						(size.Y + 2.0f * original.X - size.X) / 2.0f);
 				default:
 					throw new ArgumentException("Bad mirror");
 			}
