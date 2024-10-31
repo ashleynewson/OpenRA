@@ -118,7 +118,7 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			this.editorBlit = editorBlit;
 
-			Text = TranslationProvider.GetString(CopiedTiles, Translation.Arguments("amount", editorBlit.TileCount()));
+			Text = FluentProvider.GetString(CopiedTiles, "amount", editorBlit.TileCount());
 		}
 
 		public void Execute()
