@@ -25,7 +25,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[FieldLoader.Require]
 		[Desc("Human-readable name this generator uses.")]
-		[TranslationReference]
+		[FluentReference]
 		public readonly string Name = null;
 
 		[FieldLoader.Require]
@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class ClearMapGenerator : IMapGenerator
 	{
-		[TranslationReference]
+		[FluentReference]
 		const string StrTile = "label-clear-map-generator-tile";
 		readonly ClearMapGeneratorInfo info;
 
@@ -56,7 +56,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var tileset = modData.DefaultTerrainInfo[map.Tileset];
 			return ImmutableList.Create(
-				new MapGeneratorSetting("tile", TranslationProvider.GetString(StrTile), new MapGeneratorSetting.IntegerValue(tileset.DefaultTerrainTile.Type)));
+				new MapGeneratorSetting("tile", FluentProvider.GetString(StrTile), new MapGeneratorSetting.IntegerValue(tileset.DefaultTerrainTile.Type)));
 		}
 
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)

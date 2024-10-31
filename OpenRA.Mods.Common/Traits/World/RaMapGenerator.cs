@@ -27,7 +27,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[FieldLoader.Require]
 		[Desc("Human-readable name this generator uses.")]
-		[TranslationReference]
+		[FluentReference]
 		public readonly string Name = null;
 
 		[FieldLoader.Require]
@@ -43,164 +43,164 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class RaMapGenerator : IMapGenerator
 	{
-		[TranslationReference]
+		[FluentReference]
 		const string StrPrimary = "label-ra-map-generator-primary";
-		[TranslationReference]
+		[FluentReference]
 		const string StrRotations = "label-ra-map-generator-rotations";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMirror = "label-ra-map-generator-mirror";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMirrorNone = "label-ra-map-generator-mirror-none";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMirrorLr = "label-ra-map-generator-mirror-lr";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMirrorTlbr = "label-ra-map-generator-mirror-tlbr";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMirrorTb = "label-ra-map-generator-mirror-tb";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMirrorTrbl = "label-ra-map-generator-mirror-trbl";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPlayers = "label-ra-map-generator-players";
-		[TranslationReference]
+		[FluentReference]
 		const string StrTerrain = "label-ra-map-generator-terrain";
-		[TranslationReference]
+		[FluentReference]
 		const string StrTerrainFeatureSize = "label-ra-map-generator-terrain-feature-size";
-		[TranslationReference]
+		[FluentReference]
 		const string StrForestFeatureSize = "label-ra-map-generator-forest-feature-size";
-		[TranslationReference]
+		[FluentReference]
 		const string StrResourceFeatureSize = "label-ra-map-generator-resource-feature-size";
-		[TranslationReference]
+		[FluentReference]
 		const string StrWater = "label-ra-map-generator-water";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMountains = "label-ra-map-generator-mountains";
-		[TranslationReference]
+		[FluentReference]
 		const string StrForests = "label-ra-map-generator-forests";
-		[TranslationReference]
+		[FluentReference]
 		const string StrForestCutout = "label-ra-map-generator-forest-cutout";
-		[TranslationReference]
+		[FluentReference]
 		const string StrExternalCircularBias = "label-ra-map-generator-external-circular-bias";
-		[TranslationReference]
+		[FluentReference]
 		const string StrExternalCircularBiasSquare = "label-ra-map-generator-external-circular-bias-square";
-		[TranslationReference]
+		[FluentReference]
 		const string StrExternalCircularBiasCircleWater = "label-ra-map-generator-external-circular-bias-circle-water";
-		[TranslationReference]
+		[FluentReference]
 		const string StrExternalCircularBiasCircleMountain = "label-ra-map-generator-external-circular-bias-circle-mountain";
-		[TranslationReference]
+		[FluentReference]
 		const string StrTerrainSmoothing = "label-ra-map-generator-terrain-smoothing";
-		[TranslationReference]
+		[FluentReference]
 		const string StrSmoothingThreshold = "label-ra-map-generator-smoothing-threshold";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMinimumLandSeaThickness = "label-ra-map-generator-minimum-land-sea-thickness";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMinimumMountainThickness = "label-ra-map-generator-minimum-mountain-thickness";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMaximumAltitude = "label-ra-map-generator-maximum-altitude";
-		[TranslationReference]
+		[FluentReference]
 		const string StrRoughnessRadius = "label-ra-map-generator-roughness-radius";
-		[TranslationReference]
+		[FluentReference]
 		const string StrRoughness = "label-ra-map-generator-roughness";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMinimumTerrainContourSpacing = "label-ra-map-generator-minimum-terrain-contour-spacing";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMinimumCliffLength = "label-ra-map-generator-minimum-cliff-length";
-		[TranslationReference]
+		[FluentReference]
 		const string StrForestClumpiness = "label-ra-map-generator-forest-clumpiness";
-		[TranslationReference]
+		[FluentReference]
 		const string StrDenyWalledAreas = "label-ra-map-generator-deny-walled-areas";
-		[TranslationReference]
+		[FluentReference]
 		const string StrEnforceSymmetry = "label-ra-map-generator-enforce-symmetry";
-		[TranslationReference]
+		[FluentReference]
 		const string StrEnforceSymmetryNone = "label-ra-map-generator-enforce-symmetry-none";
-		[TranslationReference]
+		[FluentReference]
 		const string StrEnforceSymmetryPassability = "label-ra-map-generator-enforce-symmetry-passability";
-		[TranslationReference]
+		[FluentReference]
 		const string StrEnforceSymmetryType = "label-ra-map-generator-enforce-symmetry-type";
-		[TranslationReference]
+		[FluentReference]
 		const string StrRoads = "label-ra-map-generator-roads";
-		[TranslationReference]
+		[FluentReference]
 		const string StrRoadSpacing = "label-ra-map-generator-road-spacing";
-		[TranslationReference]
+		[FluentReference]
 		const string StrRoadShrink = "label-ra-map-generator-road-shrink";
-		[TranslationReference]
+		[FluentReference]
 		const string StrEntities = "label-ra-map-generator-entities";
-		[TranslationReference]
+		[FluentReference]
 		const string StrCreateEntities = "label-ra-map-generator-create-entities";
-		[TranslationReference]
+		[FluentReference]
 		const string StrCentralSpawnReservationFraction = "label-ra-map-generator-central-spawn-reservation-fraction";
-		[TranslationReference]
+		[FluentReference]
 		const string StrCentralExpansionReservationFraction = "label-ra-map-generator-central-expansion-reservation-fraction";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMineReservation = "label-ra-map-generator-mine-reservation";
-		[TranslationReference]
+		[FluentReference]
 		const string StrSpawnRegionSize = "label-ra-map-generator-spawn-region-size";
-		[TranslationReference]
+		[FluentReference]
 		const string StrSpawnBuildSize = "label-ra-map-generator-spawn-build-size";
-		[TranslationReference]
+		[FluentReference]
 		const string StrSpawnMines = "label-ra-map-generator-spawn-mines";
-		[TranslationReference]
+		[FluentReference]
 		const string StrSpawnReservation = "label-ra-map-generator-spawn-reservation";
-		[TranslationReference]
+		[FluentReference]
 		const string StrSpawnResourceBias = "label-ra-map-generator-spawn-resource-bias";
-		[TranslationReference]
+		[FluentReference]
 		const string StrResourcesPerPlayer = "label-ra-map-generator-resources-per-player";
-		[TranslationReference]
+		[FluentReference]
 		const string StrGemUpgrade = "label-ra-map-generator-gem-upgrade";
-		[TranslationReference]
+		[FluentReference]
 		const string StrOreUniformity = "label-ra-map-generator-ore-uniformity";
-		[TranslationReference]
+		[FluentReference]
 		const string StrOreClumpiness = "label-ra-map-generator-ore-clumpiness";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMaximumExpansionMines = "label-ra-map-generator-maximum-expansion-mines";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMaximumMinesPerExpansion = "label-ra-map-generator-maximum-mines-per-expansion";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMinimumExpansionsSize = "label-ra-map-generator-minimum-expansions-size";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMaximumExpansionsSize = "label-ra-map-generator-maximum-expansions-size";
-		[TranslationReference]
+		[FluentReference]
 		const string StrExpansionInner = "label-ra-map-generator-expansion-inner";
-		[TranslationReference]
+		[FluentReference]
 		const string StrExpansionBorder = "label-ra-map-generator-expansion-border";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMinimumBuildings = "label-ra-map-generator-minimum-buildings";
-		[TranslationReference]
+		[FluentReference]
 		const string StrMaximumBuildings = "label-ra-map-generator-maximum-buildings";
-		[TranslationReference]
+		[FluentReference]
 		const string StrWeightFcom = "label-ra-map-generator-weight-fcom";
-		[TranslationReference]
+		[FluentReference]
 		const string StrWeightHosp = "label-ra-map-generator-weight-hosp";
-		[TranslationReference]
+		[FluentReference]
 		const string StrWeightMiss = "label-ra-map-generator-weight-miss";
-		[TranslationReference]
+		[FluentReference]
 		const string StrWeightBio = "label-ra-map-generator-weight-bio";
-		[TranslationReference]
+		[FluentReference]
 		const string StrWeightOilb = "label-ra-map-generator-weight-oilb";
 
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetLakes = "label-ra-map-generator-preset-lakes";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetPuddles = "label-ra-map-generator-preset-puddles";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetPlains = "label-ra-map-generator-preset-plains";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetParks = "label-ra-map-generator-preset-parks";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetWoodlands = "label-ra-map-generator-preset-woodlands";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetOvergrown = "label-ra-map-generator-preset-overgrown";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetMountains = "label-ra-map-generator-preset-mountains";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetMountainLakes = "label-ra-map-generator-preset-mountain-lakes";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetOceanic = "label-ra-map-generator-preset-oceanic";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetLargeIslands = "label-ra-map-generator-preset-large-islands";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetContinents = "label-ra-map-generator-preset-continents";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetWetlands = "label-ra-map-generator-preset-wetlands";
-		[TranslationReference]
+		[FluentReference]
 		const string StrPresetNarrowWetlands = "label-ra-map-generator-preset-narrow-wetlands";
 
 		readonly RaMapGeneratorInfo info;
@@ -215,78 +215,78 @@ namespace OpenRA.Mods.Common.Traits
 		public IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData)
 		{
 			return ImmutableList.Create(
-				new MapGeneratorSetting("#Primary", TranslationProvider.GetString(StrPrimary), new MapGeneratorSetting.SectionValue()),
-				new MapGeneratorSetting("Rotations", TranslationProvider.GetString(StrRotations), new MapGeneratorSetting.IntegerValue(2)),
-				new MapGeneratorSetting("Mirror", TranslationProvider.GetString(StrMirror), new MapGeneratorSetting.EnumValue(
+				new MapGeneratorSetting("#Primary", FluentProvider.GetString(StrPrimary), new MapGeneratorSetting.SectionValue()),
+				new MapGeneratorSetting("Rotations", FluentProvider.GetString(StrRotations), new MapGeneratorSetting.IntegerValue(2)),
+				new MapGeneratorSetting("Mirror", FluentProvider.GetString(StrMirror), new MapGeneratorSetting.EnumValue(
 					ImmutableList.Create(
-						new KeyValuePair<int, string>((int)Symmetry.Mirror.None, TranslationProvider.GetString(StrMirrorNone)),
-						new KeyValuePair<int, string>((int)Symmetry.Mirror.LeftMatchesRight, TranslationProvider.GetString(StrMirrorLr)),
-						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopLeftMatchesBottomRight, TranslationProvider.GetString(StrMirrorTlbr)),
-						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopMatchesBottom, TranslationProvider.GetString(StrMirrorTb)),
-						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopRightMatchesBottomLeft, TranslationProvider.GetString(StrMirrorTrbl))),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.None, FluentProvider.GetString(StrMirrorNone)),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.LeftMatchesRight, FluentProvider.GetString(StrMirrorLr)),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopLeftMatchesBottomRight, FluentProvider.GetString(StrMirrorTlbr)),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopMatchesBottom, FluentProvider.GetString(StrMirrorTb)),
+						new KeyValuePair<int, string>((int)Symmetry.Mirror.TopRightMatchesBottomLeft, FluentProvider.GetString(StrMirrorTrbl))),
 					(int)Symmetry.Mirror.None)),
-				new MapGeneratorSetting("Players", TranslationProvider.GetString(StrPlayers), new MapGeneratorSetting.IntegerValue(1)),
-				new MapGeneratorSetting("#Terrain", TranslationProvider.GetString(StrTerrain), new MapGeneratorSetting.SectionValue()),
-				new MapGeneratorSetting("TerrainFeatureSize", TranslationProvider.GetString(StrTerrainFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
-				new MapGeneratorSetting("ForestFeatureSize", TranslationProvider.GetString(StrForestFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
-				new MapGeneratorSetting("ResourceFeatureSize", TranslationProvider.GetString(StrResourceFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
-				new MapGeneratorSetting("Water", TranslationProvider.GetString(StrWater), new MapGeneratorSetting.FloatValue(0.2)),
-				new MapGeneratorSetting("Mountains", TranslationProvider.GetString(StrMountains), new MapGeneratorSetting.FloatValue(0.1)),
-				new MapGeneratorSetting("Forests", TranslationProvider.GetString(StrForests), new MapGeneratorSetting.FloatValue(0.025)),
-				new MapGeneratorSetting("ForestCutout", TranslationProvider.GetString(StrForestCutout), new MapGeneratorSetting.IntegerValue(2)),
-				new MapGeneratorSetting("ExternalCircularBias", TranslationProvider.GetString(StrExternalCircularBias), new MapGeneratorSetting.EnumValue(
+				new MapGeneratorSetting("Players", FluentProvider.GetString(StrPlayers), new MapGeneratorSetting.IntegerValue(1)),
+				new MapGeneratorSetting("#Terrain", FluentProvider.GetString(StrTerrain), new MapGeneratorSetting.SectionValue()),
+				new MapGeneratorSetting("TerrainFeatureSize", FluentProvider.GetString(StrTerrainFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
+				new MapGeneratorSetting("ForestFeatureSize", FluentProvider.GetString(StrForestFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
+				new MapGeneratorSetting("ResourceFeatureSize", FluentProvider.GetString(StrResourceFeatureSize), new MapGeneratorSetting.FloatValue(20.0f)),
+				new MapGeneratorSetting("Water", FluentProvider.GetString(StrWater), new MapGeneratorSetting.FloatValue(0.2)),
+				new MapGeneratorSetting("Mountains", FluentProvider.GetString(StrMountains), new MapGeneratorSetting.FloatValue(0.1)),
+				new MapGeneratorSetting("Forests", FluentProvider.GetString(StrForests), new MapGeneratorSetting.FloatValue(0.025)),
+				new MapGeneratorSetting("ForestCutout", FluentProvider.GetString(StrForestCutout), new MapGeneratorSetting.IntegerValue(2)),
+				new MapGeneratorSetting("ExternalCircularBias", FluentProvider.GetString(StrExternalCircularBias), new MapGeneratorSetting.EnumValue(
 					ImmutableList.Create(
-						new KeyValuePair<string, string>("0", TranslationProvider.GetString(StrExternalCircularBiasSquare)),
-						new KeyValuePair<string, string>("-1", TranslationProvider.GetString(StrExternalCircularBiasCircleWater)),
-						new KeyValuePair<string, string>("1", TranslationProvider.GetString(StrExternalCircularBiasCircleMountain))),
+						new KeyValuePair<string, string>("0", FluentProvider.GetString(StrExternalCircularBiasSquare)),
+						new KeyValuePair<string, string>("-1", FluentProvider.GetString(StrExternalCircularBiasCircleWater)),
+						new KeyValuePair<string, string>("1", FluentProvider.GetString(StrExternalCircularBiasCircleMountain))),
 					"0")),
-				new MapGeneratorSetting("TerrainSmoothing", TranslationProvider.GetString(StrTerrainSmoothing), new MapGeneratorSetting.IntegerValue(4)),
-				new MapGeneratorSetting("SmoothingThreshold", TranslationProvider.GetString(StrSmoothingThreshold), new MapGeneratorSetting.FloatValue(5f / 6f)),
-				new MapGeneratorSetting("MinimumLandSeaThickness", TranslationProvider.GetString(StrMinimumLandSeaThickness), new MapGeneratorSetting.IntegerValue(5)),
-				new MapGeneratorSetting("MinimumMountainThickness", TranslationProvider.GetString(StrMinimumMountainThickness), new MapGeneratorSetting.IntegerValue(5)),
-				new MapGeneratorSetting("MaximumAltitude", TranslationProvider.GetString(StrMaximumAltitude), new MapGeneratorSetting.IntegerValue(8)),
-				new MapGeneratorSetting("RoughnessRadius", TranslationProvider.GetString(StrRoughnessRadius), new MapGeneratorSetting.IntegerValue(5)),
-				new MapGeneratorSetting("Roughness", TranslationProvider.GetString(StrRoughness), new MapGeneratorSetting.FloatValue(0.5)),
-				new MapGeneratorSetting("MinimumTerrainContourSpacing", TranslationProvider.GetString(StrMinimumTerrainContourSpacing), new MapGeneratorSetting.IntegerValue(6)),
-				new MapGeneratorSetting("MinimumCliffLength", TranslationProvider.GetString(StrMinimumCliffLength), new MapGeneratorSetting.IntegerValue(10)),
-				new MapGeneratorSetting("ForestClumpiness", TranslationProvider.GetString(StrForestClumpiness), new MapGeneratorSetting.FloatValue(0.5)),
-				new MapGeneratorSetting("DenyWalledAreas", TranslationProvider.GetString(StrDenyWalledAreas), new MapGeneratorSetting.BooleanValue(true)),
-				new MapGeneratorSetting("EnforceSymmetry", TranslationProvider.GetString(StrEnforceSymmetry), new MapGeneratorSetting.EnumValue(
+				new MapGeneratorSetting("TerrainSmoothing", FluentProvider.GetString(StrTerrainSmoothing), new MapGeneratorSetting.IntegerValue(4)),
+				new MapGeneratorSetting("SmoothingThreshold", FluentProvider.GetString(StrSmoothingThreshold), new MapGeneratorSetting.FloatValue(5f / 6f)),
+				new MapGeneratorSetting("MinimumLandSeaThickness", FluentProvider.GetString(StrMinimumLandSeaThickness), new MapGeneratorSetting.IntegerValue(5)),
+				new MapGeneratorSetting("MinimumMountainThickness", FluentProvider.GetString(StrMinimumMountainThickness), new MapGeneratorSetting.IntegerValue(5)),
+				new MapGeneratorSetting("MaximumAltitude", FluentProvider.GetString(StrMaximumAltitude), new MapGeneratorSetting.IntegerValue(8)),
+				new MapGeneratorSetting("RoughnessRadius", FluentProvider.GetString(StrRoughnessRadius), new MapGeneratorSetting.IntegerValue(5)),
+				new MapGeneratorSetting("Roughness", FluentProvider.GetString(StrRoughness), new MapGeneratorSetting.FloatValue(0.5)),
+				new MapGeneratorSetting("MinimumTerrainContourSpacing", FluentProvider.GetString(StrMinimumTerrainContourSpacing), new MapGeneratorSetting.IntegerValue(6)),
+				new MapGeneratorSetting("MinimumCliffLength", FluentProvider.GetString(StrMinimumCliffLength), new MapGeneratorSetting.IntegerValue(10)),
+				new MapGeneratorSetting("ForestClumpiness", FluentProvider.GetString(StrForestClumpiness), new MapGeneratorSetting.FloatValue(0.5)),
+				new MapGeneratorSetting("DenyWalledAreas", FluentProvider.GetString(StrDenyWalledAreas), new MapGeneratorSetting.BooleanValue(true)),
+				new MapGeneratorSetting("EnforceSymmetry", FluentProvider.GetString(StrEnforceSymmetry), new MapGeneratorSetting.EnumValue(
 					ImmutableList.Create(
-						new KeyValuePair<string, string>("0", TranslationProvider.GetString(StrEnforceSymmetryNone)),
-						new KeyValuePair<string, string>("1", TranslationProvider.GetString(StrEnforceSymmetryPassability)),
-						new KeyValuePair<string, string>("2", TranslationProvider.GetString(StrEnforceSymmetryType))),
+						new KeyValuePair<string, string>("0", FluentProvider.GetString(StrEnforceSymmetryNone)),
+						new KeyValuePair<string, string>("1", FluentProvider.GetString(StrEnforceSymmetryPassability)),
+						new KeyValuePair<string, string>("2", FluentProvider.GetString(StrEnforceSymmetryType))),
 					"0")),
-				new MapGeneratorSetting("Roads", TranslationProvider.GetString(StrRoads), new MapGeneratorSetting.BooleanValue(true)),
-				new MapGeneratorSetting("RoadSpacing", TranslationProvider.GetString(StrRoadSpacing), new MapGeneratorSetting.IntegerValue(5)),
-				new MapGeneratorSetting("RoadShrink", TranslationProvider.GetString(StrRoadShrink), new MapGeneratorSetting.IntegerValue(0)),
-				new MapGeneratorSetting("#Entities", TranslationProvider.GetString(StrEntities), new MapGeneratorSetting.SectionValue()),
-				new MapGeneratorSetting("CreateEntities", TranslationProvider.GetString(StrCreateEntities), new MapGeneratorSetting.BooleanValue(true)),
-				new MapGeneratorSetting("CentralSpawnReservationFraction", TranslationProvider.GetString(StrCentralSpawnReservationFraction), new MapGeneratorSetting.FloatValue(0.3)),
-				new MapGeneratorSetting("CentralExpansionReservationFraction", TranslationProvider.GetString(StrCentralExpansionReservationFraction), new MapGeneratorSetting.FloatValue(0.1)),
-				new MapGeneratorSetting("MineReservation", TranslationProvider.GetString(StrMineReservation), new MapGeneratorSetting.IntegerValue(8)),
-				new MapGeneratorSetting("SpawnRegionSize", TranslationProvider.GetString(StrSpawnRegionSize), new MapGeneratorSetting.IntegerValue(12)),
-				new MapGeneratorSetting("SpawnBuildSize", TranslationProvider.GetString(StrSpawnBuildSize), new MapGeneratorSetting.IntegerValue(8)),
-				new MapGeneratorSetting("SpawnMines", TranslationProvider.GetString(StrSpawnMines), new MapGeneratorSetting.IntegerValue(3)),
-				new MapGeneratorSetting("SpawnReservation", TranslationProvider.GetString(StrSpawnReservation), new MapGeneratorSetting.IntegerValue(20)),
-				new MapGeneratorSetting("SpawnResourceBias", TranslationProvider.GetString(StrSpawnResourceBias), new MapGeneratorSetting.FloatValue(1.25)),
-				new MapGeneratorSetting("ResourcesPerPlayer", TranslationProvider.GetString(StrResourcesPerPlayer), new MapGeneratorSetting.IntegerValue(50000)),
-				new MapGeneratorSetting("GemUpgrade", TranslationProvider.GetString(StrGemUpgrade), new MapGeneratorSetting.FloatValue(0.05)),
-				new MapGeneratorSetting("OreUniformity", TranslationProvider.GetString(StrOreUniformity), new MapGeneratorSetting.FloatValue(0.25)),
-				new MapGeneratorSetting("OreClumpiness", TranslationProvider.GetString(StrOreClumpiness), new MapGeneratorSetting.FloatValue(0.25)),
-				new MapGeneratorSetting("MaximumExpansionMines", TranslationProvider.GetString(StrMaximumExpansionMines), new MapGeneratorSetting.IntegerValue(5)),
-				new MapGeneratorSetting("MaximumMinesPerExpansion", TranslationProvider.GetString(StrMaximumMinesPerExpansion), new MapGeneratorSetting.IntegerValue(2)),
-				new MapGeneratorSetting("MinimumExpansionSize", TranslationProvider.GetString(StrMinimumExpansionsSize), new MapGeneratorSetting.IntegerValue(2)),
-				new MapGeneratorSetting("MaximumExpansionSize", TranslationProvider.GetString(StrMaximumExpansionsSize), new MapGeneratorSetting.IntegerValue(12)),
-				new MapGeneratorSetting("ExpansionInner", TranslationProvider.GetString(StrExpansionInner), new MapGeneratorSetting.IntegerValue(2)),
-				new MapGeneratorSetting("ExpansionBorder", TranslationProvider.GetString(StrExpansionBorder), new MapGeneratorSetting.IntegerValue(1)),
-				new MapGeneratorSetting("MinimumBuildings", TranslationProvider.GetString(StrMinimumBuildings), new MapGeneratorSetting.IntegerValue(0)),
-				new MapGeneratorSetting("MaximumBuildings", TranslationProvider.GetString(StrMaximumBuildings), new MapGeneratorSetting.IntegerValue(3)),
-				new MapGeneratorSetting("WeightFcom", TranslationProvider.GetString(StrWeightFcom), new MapGeneratorSetting.FloatValue(1)),
-				new MapGeneratorSetting("WeightHosp", TranslationProvider.GetString(StrWeightHosp), new MapGeneratorSetting.FloatValue(2)),
-				new MapGeneratorSetting("WeightMiss", TranslationProvider.GetString(StrWeightMiss), new MapGeneratorSetting.FloatValue(1)),
-				new MapGeneratorSetting("WeightBio", TranslationProvider.GetString(StrWeightBio), new MapGeneratorSetting.FloatValue(0)),
-				new MapGeneratorSetting("WeightOilb", TranslationProvider.GetString(StrWeightOilb), new MapGeneratorSetting.FloatValue(9)));
+				new MapGeneratorSetting("Roads", FluentProvider.GetString(StrRoads), new MapGeneratorSetting.BooleanValue(true)),
+				new MapGeneratorSetting("RoadSpacing", FluentProvider.GetString(StrRoadSpacing), new MapGeneratorSetting.IntegerValue(5)),
+				new MapGeneratorSetting("RoadShrink", FluentProvider.GetString(StrRoadShrink), new MapGeneratorSetting.IntegerValue(0)),
+				new MapGeneratorSetting("#Entities", FluentProvider.GetString(StrEntities), new MapGeneratorSetting.SectionValue()),
+				new MapGeneratorSetting("CreateEntities", FluentProvider.GetString(StrCreateEntities), new MapGeneratorSetting.BooleanValue(true)),
+				new MapGeneratorSetting("CentralSpawnReservationFraction", FluentProvider.GetString(StrCentralSpawnReservationFraction), new MapGeneratorSetting.FloatValue(0.3)),
+				new MapGeneratorSetting("CentralExpansionReservationFraction", FluentProvider.GetString(StrCentralExpansionReservationFraction), new MapGeneratorSetting.FloatValue(0.1)),
+				new MapGeneratorSetting("MineReservation", FluentProvider.GetString(StrMineReservation), new MapGeneratorSetting.IntegerValue(8)),
+				new MapGeneratorSetting("SpawnRegionSize", FluentProvider.GetString(StrSpawnRegionSize), new MapGeneratorSetting.IntegerValue(12)),
+				new MapGeneratorSetting("SpawnBuildSize", FluentProvider.GetString(StrSpawnBuildSize), new MapGeneratorSetting.IntegerValue(8)),
+				new MapGeneratorSetting("SpawnMines", FluentProvider.GetString(StrSpawnMines), new MapGeneratorSetting.IntegerValue(3)),
+				new MapGeneratorSetting("SpawnReservation", FluentProvider.GetString(StrSpawnReservation), new MapGeneratorSetting.IntegerValue(20)),
+				new MapGeneratorSetting("SpawnResourceBias", FluentProvider.GetString(StrSpawnResourceBias), new MapGeneratorSetting.FloatValue(1.25)),
+				new MapGeneratorSetting("ResourcesPerPlayer", FluentProvider.GetString(StrResourcesPerPlayer), new MapGeneratorSetting.IntegerValue(50000)),
+				new MapGeneratorSetting("GemUpgrade", FluentProvider.GetString(StrGemUpgrade), new MapGeneratorSetting.FloatValue(0.05)),
+				new MapGeneratorSetting("OreUniformity", FluentProvider.GetString(StrOreUniformity), new MapGeneratorSetting.FloatValue(0.25)),
+				new MapGeneratorSetting("OreClumpiness", FluentProvider.GetString(StrOreClumpiness), new MapGeneratorSetting.FloatValue(0.25)),
+				new MapGeneratorSetting("MaximumExpansionMines", FluentProvider.GetString(StrMaximumExpansionMines), new MapGeneratorSetting.IntegerValue(5)),
+				new MapGeneratorSetting("MaximumMinesPerExpansion", FluentProvider.GetString(StrMaximumMinesPerExpansion), new MapGeneratorSetting.IntegerValue(2)),
+				new MapGeneratorSetting("MinimumExpansionSize", FluentProvider.GetString(StrMinimumExpansionsSize), new MapGeneratorSetting.IntegerValue(2)),
+				new MapGeneratorSetting("MaximumExpansionSize", FluentProvider.GetString(StrMaximumExpansionsSize), new MapGeneratorSetting.IntegerValue(12)),
+				new MapGeneratorSetting("ExpansionInner", FluentProvider.GetString(StrExpansionInner), new MapGeneratorSetting.IntegerValue(2)),
+				new MapGeneratorSetting("ExpansionBorder", FluentProvider.GetString(StrExpansionBorder), new MapGeneratorSetting.IntegerValue(1)),
+				new MapGeneratorSetting("MinimumBuildings", FluentProvider.GetString(StrMinimumBuildings), new MapGeneratorSetting.IntegerValue(0)),
+				new MapGeneratorSetting("MaximumBuildings", FluentProvider.GetString(StrMaximumBuildings), new MapGeneratorSetting.IntegerValue(3)),
+				new MapGeneratorSetting("WeightFcom", FluentProvider.GetString(StrWeightFcom), new MapGeneratorSetting.FloatValue(1)),
+				new MapGeneratorSetting("WeightHosp", FluentProvider.GetString(StrWeightHosp), new MapGeneratorSetting.FloatValue(2)),
+				new MapGeneratorSetting("WeightMiss", FluentProvider.GetString(StrWeightMiss), new MapGeneratorSetting.FloatValue(1)),
+				new MapGeneratorSetting("WeightBio", FluentProvider.GetString(StrWeightBio), new MapGeneratorSetting.FloatValue(0)),
+				new MapGeneratorSetting("WeightOilb", FluentProvider.GetString(StrWeightOilb), new MapGeneratorSetting.FloatValue(9)));
 		}
 
 		public IEnumerable<MapGeneratorSetting> GetPresetSettings(Map map, ModData modData, string preset)
@@ -366,19 +366,19 @@ namespace OpenRA.Mods.Common.Traits
 		public IEnumerable<KeyValuePair<string, string>> GetPresets(Map map, ModData modData)
 		{
 			return ImmutableList.Create(
-				new KeyValuePair<string, string>("lakes", TranslationProvider.GetString(StrPresetLakes)),
-				new KeyValuePair<string, string>("puddles", TranslationProvider.GetString(StrPresetPuddles)),
-				new KeyValuePair<string, string>("plains", TranslationProvider.GetString(StrPresetPlains)),
-				new KeyValuePair<string, string>("parks", TranslationProvider.GetString(StrPresetParks)),
-				new KeyValuePair<string, string>("woodlands", TranslationProvider.GetString(StrPresetWoodlands)),
-				new KeyValuePair<string, string>("overgrown", TranslationProvider.GetString(StrPresetOvergrown)),
-				new KeyValuePair<string, string>("mountains", TranslationProvider.GetString(StrPresetMountains)),
-				new KeyValuePair<string, string>("mountain-lakes", TranslationProvider.GetString(StrPresetMountainLakes)),
-				new KeyValuePair<string, string>("oceanic", TranslationProvider.GetString(StrPresetOceanic)),
-				new KeyValuePair<string, string>("large-islands", TranslationProvider.GetString(StrPresetLargeIslands)),
-				new KeyValuePair<string, string>("continents", TranslationProvider.GetString(StrPresetContinents)),
-				new KeyValuePair<string, string>("wetlands", TranslationProvider.GetString(StrPresetWetlands)),
-				new KeyValuePair<string, string>("narrow-wetlands", TranslationProvider.GetString(StrPresetNarrowWetlands)));
+				new KeyValuePair<string, string>("lakes", FluentProvider.GetString(StrPresetLakes)),
+				new KeyValuePair<string, string>("puddles", FluentProvider.GetString(StrPresetPuddles)),
+				new KeyValuePair<string, string>("plains", FluentProvider.GetString(StrPresetPlains)),
+				new KeyValuePair<string, string>("parks", FluentProvider.GetString(StrPresetParks)),
+				new KeyValuePair<string, string>("woodlands", FluentProvider.GetString(StrPresetWoodlands)),
+				new KeyValuePair<string, string>("overgrown", FluentProvider.GetString(StrPresetOvergrown)),
+				new KeyValuePair<string, string>("mountains", FluentProvider.GetString(StrPresetMountains)),
+				new KeyValuePair<string, string>("mountain-lakes", FluentProvider.GetString(StrPresetMountainLakes)),
+				new KeyValuePair<string, string>("oceanic", FluentProvider.GetString(StrPresetOceanic)),
+				new KeyValuePair<string, string>("large-islands", FluentProvider.GetString(StrPresetLargeIslands)),
+				new KeyValuePair<string, string>("continents", FluentProvider.GetString(StrPresetContinents)),
+				new KeyValuePair<string, string>("wetlands", FluentProvider.GetString(StrPresetWetlands)),
+				new KeyValuePair<string, string>("narrow-wetlands", FluentProvider.GetString(StrPresetNarrowWetlands)));
 		}
 
 		public void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settingsEnumerable)

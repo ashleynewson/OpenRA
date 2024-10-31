@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	{
 		[FluentReference]
 		const string MarkerTiles = "label-tool-marker-tiles";
-		[TranslationReference]
+		[FluentReference]
 		const string MapGenerator = "label-tool-map-generator";
 
 		enum MapTool
@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			toolPanels.Add(MapTool.MapGenerator, mapGeneratorToolPanel);
 
 			toolsDropdown.OnMouseDown = _ => ShowToolsDropDown(toolsDropdown);
-			toolsDropdown.GetText = () => TranslationProvider.GetString(toolNames[selectedTool]);
+			toolsDropdown.GetText = () => FluentProvider.GetString(toolNames[selectedTool]);
 		}
 
 		void ShowToolsDropDown(DropDownButtonWidget dropdown)

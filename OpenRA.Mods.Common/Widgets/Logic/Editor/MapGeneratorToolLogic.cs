@@ -24,13 +24,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class MapGeneratorToolLogic : ChromeLogic
 	{
-		[TranslationReference]
+		[FluentReference]
 		const string StrDefaultSettings = "label-map-generator-default-settings";
-		[TranslationReference("name", "seed")]
+		[FluentReference("name", "seed")]
 		const string StrGenerated = "notification-map-generator-generated";
-		[TranslationReference]
+		[FluentReference]
 		const string StrFailed = "notification-map-generator-failed";
-		[TranslationReference]
+		[FluentReference]
 		const string StrFailedCancel = "label-map-generator-failed-cancel";
 
 		readonly EditorActionManager editorActionManager;
@@ -88,7 +88,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			ChangeGenerator(mapGenerators.FirstOrDefault((IMapGenerator)null));
 			if (selectedGenerator != null)
 			{
-				generatorDropDown.GetText = () => TranslationProvider.GetString(selectedGenerator.Info.Name);
+				generatorDropDown.GetText = () => FluentProvider.GetString(selectedGenerator.Info.Name);
 				generatorDropDown.OnMouseDown = _ =>
 				{
 					ScrollItemWidget SetupItem(IMapGenerator g, ScrollItemWidget template)
@@ -96,7 +96,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						bool IsSelected() => g.Info.Type == selectedGenerator.Info.Type;
 						void OnClick() => ChangeGenerator(mapGenerators.First(generator => generator.Info.Type == g.Info.Type));
 						var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
-						item.Get<LabelWidget>("LABEL").GetText = () => TranslationProvider.GetString(g.Info.Name);
+						item.Get<LabelWidget>("LABEL").GetText = () => FluentProvider.GetString(g.Info.Name);
 						return item;
 					}
 
@@ -107,7 +107,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				{
 					// TODO: Perhaps migrate to some MiniYAML defined structure.
 					var presets = selectedGenerator.GetPresets(world.Map, modData)
-						.Prepend(new KeyValuePair<string, string>(null, TranslationProvider.GetString(StrDefaultSettings)));
+						.Prepend(new KeyValuePair<string, string>(null, FluentProvider.GetString(StrDefaultSettings)));
 					ScrollItemWidget SetupItem(KeyValuePair<string, string> preset, ScrollItemWidget template)
 					{
 						bool IsSelected() => false;
@@ -377,10 +377,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				editorActorLayer,
 				false);
 
-			var description = TranslationProvider.GetString(StrGenerated,
-				Translation.Arguments(
-					"name", selectedGenerator.Info.Name,
-					"seed", seed));
+			var description = FluentProvider.GetString(StrGenerated,
+				"name", selectedGenerator.Info.Name,
+				"seed", seed);
 			var action = new RandomMapEditorAction(editorBlit, description);
 			editorActionManager.Add(action);
 		}
