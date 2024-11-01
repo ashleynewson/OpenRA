@@ -22,16 +22,16 @@ namespace OpenRA.Mods.Common.MapUtils
 	{
 		public enum Replaceability
 		{
-			// Area cannot be replaced by a tile or obstructing actor.
+			/// <summary>Area cannot be replaced by a tile or obstructing actor.</summary>
 			None = 0,
 
-			// Area must be replaced by a different tile, and may optionally be given an actor.
+			/// <summary>Area must be replaced by a different tile, and may optionally be given an actor.</summary>
 			Tile = 1,
 
-			// Area must be given an actor, but the underlying tile must not change.
+			/// <summary>Area must be given an actor, but the underlying tile must not change.</summary>
 			Actor = 2,
 
-			// Area can be replaced by a tile and/or actor.
+			/// <summary>Area can be replaced by a tile and/or actor.</summary>
 			Any = 3,
 		}
 
