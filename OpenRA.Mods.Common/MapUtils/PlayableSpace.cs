@@ -29,31 +29,35 @@ namespace OpenRA.Mods.Common.MapUtils
 			Playable = 2,
 		}
 
-		// <summary>
-		// Additional data for a region containing playable space.
-		// The shape of a region is specified separately via a region mask.
-		// </summary>
+		/// <summary>
+		/// Additional data for a region containing playable space.
+		/// The shape of a region is specified separately via a region mask.
+		/// </summary>
 		public sealed class Region
 		{
-			// <summary>Area of playable and partially playable space.</summary>
+			/// <summary>Area of playable and partially playable space.</summary>
 			public int Area;
-			// <summary>Area of fully playable space.</summary>
+			/// <summary>Area of fully playable space.</summary>
 			public int PlayableArea;
-			// <summary>Region ID.</summary>
+			/// <summary>Region ID.</summary>
 			public int Id;
 		}
 
 		public const int NULL_REGION = -1;
 
-		// <summary>
-		// Analyses a given map's tiles and ActorPlans and determines the playable space within it.
-		//
-		// Requires a playabilityMap which specifies whether certain tiles are considered playable
-		// or not. Actors are always considered partially playable.
-		//
-		// RegionMap contains the mapping of map positions to Regions. If a map position is not
-		// within a region, the value is NULL_REGION.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Analyses a given map's tiles and ActorPlans and determines the playable space within it.
+		/// </para>
+		/// <para>
+		/// Requires a playabilityMap which specifies whether certain tiles are considered playable
+		/// or not. Actors are always considered partially playable.
+		/// </para>
+		/// <para>
+		/// RegionMap contains the mapping of map positions to Regions. If a map position is not
+		/// within a region, the value is NULL_REGION.
+		/// </para>
+		/// </summary>
 		public static (Region[] Regions, Matrix<int> RegionMap, Matrix<Playability> Playable) FindPlayableRegions(
 			Map map,
 			List<ActorPlan> actorPlans,
@@ -71,7 +75,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				}
 			}
 
-			MatrixUtils.ReserveForEntitiesInPlace(
+			MatrixUtils.ReserveForActorPlansInPlace(
 				playable,
 				actorPlans,
 				(old) => old == Playability.Playable ? Playability.Partial : old);

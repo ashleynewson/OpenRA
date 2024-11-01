@@ -1304,7 +1304,7 @@ namespace OpenRA.Mods.Common.Traits
 					}
 				}
 
-				MatrixUtils.ReserveForEntitiesInPlace(zoneable, actorPlans, (_) => false);
+				MatrixUtils.ReserveForActorPlansInPlace(zoneable, actorPlans, (_) => false);
 				if (trivialRotate)
 				{
 					// Improve symmetry.

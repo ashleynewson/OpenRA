@@ -20,9 +20,9 @@ namespace OpenRA.Mods.Common.MapUtils
 {
 	public static class MatrixUtils
 	{
-		// <summary>
-		// Debugging method that prints a matrix to stderr.
-		// </summary>
+		/// <summary>
+		/// Debugging method that prints a matrix to stderr.
+		/// </summary>
 		public static void Dump2d(string label, Matrix<bool> matrix)
 		{
 			Console.Error.WriteLine($"{label}:");
@@ -40,9 +40,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			Console.Error.Flush();
 		}
 
-		// <summary>
-		// Debugging method that prints a matrix to stderr.
-		// </summary>
+		/// <summary>
+		/// Debugging method that prints a matrix to stderr.
+		/// </summary>
 		public static void Dump2d(string label, Matrix<int> matrix)
 		{
 			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
@@ -68,9 +68,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			Console.Error.Flush();
 		}
 
-		// <summary>
-		// Debugging method that prints a matrix to stderr.
-		// </summary>
+		/// <summary>
+		/// Debugging method that prints a matrix to stderr.
+		/// </summary>
 		public static void Dump2d(string label, Matrix<byte> matrix)
 		{
 			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
@@ -96,33 +96,42 @@ namespace OpenRA.Mods.Common.MapUtils
 			Console.Error.Flush();
 		}
 
-		// Perform a generic flood fill starting at seeds [(xy, prop), ...].
-		//
-		// For each point being considered for fill, filler(xy, prop) is
-		// called with the current position (xy) and propagation value (prop).
-		// filler should return the value to be propagated or null if not to be
-		// propagated. Propagation happens to all neighbours (offsets) defined
-		// by spread, regardless of whether they have previously been visited,
-		// so filler is responsible for terminating propagation by returning
-		// nulls. Usually, Direction.SPREAD4 or Direction.SPREAD8 is
-		// appropriate as a spread pattern.
-		//
-		// filler should capture and manipulate any necessary input and output
-		// arrays.
-		//
-		// Each call to filler will have either an equal or greater
-		// growth/propagation distance from their seed value than all calls
-		// before it. (You can think of this as them being called in ordered
-		// growth layers.)
-		//
-		// Note that filler may be called multiple times for the same spot,
-		// perhaps with different propagation values. Within the same
-		// growth/propagation distance, filler will be called from values
-		// propagated from earlier seeds before values propagated from later
-		// seeds.
-		//
-		// filler is not called for positions outside of the bounds defined by
-		// size EXCEPT for points being processed as seed values.
+		/// <summary>
+		/// <para>
+		/// Perform a generic flood fill starting at seeds <c>[(xy, prop), ...]</c>.
+		/// </para>
+		/// <para>
+		/// For each point being considered for fill, <c>filler(xy, prop)</c> is
+		/// called with the current position (xy) and propagation value (prop).
+		/// filler should return the value to be propagated or null if not to be
+		/// propagated. Propagation happens to all neighbours (offsets) defined
+		/// by spread, regardless of whether they have previously been visited,
+		/// so filler is responsible for terminating propagation by returning
+		/// nulls. Usually, <c>Direction.SPREAD4</c> or <c>Direction.SPREAD8</c>
+		/// is appropriate as a spread pattern.
+		/// </para>
+		/// <para>
+		/// filler should capture and manipulate any necessary input and output
+		/// arrays.
+		/// </para>
+		/// <para>
+		/// Each call to filler will have either an equal or greater
+		/// growth/propagation distance from their seed value than all calls
+		/// before it. (You can think of this as them being called in ordered
+		/// growth layers.)
+		/// </para>
+		/// <para>
+		/// Note that filler may be called multiple times for the same spot,
+		/// perhaps with different propagation values. Within the same
+		/// growth/propagation distance, filler will be called from values
+		/// propagated from earlier seeds before values propagated from later
+		/// seeds.
+		/// </para>
+		/// <para>
+		/// filler is not called for positions outside of the bounds defined by
+		/// size EXCEPT for points being processed as seed values.
+		/// </para>
+		/// </summary>
 		public static void FloodFill<P>(
 			int2 size,
 			IEnumerable<(int2 XY, P Prop)> seeds,
@@ -152,11 +161,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Compute the in-game walking distances from a set of seeds.
-		//
-		// The output matrix cells will contain either the distance (if reachable) or PositiveInfinity.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Compute the in-game walking distances from a set of seeds.
+		/// </para>
+		/// <para>
+		/// The output matrix cells will contain either the distance (if reachable) or
+		/// PositiveInfinity.
+		/// </para>
+		/// </summary>
 		public static Matrix<float> WalkingDistances(Matrix<bool> passable, IEnumerable<int2> seeds, float maxDistance)
 		{
 			const float SQRT2 = 1.4142135623730951f;
@@ -208,15 +221,21 @@ namespace OpenRA.Mods.Common.MapUtils
 			return output;
 		}
 
-		// <summary>
-		// Shrinkwraps true space to be as far away from false space as possible, preserving
-		// topology. The result is a kind of rough Voronoi diagram.
-		//
-		// If the space matrix has width (w, h), the returned matrix will have width (w + 1, h + 1).
-		// Each value in the returned matrix is a Direction bitmask describing the border structure
-		// between the cells of the original space matrix.
-		// </summary>
-		public static Matrix<byte> DeflateSpace(Matrix<bool> space, bool outsideIsHole)
+		/// <summary>
+		/// <para>
+		/// Shrinkwraps true space to be as far away from false space as possible, preserving
+		/// topology. The result is a kind of rough Voronoi diagram.
+		/// </para>
+		/// <para>
+		/// If the space matrix has width (w, h), the returned matrix will have width (w + 1, h + 1).
+		/// Each value in the returned matrix is a Direction bitmask describing the border structure
+		/// between the cells of the original space matrix.
+		/// </para>
+		/// outsideSpace specified the space values for cells which are outside the space matrix.
+		/// <para>
+		/// </para>
+		/// </summary>
+		public static Matrix<byte> DeflateSpace(Matrix<bool> space, bool outsideSpace)
 		{
 			var size = space.Size;
 			var holes = new Matrix<int>(size);
@@ -262,7 +281,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				}
 			}
 
-			if (outsideIsHole)
+			if (!outsideSpace)
 			{
 				holeCount++;
 				for (var x = 0; x < size.X; x++)
@@ -352,11 +371,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			return deflated;
 		}
 
-		// <summary>
-		// Convolute a kernel over a boolean input matrix.
-		// If dilating, the values specified by the kernel are logically OR-ed.
-		// If eroding, the values specified by the kernel are logically AND-ed.
-		// </summary>
+		/// <summary>
+		/// Convolute a kernel over a boolean input matrix.
+		/// If dilating, the values specified by the kernel are logically OR-ed.
+		/// If eroding, the values specified by the kernel are logically AND-ed.
+		/// </summary>
 		public static Matrix<bool> KernelDilateOrErode(Matrix<bool> input, Matrix<bool> kernel, int2 kernelCenter, bool dilate)
 		{
 			var output = new Matrix<bool>(input.Size).Fill(!dilate);
@@ -390,12 +409,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			return output;
 		}
 
-		// <summary>
-		// Create a one-dimensional gaussian kernel.
-		//
-		// This can be applied once, transposed, then applied again to perform a full gaussian blur.
-		// (See GaussianBlur.)
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Create a one-dimensional gaussian kernel.
+		/// </para>
+		/// <para>
+		/// This can be applied once, transposed, then applied again to perform a full gaussian blur.
+		/// See <see cref="GaussianBlur"/>
+		/// </para>
+		/// </summary>
 		public static Matrix<float> GaussianKernel1D(int radius, float standardDeviation)
 		{
 			var span = radius * 2 + 1;
@@ -418,9 +440,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			return kernel;
 		}
 
-		// <summary>
-		// Apply an arithmetic convolution of a kernel over an input matrix.
-		// </summary>
+		/// <summary>
+		/// Apply an arithmetic convolution of a kernel over an input matrix.
+		/// </summary>
 		public static Matrix<float> KernelBlur(Matrix<float> input, Matrix<float> kernel, int2 kernelCenter)
 		{
 			var output = new Matrix<float>(input.Size);
@@ -449,9 +471,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			return output;
 		}
 
-		// <summary>
-		// Apply a square gaussian blur to a matrix, returning a new matrix.
-		// </summary>
+		/// <summary>
+		/// Apply a square gaussian blur to a matrix, returning a new matrix.
+		/// </summary>
 		public static Matrix<float> GaussianBlur(Matrix<float> input, int radius, float standardDeviation)
 		{
 			var kernel = GaussianKernel1D(radius, standardDeviation);
@@ -460,10 +482,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			return stage2;
 		}
 
-		// <summary>
-		// Set positions occupied by entities to a given value, accounting for their footprint.
-		// </summary>
-		public static void ReserveForEntitiesInPlace<T>(Matrix<T> matrix, IEnumerable<ActorPlan> actorPlans, Func<T, T> setTo)
+		/// <summary>
+		/// Set positions occupied by actor plans to a given value, accounting for their footprint.
+		/// </summary>
+		public static void ReserveForActorPlansInPlace<T>(
+			Matrix<T> matrix, IEnumerable<ActorPlan> actorPlans, Func<T, T> setTo)
 		{
 			foreach (var actorPlan in actorPlans)
 			{
@@ -477,10 +500,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Finds the local variance of points in a grid (using a square sample area).
-		// Sample areas are centered on data point corners, so output is (size + 1) * (size + 1).
-		// </summary>
+		/// <summary>
+		/// Finds the local variance of points in a grid (using a square sample area).
+		/// Sample areas are centered on data point corners, so output is (size + 1) * (size + 1).
+		/// </summary>
 		public static Matrix<float> GridVariance(Matrix<float> input, int radius)
 		{
 			var output = new Matrix<float>(input.Size + new int2(1, 1));
@@ -524,23 +547,30 @@ namespace OpenRA.Mods.Common.MapUtils
 			return output;
 		}
 
-		// <summary>
-		// Blur a boolean matrix using a square kernel, only changing the value
-		// if the neighborhood is significantly different based on a threshold.
-		//
-		// For example, a threshold of 0.75 means any change requires a 75%
-		// majority within the kernel.
-		//
-		// The space outside of the matrix is treated as if the border was
-		// extended out.
-		//
-		// Along with the blured matrix, the number of changes compared to the
-		// original is returned.
-		//
-		// Runtime complexity is approximately O(input.Size) for small radii:
-		//   O((input.Size.X + radius) * input.Size.Y +
-		//     input.Size.X            * (input.Size.Y + radius))
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Blur a boolean matrix using a square kernel, only changing the value
+		/// if the neighborhood is significantly different based on a threshold.
+		/// </para>
+		/// <para>
+		/// For example, a threshold of 0.75 means any change requires a 75%
+		/// majority within the kernel.
+		/// </para>
+		/// <para>
+		/// The space outside of the matrix is treated as if the border was
+		/// extended out.
+		/// </para>
+		/// <para>
+		/// Along with the blured matrix, the number of changes compared to the
+		/// original is returned.
+		/// </para>
+		/// <para>
+		/// Runtime complexity is approximately O(input.Size) for small radii.
+		/// A more precise complexity would be
+		///   O((input.Size.X + radius) * input.Size.Y +
+		///     input.Size.X            * (input.Size.Y + radius))
+		/// </para>
+		/// </summary>
 		public static (Matrix<bool> Output, int Changes) BooleanBlur(
 			Matrix<bool> input, int radius, float threshold)
 		{
@@ -620,12 +650,13 @@ namespace OpenRA.Mods.Common.MapUtils
 			return (output, changes);
 		}
 
-		// <summary>
-		// Preserves foreground cells that can be safely covered by a (possibly
-		// out-of-bound) span-by-span square that doesn't touch any !foreground
-		// cells, and sets any remaining cells to !foreground.
-		// </summary>
-		public static (Matrix<bool> Output, int Changes) RetainThickRegions(Matrix<bool> input, bool foreground, int span)
+		/// <summary>
+		/// Preserves foreground cells that can be safely covered by a (possibly
+		/// out-of-bound) span-by-span square that doesn't touch any !foreground
+		/// cells, and sets any remaining cells to !foreground.
+		/// </summary>
+		public static (Matrix<bool> Output, int Changes) RetainThickRegions(
+			Matrix<bool> input, bool foreground, int span)
 		{
 			// The time complexity could be improved to O(input.Size) by using
 			// a technique similar to BooleanBlur, but, in practice, this
@@ -681,7 +712,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			return (output, changes);
 		}
 
-		// <summary>Read a linearly interpolated value between the cells of a matrix.</summary>
+		/// <summary>Read a linearly interpolated value between the cells of a matrix.</summary>
 		public static float Interpolate(Matrix<float> matrix, float x, float y)
 		{
 			var xa = (int)MathF.Floor(x);
@@ -724,6 +755,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			return (naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw;
 		}
 
+		/// <summary>
+		/// Finds the (linearly interpolated) value a given fraction through a sorted array.
+		/// </summary>
 		static float ArrayQuantile(float[] array, float quantile)
 		{
 			if (array.Length == 0)
@@ -753,10 +787,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			return array[iLow] * (1 - weight) + array[iHigh] * weight;
 		}
 
-		// <summary>
-		// Uniformally add to or subtract from all matrix cells such that the given quantile,
-		// fraction, has the given target value.
-		// </summary>
+		/// <summary>
+		/// Uniformally add to or subtract from all matrix cells such that the given quantile,
+		/// fraction, has the given target value.
+		/// </summary>
 		public static void CalibrateQuantileInPlace(Matrix<float> matrix, float target, float fraction)
 		{
 			var sorted = (float[])matrix.Data.Clone();
@@ -768,11 +802,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// For true cells, gives the Chebyshev distance to the closest false cell.
-		// For false cells, gives the Chebyshev distance to the closest true cell as a negative.
-		// outsideValue specifies whether the outside of the matrix is considered true or false.
-		// </summary>
+		/// <summary>
+		/// For true cells, gives the Chebyshev distance to the closest false cell.
+		/// For false cells, gives the Chebyshev distance to the closest true cell as a negative.
+		/// outsideValue specifies whether the outside of the matrix is considered true or false.
+		/// </summary>
 		public static Matrix<int> ChebyshevRoom(Matrix<bool> input, bool outsideValue)
 		{
 			var roominess = new Matrix<int>(input.Size);
@@ -855,15 +889,18 @@ namespace OpenRA.Mods.Common.MapUtils
 			return roominess;
 		}
 
-		// <summary>
-		// Given a set of grid-intersection point arrays, creates a matrix where each cell
-		// identifies whether the closest points are wrapping around it clockwise or
-		// counter-clockwise (as defined in MapUtils.Direction).
-		//
-		// Positive output values indicate the points are wrapping around it clockwise.
-		// Negative output values indicate the points are wrapping around it counter-clockwise.
-		// Outputs can be zero or non-unit magnitude if there are fighting point arrays.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Given a set of grid-intersection point arrays, creates a matrix where each cell
+		/// identifies whether the closest points are wrapping around it clockwise or
+		/// counter-clockwise (as defined in MapUtils.Direction).
+		/// </para>
+		/// <para>
+		/// Positive output values indicate the points are wrapping around it clockwise.
+		/// Negative output values indicate the points are wrapping around it counter-clockwise.
+		/// Outputs can be zero or non-unit magnitude if there are fighting point arrays.
+		/// </para>
+		/// </summary>
 		public static Matrix<int> PointsChirality(int2 size, IEnumerable<int2[]> pointArrayArray)
 		{
 			const int FirstPassSentinel = int.MinValue;
@@ -928,13 +965,16 @@ namespace OpenRA.Mods.Common.MapUtils
 			return chirality;
 		}
 
-		// <summary>
-		// Trace the borders between true and false regions of an input matrix, returning an array
-		// of point sequences.
-		//
-		// Point sequences follow the borders keeping the true region on the right-hand side as it
-		// traces forward. Loops have a matching start and end point.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Trace the borders between true and false regions of an input matrix, returning an array
+		/// of point sequences.
+		/// </para>
+		/// <para>
+		/// Point sequences follow the borders keeping the true region on the right-hand side as it
+		/// traces forward. Loops have a matching start and end point.
+		/// </para>
+		/// </summary>
 		public static int2[][] BordersToPoints(Matrix<bool> matrix)
 		{
 			// There is redundant memory/iteration, but I don't care enough.
@@ -1060,19 +1100,30 @@ namespace OpenRA.Mods.Common.MapUtils
 			return paths.ToArray();
 		}
 
-		// <summary>
-		// Takes an input boolean matrix and performs adjustments to improve the local consistency
-		// of the true and false regions, making them "blotchy":
-		// - Smoothing via thresholded median blurs.
-		// - A minimum thickness is enforced for all true/false regions. More formally, eroding and
-		//   then dilating the true or false regions by minimumThickness results in no change.
-		// - No grid points connect diagonally-crossing true and false regions. In other words,
-		//   these 2x2 patterns never appear in the output matrix:
-		//       10      01
-		//       01  or  10
-		//
-		// A new matrix is returned. The input is unmodified.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Takes an input boolean matrix and performs adjustments to improve the local consistency
+		/// of the true and false regions, making them "blotchy":
+		/// </para>
+		/// <para>
+		/// - Smoothing via thresholded median blurs.
+		/// </para>
+		/// <para>
+		/// - A minimum thickness is enforced for all true/false regions. More formally, eroding
+		///   and then dilating the true or false regions by minimumThickness results in no change.
+		/// </para>
+		/// <para>
+		/// - No grid points connect diagonally-crossing true and false regions. In other words,
+		///   these 2x2 patterns never appear in the output matrix:
+		/// <code>
+		///     10      01
+		///     01  or  10
+		/// </code>
+		/// </para>
+		/// <para>
+		/// A new matrix is returned. The input is unmodified.
+		/// </para>
+		/// </summary>
 		public static Matrix<bool> BooleanBlotch(
 			Matrix<bool> input,
 			int terrainSmoothing,
@@ -1143,9 +1194,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			return landmass;
 		}
 
-		// <summary>
-		// Repeatedly calls DilateThinRegionsInPlace until no changes are made.
-		// </summary>
+		/// <summary>
+		/// Repeatedly calls DilateThinRegionsInPlace until no changes are made.
+		/// </summary>
 		static int DilateThinRegionsInPlaceFull(Matrix<bool> input, bool foreground, int width)
 		{
 			int changes;
@@ -1161,15 +1212,19 @@ namespace OpenRA.Mods.Common.MapUtils
 			return changesAcc;
 		}
 
-		// <summary>
-		// If foreground true, finds the thinnest true regions and dilates them.
-		// If foreground false, finds the thinnest false regions and dilates them.
-		// Each call only dilates thin regions by one cell's thickness on each border.
-		//
-		// Only regions with a thickness less than width (in Chebychev distance) are considered.
-		//
-		// Returns the number of changes made.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// If foreground true, finds the thinnest true regions and dilates them.
+		/// If foreground false, finds the thinnest false regions and dilates them.
+		/// Each call only dilates thin regions by one cell's thickness on each border.
+		/// </para>
+		/// <para>
+		/// Only regions with a thickness less than width (in Chebychev distance) are considered.
+		/// </para>
+		/// <para>
+		/// Returns the number of changes made.
+		/// </para>
+		/// </summary>
 		static int DilateThinRegionsInPlace(Matrix<bool> input, bool foreground, int width)
 		{
 			var sizeMinus1 = input.Size - new int2(1, 1);

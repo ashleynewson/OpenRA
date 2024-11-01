@@ -20,24 +20,24 @@ using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapUtils
 {
+	/// <summary>Path to be tiled onto a map using TemplateSegments.</summary>
 	public sealed class TilingPath
 	{
-		// <summary>Describes the type and direction of the start or end of a TilingPath.</summary>
+		/// <summary>Describes the type and direction of the start or end of a TilingPath.</summary>
 		public struct Terminal
 		{
 			public string Type;
 
-			// <summary>
-			// Direction to use for this terminal.
-			//
-			// If the direction here is null, it will be determined automatically later.
-			// </summary>
+			/// <summary>
+			/// Direction to use for this terminal.
+			/// If the direction here is null, it will be determined automatically later.
+			/// </summary>
 			public int? Direction;
 
-			// <summary>
-			// A string which can match the format used by
-			// OpenRA.Mods.Common.Terrain.TemplateSegment's Start or End.
-			// </summary>
+			/// <summary>
+			/// A string which can match the format used by
+			/// OpenRA.Mods.Common.Terrain.TemplateSegment's Start or End.
+			/// </summary>
 			public readonly string SegmentType
 			{
 				get
@@ -55,10 +55,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Describes the permitted start, middle, and end segments/templates that can be used to
-		// tile the path.
-		// </summary>
+		/// <summary>
+		/// Describes the permitted start, middle, and end segments/templates that can be used to
+		/// tile the path.
+		/// </summary>
 		public sealed class PermittedSegments
 		{
 			public readonly ITemplatedTerrainInfo TemplatedTerrainInfo;
@@ -90,18 +90,18 @@ namespace OpenRA.Mods.Common.MapUtils
 				End = array;
 			}
 
-			// <summary>
-			// Creates a PermittedSegments using only the given types.
-			// </summary>
+			/// <summary>
+			/// Creates a PermittedSegments using only the given types.
+			/// </summary>
 			public static PermittedSegments FromInner(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> types)
 				=> new(templatedTerrainInfo, FindSegments(templatedTerrainInfo, types));
 
-			// <summary>
-			// Creates a PermittedSegments suitable for a path with given inner and terminal types
-			// at the start and end.
-			// </summary>
+			/// <summary>
+			/// Creates a PermittedSegments suitable for a path with given inner and terminal types
+			/// at the start and end.
+			/// </summary>
 			public static PermittedSegments FromInnerAndTerminal(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> innerTypes,
@@ -116,9 +116,9 @@ namespace OpenRA.Mods.Common.MapUtils
 					FindSegments(templatedTerrainInfo, innerTypesArray, innerTypesArray, terminalTypesArray));
 			}
 
-			// <summary>
-			// Equivalent to FindSegments(templatedTerrainInfo, types, types, types)
-			// </summary>
+			/// <summary>
+			/// Equivalent to FindSegments(templatedTerrainInfo, types, types, types)
+			/// </summary>
 			public static IEnumerable<TemplateSegment> FindSegments(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> types)
@@ -127,9 +127,9 @@ namespace OpenRA.Mods.Common.MapUtils
 				return FindSegments(templatedTerrainInfo, array, array, array);
 			}
 
-			// <summary>
-			// Find templates that use some combination of the given start, inner, end types.
-			// </summary>
+			/// <summary>
+			/// Find templates that use some combination of the given start, inner, end types.
+			/// </summary>
 			public static IEnumerable<TemplateSegment> FindSegments(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> startTypes,
@@ -156,47 +156,48 @@ namespace OpenRA.Mods.Common.MapUtils
 
 		public Map Map;
 
-		// <summary>
-		// Target point sequence to fit TemplateSegments to.
-		//
-		// If null, Tiling will be a no-op.
-		//
-		// If non-null, must have at least two points.
-		//
-		// A loop must have the start and end points equal.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Target point sequence to fit TemplateSegments to.
+		/// </para>
+		/// <para>
+		/// If null, Tiling will be a no-op. If non-null, must have at least two points.
+		/// </para>
+		/// <para>
+		/// A loop must have the start and end points equal.
+		/// </para>
+		/// </summary>
 		public int2[] Points;
 
-		// <summary>
-		// Maximum permitted Chebychev distance that layed TemplateSegments may be from the
-		// specified points.
-		// </summary>
+		/// <summary>
+		/// Maximum permitted Chebychev distance that layed TemplateSegments may be from the
+		/// specified points.
+		/// </summary>
 		public int MaxDeviation;
 
-		// <summary>
-		// Determines how much corner-cutting is allowed.
-		//
-		// A value of zero will result in a value being derived from MaxDeviation.
-		// </summary>
+		/// <summary>
+		/// Determines how much corner-cutting is allowed.
+		/// A value of zero will result in a value being derived from MaxDeviation.
+		/// </summary>
 		public int MaxSkip;
 
-		// <summary>
-		// Increases separation between permitted tiling regions of different parts of the path.
-		// </summary>
+		/// <summary>
+		/// Increases separation between permitted tiling regions of different parts of the path.
+		/// </summary>
 		public int MinSeparation;
 
-		// <summary>
-		// Stores start type and direction.
-		// </summary>
+		/// <summary>
+		/// Stores start type and direction.
+		/// </summary>
 		public Terminal Start;
 
-		// <summary>
-		// Stores end type and direction.
-		// </summary>
+		/// <summary>
+		/// Stores end type and direction.
+		/// </summary>
 		public Terminal End;
 		public PermittedSegments Segments;
 
-		// <summary>Whether the start and end points are the same.</summary>
+		/// <summary>Whether the start and end points are the same.</summary>
 		public bool IsLoop
 		{
 			get => Points != null && Points[0] == Points[^1];
@@ -265,12 +266,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Attempt to tile the given path onto a map.
-		//
-		// If the path could be tiled, returns the sequence of points actually traversed by the
-		// chosen TemplateSegments. Returns null if the path could not be tiled within constraints.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Attempt to tile the given path onto a map.
+		/// </para>
+		/// <para>
+		/// If the path could be tiled, returns the sequence of points actually traversed by the
+		/// chosen TemplateSegments. Returns null if the path could not be tiled within constraints.
+		/// </para>
+		/// </summary>
 		public int2[] Tile(MersenneTwister random)
 		{
 			// This is essentially a Dijkstra's algorithm best-first search.
@@ -796,22 +800,25 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Extend the start and end of a path by extensionLength points. The directions of the
-		// extensions are based on the overall direction of the outermost inertialRange points.
-		//
-		// Returns this;
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Extend the start and end of a path by extensionLength points. The directions of the
+		/// extensions are based on the overall direction of the outermost inertialRange points.
+		/// </para>
+		/// <para>
+		/// Returns the object being called on.
+		/// </para>
+		/// </summary>
 		public TilingPath InertiallyExtend(int extensionLength, int inertialRange)
 		{
 			Points = InertiallyExtendPathPoints(Points, extensionLength, inertialRange);
 			return this;
 		}
 
-		// <summary>
-		// Extend the start and end of a path by extensionLength points. The directions of the
-		// extensions are based on the overall direction of the outermost inertialRange points.
-		// </summary>
+		/// <summary>
+		/// Extend the start and end of a path by extensionLength points. The directions of the
+		/// extensions are based on the overall direction of the outermost inertialRange points.
+		/// </summary>
 		public static int2[] InertiallyExtendPathPoints(int2[] points, int extensionLength, int inertialRange)
 		{
 			if (points == null)
@@ -838,27 +845,34 @@ namespace OpenRA.Mods.Common.MapUtils
 			return newPoints;
 		}
 
-		// <summary>
-		// For map edge-connected (non-loop) starts/ends, the path is extended beyond the edge.
-		// For loops or paths which don't connect to the map edge, no change is applied.
-		//
-		// Starts/ends which are corner-connected or already extend beyond the edge are unaltered.
-		//
-		// Returns this.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// For map edge-connected (non-loop) starts/ends, the path is extended beyond the edge.
+		/// For loops or paths which don't connect to the map edge, no change is applied.
+		/// </para>
+		/// <para>
+		/// Starts/ends which are corner-connected or already extend beyond the edge are unaltered.
+		/// </para>
+		/// <para>
+		/// Returns the object being called on.
+		/// </para>
+		/// </summary>
 		public TilingPath ExtendEdge(int extensionLength)
 		{
 			Points = ExtendEdgePathPoints(Points, Map.MapSize, extensionLength);
 			return this;
 		}
 
-		// <summary>
-		// For map edge-connected (non-loop) starts/ends, the path is extended beyond the edge.
-		// For loops or paths which don't connect to the map edge, the input points are returned
-		// unaltered.
-		//
-		// Starts/ends which are corner-connected or already extend beyond the edge are unaltered.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// For map edge-connected (non-loop) starts/ends, the path is extended beyond the edge.
+		/// For loops or paths which don't connect to the map edge, the input points are returned
+		/// unaltered.
+		/// </para>
+		/// <para>
+		/// Starts/ends which are corner-connected or already extend beyond the edge are unaltered.
+		/// </para>
+		/// </summary>
 		public static int2[] ExtendEdgePathPoints(int2[] points, int2 size, int extensionLength)
 		{
 			if (points == null)
@@ -911,22 +925,25 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// For loops, points are rotated such that the start/end reside in the longest straight.
-		// For non-loops, the input points are returned unaltered.
-		//
-		// Returns this.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// For loops, points are rotated such that the start/end reside in the longest straight.
+		/// For non-loops, the input points are returned unaltered.
+		/// </para>
+		/// <para>
+		/// Returns the object being called on.
+		/// </para>
+		/// </summary>
 		public TilingPath OptimizeLoop()
 		{
 			Points = OptimizeLoopPathPoints(Points);
 			return this;
 		}
 
-		// <summary>
-		// For loops, points are rotated such that the start/end reside in the longest straight.
-		// For non-loops, the input points are returned unaltered.
-		// </summary>
+		/// <summary>
+		/// For loops, points are rotated such that the start/end reside in the longest straight.
+		/// For non-loops, the input points are returned unaltered.
+		/// </summary>
 		public static int2[] OptimizeLoopPathPoints(int2[] points)
 		{
 			if (points == null)
@@ -995,28 +1012,35 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Shrink a path by a given amount at both ends. If the number of points in the path drops
-		// below minimumLength, the path is nullified.
-		//
-		// If a loop is provided, the path is not shrunk, but the minimumLength requirement still
-		// holds.
-		//
-		// Returns this.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Shrink a path by a given amount at both ends. If the number of points in the path drops
+		/// below minimumLength, the path is nullified.
+		/// </para>
+		/// <para>
+		/// If a loop is provided, the path is not shrunk, but the minimumLength requirement still
+		/// holds.
+		/// </para>
+		/// <para>
+		/// Returns the object being called on.
+		/// </para>
+		/// </summary>
 		public TilingPath Shrink(int shrinkBy, int minimumLength)
 		{
 			Points = ShrinkPathPoints(Points, shrinkBy, minimumLength);
 			return this;
 		}
 
-		// <summary>
-		// Shrink a path by a given amount at both ends. If the number of points in the path drops
-		// below minimumLength, null is returned.
-		//
-		// If a loop is provided, the path is not shrunk, but the minimumLength requirement still
-		// holds.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Shrink a path by a given amount at both ends. If the number of points in the path drops
+		/// below minimumLength, null is returned.
+		/// </para>
+		/// <para>
+		/// If a loop is provided, the path is not shrunk, but the minimumLength requirement still
+		/// holds.
+		/// </para>
+		/// </summary>
 		public static int2[] ShrinkPathPoints(int2[] points, int shrinkBy, int minimumLength)
 		{
 			if (points == null)
@@ -1038,20 +1062,20 @@ namespace OpenRA.Mods.Common.MapUtils
 			return points[shrinkBy..(points.Length - shrinkBy)];
 		}
 
-		// <summary>
-		// Takes a path and normalizes its progression direction around the map center.
-		// Normalized but opposing paths should rotate around the center in the same direction.
-		// </summary>
+		/// <summary>
+		/// Takes a path and normalizes its progression direction around the map center.
+		/// Normalized but opposing paths should rotate around the center in the same direction.
+		/// </summary>
 		public TilingPath ChirallyNormalize()
 		{
 			Points = ChirallyNormalizePathPoints(Points, Map.MapSize);
 			return this;
 		}
 
-		// <summary>
-		// Takes a path and normalizes its progression direction around the map center.
-		// Normalized but opposing paths should rotate around the center in the same direction.
-		// </summary>
+		/// <summary>
+		/// Takes a path and normalizes its progression direction around the map center.
+		/// Normalized but opposing paths should rotate around the center in the same direction.
+		/// </summary>
 		public static int2[] ChirallyNormalizePathPoints(int2[] points, int2 size)
 		{
 			if (points == null || points.Length < 2)
@@ -1099,14 +1123,18 @@ namespace OpenRA.Mods.Common.MapUtils
 			return normalized;
 		}
 
-		// <summary>
-		// Given a set of point sequences and a stencil mask that defines permitted point positions,
-		// remove points that are disallowed, splitting or dropping point sequences as needed.
-		//
-		// The outside of the matrix is considered false (points disallowed).
-		//
-		// Sequences with fewer than 2 points are dropped.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Given a set of point sequences and a stencil mask that defines permitted point positions,
+		/// remove points that are disallowed, splitting or dropping point sequences as needed.
+		/// </para>
+		/// <para>
+		/// The outside of the matrix is considered false (points disallowed).
+		/// </para>
+		/// <para>
+		/// Sequences with fewer than 2 points are dropped.
+		/// </para>
+		/// </summary>
 		public static int2[][] MaskPathPoints(IEnumerable<int2[]> pointArrayArray, Matrix<bool> mask)
 		{
 			var newPointArrayArray = new List<int2[]>();
@@ -1162,13 +1190,17 @@ namespace OpenRA.Mods.Common.MapUtils
 			return newPointArrayArray.ToArray();
 		}
 
-		// <summary>
-		// Retains paths which have no points in common with other (previous and retained) paths.
-		//
-		// The underlying point sequences are not cloned.
-		//
-		// All input sequences must be non-null.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Retains paths which have no points in common with other (previous and retained) paths.
+		/// </para>
+		/// <para>
+		/// The underlying point sequences are not cloned.
+		/// </para>
+		/// <para>
+		/// All input sequences must be non-null.
+		/// </para>
+		/// </summary>
 		public static int2[][] RetainDisjointPaths(IEnumerable<int2[]> inputs, int2 size)
 		{
 			var outputs = new List<int2[]>();
@@ -1236,11 +1268,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			return output;
 		}
 
-		// <summary>
-		// Traces a matrix of directions into a set of point sequences.
-		//
-		// Any junctions in the input direction map are dropped.
-		// </summary>
+		/// <summary>
+		/// Traces a matrix of directions into a set of point sequences.
+		/// Any junctions in the input direction map are dropped.
+		/// </summary>
 		public static int2[][] DirectionMapToPaths(Matrix<byte> input)
 		{
 			input = RemoveJunctionsFromDirectionMap(input);

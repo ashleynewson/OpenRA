@@ -58,9 +58,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			TopRightMatchesBottomLeft = 4,
 		}
 
-		// <summary>
-		// Math.Cos, but with special casing for special angles to preserve accuracy.
-		// </summary>
+		/// <summary>
+		/// Math.Cos, but with special casing for special angles to preserve accuracy.
+		/// </summary>
 		public static double CosSnap(double angle)
 		{
 			switch (angle)
@@ -84,9 +84,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Math.Sin, but with special casing for special angles to preserve accuracy.
-		// </summary>
+		/// <summary>
+		/// Math.Sin, but with special casing for special angles to preserve accuracy.
+		/// </summary>
 		public static double SinSnap(double angle)
 		{
 			switch (angle)
@@ -110,9 +110,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// MathF.Cos, but with special casing for special angles to preserve accuracy.
-		// </summary>
+		/// <summary>
+		/// MathF.Cos, but with special casing for special angles to preserve accuracy.
+		/// </summary>
 		public static float CosSnapF(float angle)
 		{
 			switch (angle)
@@ -136,9 +136,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// MathF.Sin, but with special casing for special angles to preserve accuracy.
-		// </summary>
+		/// <summary>
+		/// MathF.Sin, but with special casing for special angles to preserve accuracy.
+		/// </summary>
 		public static float SinSnapF(float angle)
 		{
 			switch (angle)
@@ -162,30 +162,39 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Mirrors a grid square within an area of given size.
-		//
-		// For example, if using a size of (8, 8) a square at (0, 0) could be projected to
-		// (0, 0), (0, 7), (7, 0), (7, 7).
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Mirrors a grid square within an area of given size.
+		/// </para>
+		/// <para>
+		/// For example, if using a size of (8, 8) a square at (0, 0) could be projected to
+		/// (0, 0), (0, 7), (7, 0), (7, 7).
+		/// </para>
+		/// </summary>
 		public static int2 MirrorGridSquare(Mirror mirror, int2 original, int2 size)
 			=> MirrorPoint(mirror, original, size - new int2(1, 1));
 
-		// <summary>
-		// Mirrors a grid square within an area of given size.
-		//
-		// For example, if using a size of (8, 8) a square at (0.1, 0.1) could be projected to
-		// (0.1, 0.1), (0.1, 6.9), (6.9, 0.1), (6.9, 6.9).
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Mirrors a grid square within an area of given size.
+		/// </para>
+		/// <para>
+		/// For example, if using a size of (8, 8) a square at (0.1, 0.1) could be projected to
+		/// (0.1, 0.1), (0.1, 6.9), (6.9, 0.1), (6.9, 6.9).
+		/// </para>
+		/// </summary>
 		public static float2 MirrorGridSquare(Mirror mirror, float2 original, float2 size)
 			=> MirrorPoint(mirror, original, size - new float2(1.0f, 1.0f));
 
-		// <summary>
-		// Mirrors a (zero-area) point within an area of given size.
-		//
-		// For example, if using a size of (8, 8) a point at (0, 0) could be projected to
-		// (0, 0), (0, 8), (8, 0), (8, 8).
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Mirrors a (zero-area) point within an area of given size.
+		/// </para>
+		/// <para>
+		/// For example, if using a size of (8, 8) a point at (0, 0) could be projected to
+		/// (0, 0), (0, 8), (8, 0), (8, 8).
+		/// </para>
+		/// </summary>
 		public static int2 MirrorPoint(Mirror mirror, int2 original, int2 size)
 		{
 			switch (mirror)
@@ -209,12 +218,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Mirrors a (zero-area) point within an area of given size.
-		//
-		// For example, if using a size of (8, 8) a point at (0.1, 0.1) could be projected to
-		// (0.1, 0.1), (0.1, 7.9), (7.9, 0.1), (7.9, 7.9).
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Mirrors a (zero-area) point within an area of given size.
+		/// </para>
+		/// <para>
+		/// For example, if using a size of (8, 8) a point at (0.1, 0.1) could be projected to
+		/// (0.1, 0.1), (0.1, 7.9), (7.9, 0.1), (7.9, 7.9).
+		/// </para>
+		/// </summary>
 		public static float2 MirrorPoint(Mirror mirror, float2 original, float2 size)
 		{
 			switch (mirror)
@@ -238,23 +250,27 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Given rotation and mirror parameters, return the total number of projected points this
-		// would result in (including the original point).
-		// </summary>
+		/// <summary>
+		/// Given rotation and mirror parameters, return the total number of projected points this
+		/// would result in (including the original point).
+		/// </summary>
 		public static int RotateAndMirrorProjectionCount(int rotations, Mirror mirror)
 			=> mirror == Mirror.None ? rotations : rotations * 2;
 
-		// <summary>
-		// Duplicate an original grid square into an array of projected grid
-		// squares according to a rotation and mirror specification. Projected
-		// grid squares may lie outside of the bounds implied by size.
-		//
-		// Do not use this for points (which don't have area).
-		//
-		// For example, if using a size of (8, 8) a square at (0, 0) could be projected to
-		// (0, 0), (0, 7), (7, 0), (7, 7).
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Duplicate an original grid square into an array of projected grid
+		/// squares according to a rotation and mirror specification. Projected
+		/// grid squares may lie outside of the bounds implied by size.
+		/// </para>
+		/// <para>
+		/// Do not use this for points (which don't have area).
+		/// </para>
+		/// <para>
+		/// For example, if using a size of (8, 8) a square at (0, 0) could be projected to
+		/// (0, 0), (0, 7), (7, 0), (7, 7).
+		/// </para>
+		/// </summary>
 		public static int2[] RotateAndMirrorGridSquare(int2 original, int2 size, int rotations, Mirror mirror)
 		{
 			var floatProjections = RotateAndMirrorPoint(original, size - new int2(1, 1), rotations, mirror);
@@ -267,9 +283,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			return intProjections;
 		}
 
-		// <summary>
-		// Determine the shortest distance between projected grid squares
-		// </summary>
+		/// <summary>
+		/// Determine the shortest distance between projected grid squares
+		/// </summary>
 		public static int RotateAndMirrorProjectionProximity(int2 original, int2 size, int rotations, Mirror mirror)
 		{
 			if (RotateAndMirrorProjectionCount(rotations, mirror) == 1)
@@ -291,16 +307,20 @@ namespace OpenRA.Mods.Common.MapUtils
 			return (int)MathF.Sqrt(worstSpacingSq);
 		}
 
-		// <summary>
-		// Duplicate an original point into an array of projected points
-		// according to a rotation and mirror specification. Projected points
-		// may lie outside of the bounds implied by size.
-		//
-		// Do not use this for grid squares (which have area).
-		//
-		// For example, if using a size of (8, 8) a square at (0.1, 0.1) could be projected to
-		// (0.1, 0.1), (0.1, 7.9), (7.9, 0.1), (7.9, 7.9).
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Duplicate an original point into an array of projected points
+		/// according to a rotation and mirror specification. Projected points
+		/// may lie outside of the bounds implied by size.
+		/// </para>
+		/// <para>
+		/// Do not use this for grid squares (which have area).
+		/// </para>
+		/// <para>
+		/// For example, if using a size of (8, 8) a square at (0.1, 0.1) could be projected to
+		/// (0.1, 0.1), (0.1, 7.9), (7.9, 0.1), (7.9, 7.9).
+		/// </para>
+		/// </summary>
 		public static float2[] RotateAndMirrorPoint(float2 original, int2 size, int rotations, Mirror mirror)
 		{
 			var projections = new float2[RotateAndMirrorProjectionCount(rotations, mirror)];
@@ -325,9 +345,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			return projections;
 		}
 
-		// <summary>
-		// Rotate and mirror multiple actor plans. See RotateAndMirrorActorPlan.
-		// </summary>
+		/// <summary>
+		/// Rotate and mirror multiple actor plans. See RotateAndMirrorActorPlan.
+		/// </summary>
 		public static ImmutableArray<ActorPlan> RotateAndMirrorActorPlans(IReadOnlyList<ActorPlan> originals, int rotations, Mirror mirror)
 		{
 			var projections = new List<ActorPlan>(
@@ -340,10 +360,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			return projections.ToImmutableArray();
 		}
 
-		// <summary>
-		// Rotate and mirror a single actor plan, adding to an accumulator list.
-		// Locations (CPos) are necessarily snapped to grid.
-		// </summary>
+		/// <summary>
+		/// Rotate and mirror a single actor plan, adding to an accumulator list.
+		/// Locations (CPos) are necessarily snapped to grid.
+		/// </summary>
 		public static ImmutableArray<ActorPlan> RotateAndMirrorActorPlan(ActorPlan original, int rotations, Mirror mirror)
 		{
 			var projections = new List<ActorPlan>(RotateAndMirrorProjectionCount(rotations, mirror));
@@ -359,12 +379,12 @@ namespace OpenRA.Mods.Common.MapUtils
 			return projections.ToImmutableArray();
 		}
 
-		// <summary>
-		// Calls action(sources, destination) over all possible destination
-		// grid squares, where each source in sources is a mirrored/rotated
-		// point. For non-trivial rotations, sources may be outside the bounds
-		// defined by size.
-		// </summary>
+		/// <summary>
+		/// Calls action(sources, destination) over all possible destination
+		/// grid squares, where each source in sources is a mirrored/rotated
+		/// point. For non-trivial rotations, sources may be outside the bounds
+		/// defined by size.
+		/// </summary>
 		public static void RotateAndMirrorOverGridSquares(int2 size, int rotations, Mirror mirror, Action<int2[], int2> action)
 		{
 			for (var y = 0; y < size.Y; y++)

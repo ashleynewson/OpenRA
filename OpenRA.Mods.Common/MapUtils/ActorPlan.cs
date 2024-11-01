@@ -17,6 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.MapUtils
 {
+	/// <summary>Description of an actor to add to a map.</summary>
 	public sealed class ActorPlan
 	{
 		public readonly Map Map;
@@ -33,9 +34,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Int2 MPos-like representation of location.
-		// </summary>
+		/// <summary>
+		/// Int2 MPos-like representation of location.
+		/// </summary>
 		public int2 Int2Location
 		{
 			get
@@ -47,10 +48,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			set => Location = new MPos(value.X, value.Y).ToCPos(Map);
 		}
 
-		// <summary>
-		// Float2 MPos-like representation of actor's center.
-		// For example, A 1x4 actor will have +(0.5,2.0) offset to its Int2Location.
-		// </summary>
+		/// <summary>
+		/// Float2 MPos-like representation of actor's center.
+		/// For example, A 1x4 actor will have +(0.5,2.0) offset to its Int2Location.
+		/// </summary>
 		public float2 CenterLocation
 		{
 			get => Int2Location + CenterOffset();
@@ -61,9 +62,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Create an ActorPlan from a reference. The referenced actor becomes owned.
-		// </summary>
+		/// <summary>
+		/// Create an ActorPlan from a reference. The referenced actor becomes owned.
+		/// </summary>
 		public ActorPlan(Map map, ActorReference reference)
 		{
 			Map = map;
@@ -72,16 +73,16 @@ namespace OpenRA.Mods.Common.MapUtils
 				throw new ArgumentException($"Actor of unknown type {Reference.Type.ToLowerInvariant()}");
 		}
 
-		// <summary>
-		// Create an ActorPlan containing a new Neutral-owned actor of the given type.
-		// </summary>
+		/// <summary>
+		/// Create an ActorPlan containing a new Neutral-owned actor of the given type.
+		/// </summary>
 		public ActorPlan(Map map, string type)
 			: this(map, ActorFromType(type))
 		{ }
 
-		// <summary>
-		// Create a cloned actor plan, cloning the underlying ActorReference.
-		// </summary>
+		/// <summary>
+		/// Create a cloned actor plan, cloning the underlying ActorReference.
+		/// </summary>
 		public ActorPlan Clone()
 		{
 			return new ActorPlan(Map, Reference.Clone());
@@ -96,9 +97,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			};
 		}
 
-		// <summary>
-		// The footprint of the actor (influenced by its location).
-		// </summary>
+		/// <summary>
+		/// The footprint of the actor (influenced by its location).
+		/// </summary>
 		public IReadOnlyDictionary<CPos, SubCell> Footprint()
 		{
 			var location = Location;
@@ -113,10 +114,10 @@ namespace OpenRA.Mods.Common.MapUtils
 				return occupiedCells;
 		}
 
-		// <summary>
-		// Relocates the actor such that the top-most, left-most footprint
-		// square is at (0, 0).
-		// </summary>
+		/// <summary>
+		/// Relocates the actor such that the top-most, left-most footprint
+		/// square is at (0, 0).
+		/// </summary>
 		public ActorPlan AlignFootprint()
 		{
 			var footprint = Footprint();
@@ -125,11 +126,14 @@ namespace OpenRA.Mods.Common.MapUtils
 			return this;
 		}
 
-		// <summary>
-		// Return an MPos-like center offset for the actor.
-		//
-		// For example, for a 1x1 actor, this would be (0.5, 0.5)
-		// <summary>
+		/// <summary>
+		/// <para>
+		/// Return an MPos-like center offset for the actor.
+		/// </para>
+		/// <para>
+		/// For example, for a 1x1 actor, this would be (0.5, 0.5)
+		/// </para>
+		/// <summary>
 		public float2 CenterOffset()
 		{
 			var bi = Info.TraitInfoOrDefault<BuildingInfo>();
