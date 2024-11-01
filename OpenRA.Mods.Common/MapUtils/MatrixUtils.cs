@@ -677,9 +677,7 @@ namespace OpenRA.Mods.Common.MapUtils
 								if (!input.ContainsXY(x, y)) continue;
 
 								if (input[x, y] != foreground)
-								{
 									return false;
-								}
 							}
 						}
 
@@ -805,16 +803,15 @@ namespace OpenRA.Mods.Common.MapUtils
 		/// <summary>
 		/// For true cells, gives the Chebyshev distance to the closest false cell.
 		/// For false cells, gives the Chebyshev distance to the closest true cell as a negative.
-		/// outsideValue specifies whether the outside of the matrix is considered true or false.
+		/// outsideRoomy specifies whether the outside of the matrix is roomy.
 		/// </summary>
-		public static Matrix<int> ChebyshevRoom(Matrix<bool> input, bool outsideValue)
+		public static Matrix<int> ChebyshevRoom(Matrix<bool> input, bool outsideRoomy)
 		{
 			var roominess = new Matrix<int>(input.Size);
 
-			// This could be more efficient.
-			var next = new List<int2>();
+			var seeds = new List<(int2, int)>();
 
-			// Find shores and map boundary
+			// Find true/false boundaries and map boundary
 			for (var cy = 0; cy < input.Size.Y; cy++)
 			{
 				for (var cx = 0; cx < input.Size.X; cx++)
@@ -827,31 +824,25 @@ namespace OpenRA.Mods.Common.MapUtils
 						{
 							var x = cx + ox;
 							var y = cy + oy;
-							if (!input.ContainsXY(x, y))
+							if (input.ContainsXY(x, y))
 							{
-								// Boundary
+								if (input[x, y])
+									pCount++;
+								else
+									nCount++;
 							}
-							else if (input[x, y])
-								pCount++;
-							else
-								nCount++;
 						}
 					}
 
-					if (outsideValue && nCount + pCount != 9)
-					{
+					if (outsideRoomy && nCount + pCount != 9)
 						continue;
-					}
 
 					if (pCount != 9 && nCount != 9)
-					{
-						roominess[cx, cy] = input[cx, cy] ? 1 : -1;
-						next.Add(new int2(cx, cy));
-					}
+						seeds.Add((new int2(cx, cy), 1));
 				}
 			}
 
-			if (next.Count == 0)
+			if (seeds.Count == 0)
 			{
 				// There were no shores. Use minSpan or -minSpan as appropriate.
 				var minSpan = Math.Min(input.Size.X, input.Size.Y);
@@ -859,32 +850,19 @@ namespace OpenRA.Mods.Common.MapUtils
 				return roominess;
 			}
 
-			for (var distance = 2; next.Count != 0; distance++)
+			int? Filler(int2 xy, int room)
 			{
-				var current = next;
-				next = new List<int2>();
-				foreach (var point in current)
-				{
-					var cx = point.X;
-					var cy = point.Y;
-					for (var oy = -1; oy <= 1; oy++)
-					{
-						for (var ox = -1; ox <= 1; ox++)
-						{
-							if (ox == 0 && oy == 0)
-								continue;
-							var x = cx + ox;
-							var y = cy + oy;
-							if (!roominess.ContainsXY(x, y))
-								continue;
-							if (roominess[x, y] != 0)
-								continue;
-							roominess[x, y] = input[x, y] ? distance : -distance;
-							next.Add(new int2(x, y));
-						}
-					}
-				}
+				if (!roominess.ContainsXY(xy) || roominess[xy] != 0)
+					return null;
+				roominess[xy] = input[xy] ? room : -room;
+				return room + 1;
 			}
+
+			FloodFill(
+				roominess.Size,
+				seeds,
+				Filler,
+				Direction.Spread8);
 
 			return roominess;
 		}
@@ -1148,9 +1126,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 
 					if (changesAcc == 0)
-					{
 						break;
-					}
 				}
 
 				{
@@ -1168,9 +1144,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					changes = DilateThinRegionsInPlaceFull(landmass, false, minimumThickness);
 					changesAcc += changes;
 					if (changesAcc == 0)
-					{
 						break;
-					}
 
 					if (i1 >= 8 && i1 % 4 == 0)
 					{
