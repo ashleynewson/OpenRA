@@ -1101,7 +1101,7 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					// This is grid points, not squares. Has a size of `size + 1`.
-					var deflated = MatrixUtils.DeflateSpace(space, true);
+					var deflated = MatrixUtils.DeflateSpace(space, false);
 					var kernel = new Matrix<bool>(2 * forestCutout, 2 * forestCutout).Fill(true);
 					var inflated = MatrixUtils.KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout - 1, forestCutout - 1), true);
 					for (var y = 0; y < size.Y; y++)
@@ -1250,7 +1250,7 @@ namespace OpenRA.Mods.Common.Traits
 						false);
 				}
 
-				var deflated = MatrixUtils.DeflateSpace(space, true);
+				var deflated = MatrixUtils.DeflateSpace(space, false);
 				var pointArrays = TilingPath.DirectionMapToPaths(deflated);
 				pointArrays = TilingPath.RetainDisjointPaths(pointArrays, size);
 
