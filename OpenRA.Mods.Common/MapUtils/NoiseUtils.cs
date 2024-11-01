@@ -16,18 +16,22 @@ namespace OpenRA.Mods.Common.MapUtils
 {
 	public static class NoiseUtils
 	{
-		// <summary>Amplitude proportional to wavelength.</summary>
+		/// <summary>Amplitude proportional to wavelength.</summary>
 		public static float PinkAmplitude(float wavelength) => wavelength;
 
-		// <summary>
-		// Create noise by combining multiple layers of Perlin noise of halving wavelengths.
-		//
-		// wavelengthScale defines the largest wavelength as a fraction of the largest dimension of
-		// the output.
-		//
-		// ampFunc specifies the amplitude of each wavelength. PinkAmplitudeFunction is often a
-		// suitable choice.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Create noise by combining multiple layers of Perlin noise of halving wavelengths.
+		/// </para>
+		/// <para>
+		/// wavelengthScale defines the largest wavelength as a fraction of the largest dimension of
+		/// the output.
+		/// </para>
+		/// <para>
+		/// ampFunc specifies the amplitude of each wavelength. PinkAmplitudeFunction is often a
+		/// suitable choice.
+		/// </para>
+		/// </summary>
 		public static Matrix<float> FractalNoise(
 			MersenneTwister random,
 			int2 size,
@@ -71,9 +75,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			return noise;
 		}
 
-		// <summary>
-		// 2D Perlin Noise generator without interpolation, producing a span-by-span sized matrix.
-		// </summary>
+		/// <summary>
+		/// 2D Perlin Noise generator without interpolation, producing a span-by-span sized matrix.
+		/// </summary>
 		public static Matrix<float> PerlinNoise(MersenneTwister random, int span)
 		{
 			var noise = new Matrix<float>(span, span);
@@ -99,13 +103,16 @@ namespace OpenRA.Mods.Common.MapUtils
 			return noise;
 		}
 
-		// <summary>
-		// Produce symmetric 2D noise by repeatedly applying some generated Perlin noise under
-		// rotation and mirroring.
-		//
-		// Note that the combination of multiple noise values with varying correlations creates a
-		// noise with different properties to simple Perlin noise.
-		// </summary>
+		/// <summary>
+		/// <para>
+		/// Produce symmetric 2D noise by repeatedly applying some generated Perlin noise under
+		/// rotation and mirroring.
+		/// </para>
+		/// <para>
+		/// Note that the combination of multiple noise values with varying correlations creates a
+		/// noise with different properties to simple Perlin noise.
+		/// </para>
+		/// </summary>
 		public static Matrix<float> SymmetricFractalNoise(
 			MersenneTwister random,
 			int2 size,

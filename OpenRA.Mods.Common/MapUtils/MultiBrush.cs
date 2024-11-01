@@ -17,7 +17,7 @@ using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapUtils
 {
-	// <summary>A super template that can be used to paint both tiles and actors.</summary>
+	/// <summary>A super template that can be used to paint both tiles and actors.</summary>
 	sealed class MultiBrush
 	{
 		public enum Replaceability
@@ -62,9 +62,9 @@ namespace OpenRA.Mods.Common.MapUtils
 				throw new ArgumentException("MultiBrush has no tiles or actors");
 		}
 
-		// <summary>
-		// Create a new empty MultiBrush with a default weight of 1.0.
-		// </summary>
+		/// <summary>
+		/// Create a new empty MultiBrush with a default weight of 1.0.
+		/// </summary>
 		public MultiBrush(Map map, ModData modData)
 		{
 			Weight = 1.0f;
@@ -85,9 +85,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			shape = other.shape.ToArray();
 		}
 
-		// <summary>
-		// Clone the brush. Note that this does not deep clone any ActorPlans.
-		// </summary>
+		/// <summary>
+		/// Clone the brush. Note that this does not deep clone any ActorPlans.
+		/// </summary>
 		public MultiBrush Clone()
 		{
 			return new MultiBrush(this);
@@ -114,11 +114,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			shape = xys.OrderBy(xy => (xy.Y, xy.X)).ToArray();
 		}
 
-		// <summary>
-		// Add tiles from a template, optionally with a given offset. By
-		// default, it will be auto-offset such that the first tile is
-		// under (0, 0).
-		// </summary>
+		/// <summary>
+		/// Add tiles from a template, optionally with a given offset. By
+		/// default, it will be auto-offset such that the first tile is
+		/// under (0, 0).
+		/// </summary>
 		public MultiBrush WithTemplate(ushort templateId, int2? offset = null)
 		{
 			var tileset = ModData.DefaultTerrainInfo[Map.Tileset] as ITemplatedTerrainInfo;
@@ -144,7 +144,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			return this;
 		}
 
-		// <summary>Add a single tile at (0, 0).</summary>
+		/// <summary>Add a single tile at (0, 0).</summary>
 		public MultiBrush WithTile(TerrainTile tile)
 		{
 			tiles.Add((new int2(0, 0), tile));
@@ -152,7 +152,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			return this;
 		}
 
-		// <summary>Add an actor at (0, 0).</summary>
+		/// <summary>Add an actor at (0, 0).</summary>
 		public MultiBrush WithActor(ActorPlan actor)
 		{
 			actorPlans.Add(actor);
@@ -160,11 +160,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			return this;
 		}
 
-		// <summary>
-		// For all spaces occupied by the brush, add the given tile.
-		//
-		// This is useful for adding a backing tile for actors.
-		// </summary>
+		/// <summary>
+		/// <para>For all spaces occupied by the brush, add the given tile.</para>
+		/// <para>This is useful for adding a backing tile for actors.</para>
+		/// </summary>
 		public MultiBrush WithBackingTile(TerrainTile tile)
 		{
 			if (Area == 0)
@@ -177,20 +176,18 @@ namespace OpenRA.Mods.Common.MapUtils
 			return this;
 		}
 
-		// <summary>Update the weight.</summary>
+		/// <summary>Update the weight.</summary>
 		public MultiBrush WithWeight(float weight)
 		{
 			Weight = weight;
 			return this;
 		}
 
-		// <summary>
-		// Paint tiles onto the map and/or add actors to actorPlans at the given location.
-		//
-		// contract specifies whether tiles or actors are allowed to be painted.
-		//
-		// If nothing could be painted, throws ArgumentException.
-		// </summary>
+		/// <summary>
+		/// <para>Paint tiles onto the map and/or add actors to actorPlans at the given location.</para>
+		/// <para>contract specifies whether tiles or actors are allowed to be painted.</para>
+		/// <para>If nothing could be painted, throws ArgumentException.</para>
+		/// </summary>
 		public void Paint(List<ActorPlan> actorPlans, int2 paintXY, Replaceability contract)
 		{
 			switch (contract)
@@ -241,9 +238,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 		}
 
-		// <summary>
-		// Paint an area defined by replace onto map and actorPlans using availableBrushes.
-		// </summary>
+		/// <summary>
+		/// Paint an area defined by replace onto map and actorPlans using availableBrushes.
+		/// </summary>
 		public static void PaintArea(
 			Map map,
 			List<ActorPlan> actorPlans,

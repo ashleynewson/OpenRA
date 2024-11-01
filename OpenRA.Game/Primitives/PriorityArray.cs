@@ -13,9 +13,9 @@ using System;
 
 namespace OpenRA.Primitives
 {
-	// <summary>
-	// A random-access array which keeps track of the minimum item.
-	// </summary>
+	/// <summary>
+	/// A random-access array which keeps track of the minimum item.
+	/// </summary>
 	public sealed class PriorityArray<T> where T : IComparable<T>
 	{
 		readonly T[] items;
@@ -23,9 +23,9 @@ namespace OpenRA.Primitives
 		readonly int[] itemIndexToHeapIndex;
 		readonly int[] heapOfItemIndices;
 
-		// <summary>
-		// Create a new PriorityArray of given size with all values preset to the given init value.
-		// </summary>
+		/// <summary>
+		/// Create a new PriorityArray of given size with all values preset to the given init value.
+		/// </summary>
 		public PriorityArray(int size, T init)
 		{
 			items = new T[size];
@@ -42,7 +42,7 @@ namespace OpenRA.Primitives
 
 		public int Length => items.Length;
 
-		// <summary>Get the index of the minimum element</summary>
+		/// <summary>Get the index of the minimum element</summary>
 		public int GetMinIndex() => heapOfItemIndices[0];
 
 		public T this[int itemIndex]

@@ -90,7 +90,7 @@ namespace OpenRA.Support
 
 		/// <summary>
 		/// Produces random 32-bit floats between 0 inclusive and 1 inclusive.
-		/// Note that whilst floats are 32-bit (22-bit mantissa), the entropy is not. Lower numbers preserve more entropy.
+		/// Note that whilst floats are 32-bit (23-bit mantissa), the entropy is not. Lower numbers preserve more entropy.
 		/// </summary>
 		public float NextFloat()
 		{
@@ -115,9 +115,9 @@ namespace OpenRA.Support
 			return (NextUlong() & 0xfffffffffffffL) / (double)0x10000000000000L;
 		}
 
-		// <summary>
-		// Pick a random an index from a list of weights.
-		// </summary>
+		/// <summary>
+		/// Pick a random an index from a list of weights.
+		/// </summary>
 		public int PickWeighted(IReadOnlyList<float> weights)
 		{
 			var total = weights.Sum();
@@ -148,14 +148,9 @@ namespace OpenRA.Support
 			return Next(0, weights.Count);
 		}
 
-		public void ShuffleInPlace<T>(IList<T> list)
-		{
-			ShuffleInPlace(list, 0, list.Count);
-		}
-
-		// <summary>
-		// Shuffle a list in place. Has minor biases.
-		// </summary>
+		/// <summary>
+		/// Shuffle a portion of a list list in place. Has minor biases.
+		/// </summary>
 		public void ShuffleInPlace<T>(IList<T> list, int start, int len)
 		{
 			for (var i = len; i > 1; i--)
