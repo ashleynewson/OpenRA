@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 
 namespace OpenRA.Mods.Common.Terrain
@@ -17,6 +18,7 @@ namespace OpenRA.Mods.Common.Terrain
 	{
 		string[] EditorTemplateOrder { get; }
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates { get; }
+		IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates { get; }
 	}
 
 	public interface ITerrainInfoNotifyMapCreated : ITerrainInfo
@@ -32,6 +34,8 @@ namespace OpenRA.Mods.Common.Terrain
 		public readonly string[] Categories;
 
 		readonly TerrainTileInfo[] tileInfo;
+
+		public readonly TemplateSegment[] Segments;
 
 		public TerrainTemplateInfo(ITerrainInfo terrainInfo, MiniYaml my)
 		{
@@ -71,6 +75,19 @@ namespace OpenRA.Mods.Common.Terrain
 
 					tileInfo[key] = LoadTileInfo(terrainInfo, node.Value);
 				}
+			}
+
+			var segmentsNode = my.NodeWithKeyOrDefault("Segments");
+			if (segmentsNode != null)
+			{
+				Segments = new TemplateSegment[segmentsNode.Value.Nodes.Length];
+				var i = 0;
+				foreach (var segmentNode in segmentsNode.Value.Nodes)
+					Segments[i++] = new TemplateSegment(segmentNode.Value);
+			}
+			else
+			{
+				Segments = Array.Empty<TemplateSegment>();
 			}
 		}
 

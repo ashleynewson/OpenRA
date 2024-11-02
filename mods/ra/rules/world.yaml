@@ -157,6 +157,12 @@
 				Sequences: gem01, gem02, gem03, gem04
 				Palette: player
 				Name: resource-minerals
+	RaMapGenerator@ra:
+		Type: ra
+		Name: map-generator-ra
+	ClearMapGenerator@clear:
+		Type: clear
+		Name: map-generator-clear
 
 World:
 	Inherits: ^BaseWorld

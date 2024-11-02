@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -658,5 +659,60 @@ namespace OpenRA.Traits
 	{
 		bool CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses);
 		LongBitSet<PlayerBitMask> CrushableBy(Actor self, BitSet<CrushClass> crushClasses);
+	}
+
+	public class MapGenerationException : Exception
+	{
+		public MapGenerationException(string message)
+			: base(message) { }
+		public MapGenerationException(string message, Exception inner)
+			: base(message, inner) { }
+	}
+
+	public interface IMapGeneratorInfo : ITraitInfoInterface
+	{
+		string Type { get; }
+		string Name { get; }
+	}
+
+	public interface IMapGenerator
+	{
+		/// <summary>
+		/// Get the default settings for the map generator.
+		/// </summary>
+		IEnumerable<MapGeneratorSetting> GetDefaultSettings(Map map, ModData modData);
+
+		/// <summary>
+		/// Get the settings for a particular preset (or default if null).
+		/// </summary>
+		IEnumerable<MapGeneratorSetting> GetPresetSettings(Map map, ModData modData, string name)
+		{
+			if (name != null) throw new ArgumentException("Invalid preset");
+			return GetDefaultSettings(map, modData);
+		}
+
+		/// <summary>
+		/// Return a list of names of settings presets. (Internal name and display text.)
+		/// </summary>
+		IEnumerable<KeyValuePair<string, string>> GetPresets(Map map, ModData modData)
+		{
+			return ImmutableList<KeyValuePair<string, string>>.Empty;
+		}
+
+		/// <summary>
+		/// Generate or manipulate a supplied map in-place.
+		/// </summary>
+		/// <exception cref="MapGenerationException">
+		/// Thrown if the map could not be generated with the requested configuration. Map should be discarded.
+		/// </exception>
+		void Generate(Map map, ModData modData, MersenneTwister random, IEnumerable<MapGeneratorSetting> settings);
+
+		/// <summary>
+		/// Return true iff this map generator should be shown in the editor for a map like the one
+		/// supplied (e.g. due to tileset constraints). The map is not altered.
+		/// </summary>)
+		bool ShowInEditor(Map map, ModData modData);
+
+		IMapGeneratorInfo Info { get; }
 	}
 }
