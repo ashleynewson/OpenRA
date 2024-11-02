@@ -75,7 +75,6 @@ label-marker-mirror-mode = Mirror Mode
 label-marker-axis-angle = Axis Angle
 label-map-generator-generator = Generator
 label-map-generator-seed = Seed
-button-map-generator-clear = Clear
 button-map-generator-generate = Generate
 button-map-generator-generate-random = Generate Random
 dropdownbutton-map-generator-presets = Settings Presets

@@ -21,8 +21,8 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	[Desc("Map generator for Red Alert maps.")]
-	[TraitLocation(SystemActors.World)]
 	public sealed class RaMapGeneratorInfo : TraitInfo, IMapGeneratorInfo
 	{
 		[FieldLoader.Require]
@@ -154,9 +154,9 @@ namespace OpenRA.Mods.Common.Traits
 		[FluentReference]
 		const string StrMaximumMinesPerExpansion = "label-ra-map-generator-maximum-mines-per-expansion";
 		[FluentReference]
-		const string StrMinimumExpansionsSize = "label-ra-map-generator-minimum-expansions-size";
+		const string StrMinimumExpansionSize = "label-ra-map-generator-minimum-expansion-size";
 		[FluentReference]
-		const string StrMaximumExpansionsSize = "label-ra-map-generator-maximum-expansions-size";
+		const string StrMaximumExpansionSize = "label-ra-map-generator-maximum-expansion-size";
 		[FluentReference]
 		const string StrExpansionInner = "label-ra-map-generator-expansion-inner";
 		[FluentReference]
@@ -278,8 +278,8 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("OreClumpiness", FluentProvider.GetString(StrOreClumpiness), new MapGeneratorSetting.FloatValue(0.25)),
 				new MapGeneratorSetting("MaximumExpansionMines", FluentProvider.GetString(StrMaximumExpansionMines), new MapGeneratorSetting.IntegerValue(5)),
 				new MapGeneratorSetting("MaximumMinesPerExpansion", FluentProvider.GetString(StrMaximumMinesPerExpansion), new MapGeneratorSetting.IntegerValue(2)),
-				new MapGeneratorSetting("MinimumExpansionSize", FluentProvider.GetString(StrMinimumExpansionsSize), new MapGeneratorSetting.IntegerValue(2)),
-				new MapGeneratorSetting("MaximumExpansionSize", FluentProvider.GetString(StrMaximumExpansionsSize), new MapGeneratorSetting.IntegerValue(12)),
+				new MapGeneratorSetting("MinimumExpansionSize", FluentProvider.GetString(StrMinimumExpansionSize), new MapGeneratorSetting.IntegerValue(2)),
+				new MapGeneratorSetting("MaximumExpansionSize", FluentProvider.GetString(StrMaximumExpansionSize), new MapGeneratorSetting.IntegerValue(12)),
 				new MapGeneratorSetting("ExpansionInner", FluentProvider.GetString(StrExpansionInner), new MapGeneratorSetting.IntegerValue(2)),
 				new MapGeneratorSetting("ExpansionBorder", FluentProvider.GetString(StrExpansionBorder), new MapGeneratorSetting.IntegerValue(1)),
 				new MapGeneratorSetting("MinimumBuildings", FluentProvider.GetString(StrMinimumBuildings), new MapGeneratorSetting.IntegerValue(0)),
