@@ -1123,7 +1123,7 @@ keycode =
 ## MapGeneratorToolLogic
 label-map-generator-default-settings = Default settings
 label-map-generator-failed-cancel = Dismiss
-notification-map-generator-generated = Generated { $name } map ({ $seed })
+notification-map-generator-generated = Generated map { $seed } ({ $name })
 notification-map-generator-failed = Map generation failed
 
 ## ClearMapGenerator

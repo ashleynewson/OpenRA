@@ -374,7 +374,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				false);
 
 			var description = FluentProvider.GetString(StrGenerated,
-				"name", selectedGenerator.Info.Name,
+				"name", FluentProvider.GetString(selectedGenerator.Info.Name),
 				"seed", seed);
 			var action = new RandomMapEditorAction(editorBlit, description);
 			editorActionManager.Add(action);
