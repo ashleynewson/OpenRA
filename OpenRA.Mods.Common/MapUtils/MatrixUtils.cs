@@ -29,10 +29,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			for (var y = 0; y < matrix.Size.Y; y++)
 			{
 				for (var x = 0; x < matrix.Size.X; x++)
-				{
 					Console.Error.Write(matrix[x, y] ? "\u001b[0;42m .\u001b[m" : "\u001b[m .");
-				}
-
 				Console.Error.Write("\n");
 			}
 
@@ -180,11 +177,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			var output = new Matrix<float>(passable.Size).Fill(float.PositiveInfinity);
 			var unprocessed = new PriorityArray<float>(passable.Size.X * passable.Size.Y, float.PositiveInfinity);
 			foreach (var seed in seeds)
-			{
 				unprocessed[passable.Index(seed)] = 0;
-			}
 
-			while (true)
+			for (;;)
 			{
 				var i = unprocessed.GetMinIndex();
 				var distance = unprocessed[i];
@@ -241,9 +236,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			var holes = new Matrix<int>(size);
 			var holeCount = 0;
 			for (var y = 0; y < space.Size.Y; y++)
-			{
 				for (var x = 0; x < space.Size.X; x++)
-				{
 					if (!space[x, y] && holes[x, y] == 0)
 					{
 						holeCount++;
@@ -262,8 +255,6 @@ namespace OpenRA.Mods.Common.MapUtils
 
 						FloodFill(space.Size, new[] { (new int2(x, y), holeCount) }, Filler, Direction.Spread4);
 					}
-				}
-			}
 
 			const int UNASSIGNED = int.MaxValue;
 			var voronoi = new Matrix<int>(size);
@@ -272,14 +263,12 @@ namespace OpenRA.Mods.Common.MapUtils
 			var midN = (size.X * size.Y + 1) / 2;
 			var seeds = new List<(int2, (int, int2, int))>();
 			for (var y = 0; y < size.Y; y++)
-			{
 				for (var x = 0; x < size.X; x++)
 				{
 					var xy = new int2(x, y);
 					if (holes[xy] != 0)
 						seeds.Add((xy, (holes[xy], xy, closestN.Index(x, y))));
 				}
-			}
 
 			if (!outsideSpace)
 			{
@@ -350,7 +339,6 @@ namespace OpenRA.Mods.Common.MapUtils
 				new(0, 0)
 			};
 			for (var cy = 0; cy < deflatedSize.Y; cy++)
-			{
 				for (var cx = 0; cx < deflatedSize.X; cx++)
 				{
 					for (var neighbor = 0; neighbor < 4; neighbor++)
@@ -366,7 +354,6 @@ namespace OpenRA.Mods.Common.MapUtils
 						(neighborhood[3] != neighborhood[2] ? Direction.MD : 0) |
 						(neighborhood[2] != neighborhood[0] ? Direction.ML : 0));
 				}
-			}
 
 			return deflated;
 		}
@@ -380,13 +367,11 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var output = new Matrix<bool>(input.Size).Fill(!dilate);
 			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
 					void InnerLoop()
 					{
 						for (var ky = 0; ky < kernel.Size.Y; ky++)
-						{
 							for (var kx = 0; kx < kernel.Size.X; kx++)
 							{
 								var x = cx + kx - kernelCenter.X;
@@ -399,12 +384,10 @@ namespace OpenRA.Mods.Common.MapUtils
 									return;
 								}
 							}
-						}
 					}
 
 					InnerLoop();
 				}
-			}
 
 			return output;
 		}
@@ -433,9 +416,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			// Instead of dividing by sqrt(PI * dsd2), divide by the total.
 			for (var i = 0; i < span; i++)
-			{
 				kernel[i] /= total;
-			}
 
 			return kernel;
 		}
@@ -447,26 +428,23 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var output = new Matrix<float>(input.Size);
 			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
 					var total = 0.0f;
 					var samples = 0;
 					for (var ky = 0; ky < kernel.Size.Y; ky++)
-					{
 						for (var kx = 0; kx < kernel.Size.X; kx++)
 						{
 							var x = cx + kx - kernelCenter.X;
 							var y = cy + ky - kernelCenter.Y;
-							if (!input.ContainsXY(x, y)) continue;
+							if (!input.ContainsXY(x, y))
+								continue;
 							total += input[x, y] * kernel[kx, ky];
 							samples++;
 						}
-					}
 
 					output[cx, cy] = total / samples;
 				}
-			}
 
 			return output;
 		}
@@ -489,7 +467,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			Matrix<T> matrix, IEnumerable<ActorPlan> actorPlans, Func<T, T> setTo)
 		{
 			foreach (var actorPlan in actorPlans)
-			{
 				foreach (var (cpos, _) in actorPlan.Footprint())
 				{
 					var mpos = cpos.ToMPos(actorPlan.Map);
@@ -497,7 +474,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (matrix.ContainsXY(xy))
 						matrix[xy] = setTo(matrix[xy]);
 				}
-			}
 		}
 
 		/// <summary>
@@ -508,13 +484,11 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var output = new Matrix<float>(input.Size + new int2(1, 1));
 			for (var cy = 0; cy < output.Size.Y; cy++)
-			{
 				for (var cx = 0; cx < output.Size.X; cx++)
 				{
 					var total = 0.0f;
 					var samples = 0;
 					for (var ry = -radius; ry < radius; ry++)
-					{
 						for (var rx = -radius; rx < radius; rx++)
 						{
 							var y = cy + ry;
@@ -524,12 +498,10 @@ namespace OpenRA.Mods.Common.MapUtils
 							total += input[x, y];
 							samples++;
 						}
-					}
 
 					var mean = total / samples;
 					var sumOfSquares = 0.0f;
 					for (var ry = -radius; ry < radius; ry++)
-					{
 						for (var rx = -radius; rx < radius; rx++)
 						{
 							var y = cy + ry;
@@ -538,11 +510,9 @@ namespace OpenRA.Mods.Common.MapUtils
 								continue;
 							sumOfSquares += MathF.Pow(mean - input[x, y], 2);
 						}
-					}
 
 					output[cx, cy] = sumOfSquares / samples;
 				}
-			}
 
 			return output;
 		}
@@ -590,15 +560,10 @@ namespace OpenRA.Mods.Common.MapUtils
 			for (var cy = 0; cy < input.Size.Y; cy++)
 			{
 				var trueCount = 0;
-				{
-					for (var ox = -radius; ox <= radius; ox++)
-					{
-						if (input[input.ClampXY(new int2(ox, cy))])
-							trueCount++;
-					}
-
-					hTrueCounts[0, cy] = trueCount;
-				}
+				for (var ox = -radius; ox <= radius; ox++)
+					if (input[input.ClampXY(new int2(ox, cy))])
+						trueCount++;
+				hTrueCounts[0, cy] = trueCount;
 
 				for (var cx = 1; cx < input.Size.X; cx++)
 				{
@@ -629,14 +594,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			for (var cx = 0; cx < input.Size.X; cx++)
 			{
 				var trueCount = 0;
-				{
-					for (var oy = -radius; oy <= radius; oy++)
-					{
-						trueCount += hTrueCounts[hTrueCounts.ClampXY(new int2(cx, oy))];
-					}
-
-					OutputForXY(cx, 0, trueCount);
-				}
+				for (var oy = -radius; oy <= radius; oy++)
+					trueCount += hTrueCounts[hTrueCounts.ClampXY(new int2(cx, oy))];
+				OutputForXY(cx, 0, trueCount);
 
 				for (var cy = 1; cy < input.Size.Y; cy++)
 				{
@@ -663,23 +623,20 @@ namespace OpenRA.Mods.Common.MapUtils
 			// hasn't needed optimizing yet.
 			var output = new Matrix<bool>(input.Size).Fill(!foreground);
 			for (var cy = 1 - span; cy < input.Size.Y; cy++)
-			{
 				for (var cx = 1 - span; cx < input.Size.X; cx++)
 				{
 					bool IsRetained()
 					{
 						for (var ry = 0; ry < span; ry++)
-						{
 							for (var rx = 0; rx < span; rx++)
 							{
 								var x = cx + rx;
 								var y = cy + ry;
-								if (!input.ContainsXY(x, y)) continue;
-
+								if (!input.ContainsXY(x, y))
+									continue;
 								if (input[x, y] != foreground)
 									return false;
 							}
-						}
 
 						return true;
 					}
@@ -687,25 +644,20 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (!IsRetained()) continue;
 
 					for (var ry = 0; ry < span; ry++)
-					{
 						for (var rx = 0; rx < span; rx++)
 						{
 							var x = cx + rx;
 							var y = cy + ry;
-							if (!input.ContainsXY(x, y)) continue;
-
+							if (!input.ContainsXY(x, y))
+								continue;
 							output[x, y] = foreground;
 						}
-					}
 				}
-			}
 
 			var changes = 0;
 			for (var i = 0; i < input.Data.Length; i++)
-			{
 				if (input[i] != output[i])
 					changes++;
-			}
 
 			return (output, changes);
 		}
@@ -759,26 +711,18 @@ namespace OpenRA.Mods.Common.MapUtils
 		static float ArrayQuantile(float[] array, float quantile)
 		{
 			if (array.Length == 0)
-			{
 				throw new ArgumentException("Cannot get quantile of empty array");
-			}
 
 			var iFloat = quantile * (array.Length - 1);
 			if (iFloat < 0)
-			{
 				iFloat = 0;
-			}
 
 			if (iFloat > array.Length - 1)
-			{
 				iFloat = array.Length - 1;
-			}
 
 			var iLow = (int)iFloat;
 			if (iLow == iFloat)
-			{
 				return array[iLow];
-			}
 
 			var iHigh = iLow + 1;
 			var weight = iFloat - iLow;
@@ -795,9 +739,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			Array.Sort(sorted);
 			var adjustment = target - ArrayQuantile(sorted, fraction);
 			for (var i = 0; i < matrix.Data.Length; i++)
-			{
 				matrix[i] += adjustment;
-			}
 		}
 
 		/// <summary>
@@ -813,13 +755,11 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			// Find true/false boundaries and map boundary
 			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
 					var pCount = 0;
 					var nCount = 0;
 					for (var oy = -1; oy <= 1; oy++)
-					{
 						for (var ox = -1; ox <= 1; ox++)
 						{
 							var x = cx + ox;
@@ -832,7 +772,6 @@ namespace OpenRA.Mods.Common.MapUtils
 									nCount++;
 							}
 						}
-					}
 
 					if (outsideRoomy && nCount + pCount != 9)
 						continue;
@@ -840,7 +779,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (pCount != 9 && nCount != 9)
 						seeds.Add((new int2(cx, cy), 1));
 				}
-			}
 
 			if (seeds.Count == 0)
 			{
@@ -895,7 +833,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 
 			foreach (var pointArray in pointArrayArray)
-			{
 				for (var i = 1; i < pointArray.Length; i++)
 				{
 					var from = pointArray[i - 1];
@@ -925,7 +862,6 @@ namespace OpenRA.Mods.Common.MapUtils
 							throw new ArgumentException("Unsupported direction for chirality");
 					}
 				}
-			}
 
 			int? FillChirality(int2 point, int prop)
 			{
@@ -961,24 +897,20 @@ namespace OpenRA.Mods.Common.MapUtils
 			var gradientH = new Matrix<sbyte>(matrix.Size);
 			var gradientV = new Matrix<sbyte>(matrix.Size);
 			for (var y = 0; y < matrix.Size.Y; y++)
-			{
 				for (var x = 1; x < matrix.Size.X; x++)
 				{
 					var l = matrix[x - 1, y] ? 1 : 0;
 					var r = matrix[x, y] ? 1 : 0;
 					gradientV[x, y] = (sbyte)(r - l);
 				}
-			}
 
 			for (var y = 1; y < matrix.Size.Y; y++)
-			{
 				for (var x = 0; x < matrix.Size.X; x++)
 				{
 					var u = matrix[x, y - 1] ? 1 : 0;
 					var d = matrix[x, y] ? 1 : 0;
 					gradientH[x, y] = (sbyte)(d - u);
 				}
-			}
 
 			// Looping paths contain the start/end point twice.
 			var paths = new List<int2[]>();
@@ -1060,7 +992,6 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			// Trace loops
 			for (var y = 0; y < matrix.Size.Y; y++)
-			{
 				for (var x = 0; x < matrix.Size.X; x++)
 				{
 					if (gradientH[x, y] > 0)
@@ -1073,7 +1004,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					else if (gradientV[x, y] > 0)
 						TracePath(x, y + 1, Direction.U);
 				}
-			}
 
 			return paths.ToArray();
 		}
@@ -1150,7 +1080,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					{
 						var diff = Matrix<bool>.Zip(midFixLandmass, landmass, (a, b) => a != b);
 						for (var y = 0; y < landmass.Size.Y; y++)
-						{
 							for (var x = 0; x < landmass.Size.X; x++)
 							{
 								if (diff[x, y])
@@ -1160,7 +1089,6 @@ namespace OpenRA.Mods.Common.MapUtils
 										setTo: (_, _) => bias,
 										invert: false);
 							}
-						}
 					}
 				}
 			}
@@ -1208,12 +1136,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			var cornerMask = new Matrix<int>(cornerMaskSpan, cornerMaskSpan);
 
 			for (var y = 0; y < cornerMaskSpan; y++)
-			{
 				for (var x = 0; x < cornerMaskSpan; x++)
-				{
 					cornerMask[x, y] = 1 + width + width - x - y;
-				}
-			}
 
 			cornerMask[0] = 0;
 
@@ -1221,13 +1145,14 @@ namespace OpenRA.Mods.Common.MapUtils
 			var thinness = new Matrix<int>(input.Size);
 			void SetThinness(int x, int y, int v)
 			{
-				if (!input.ContainsXY(x, y)) return;
-				if (input[x, y] == foreground) return;
+				if (!input.ContainsXY(x, y))
+					return;
+				if (input[x, y] == foreground)
+					return;
 				thinness[x, y] = Math.Max(v, thinness[x, y]);
 			}
 
 			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
 					if (input[cx, cy] == foreground)
@@ -1243,7 +1168,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					var ld = l && d;
 					var rd = r && d;
 					for (var ry = 0; ry < cornerMaskSpan; ry++)
-					{
 						for (var rx = 0; rx < cornerMaskSpan; rx++)
 						{
 							if (rd)
@@ -1274,9 +1198,7 @@ namespace OpenRA.Mods.Common.MapUtils
 								SetThinness(x, y, cornerMask[rx, ry]);
 							}
 						}
-					}
 				}
-			}
 
 			var thinnest = thinness.Data.Max();
 			if (thinnest == 0)
@@ -1287,16 +1209,12 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			var changes = 0;
 			for (var y = 0; y < input.Size.Y; y++)
-			{
 				for (var x = 0; x < input.Size.X; x++)
-				{
 					if (thinness[x, y] == thinnest)
 					{
 						input[x, y] = foreground;
 						changes++;
 					}
-				}
-			}
 
 			// Fixes made, with potentially more that can be done in another pass.
 			return changes;

@@ -217,9 +217,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			var floatProjections = RotateAndMirrorPoint(original, size - new int2(1, 1), rotations, mirror);
 			var intProjections = new int2[floatProjections.Length];
 			for (var i = 0; i < floatProjections.Length; i++)
-			{
 				intProjections[i] = new int2((int)MathF.Round(floatProjections[i].X), (int)MathF.Round(floatProjections[i].Y));
-			}
 
 			return intProjections;
 		}
@@ -234,7 +232,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			var projections = RotateAndMirrorGridSquare(original, size, rotations, mirror);
 			var worstSpacingSq = int.MaxValue;
 			for (var i1 = 0; i1 < projections.Length; i1++)
-			{
 				for (var i2 = 0; i2 < projections.Length; i2++)
 				{
 					if (i1 == i2)
@@ -243,7 +240,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (spacingSq < worstSpacingSq)
 						worstSpacingSq = spacingSq;
 				}
-			}
 
 			return (int)MathF.Sqrt(worstSpacingSq);
 		}
@@ -294,9 +290,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			var projections = new List<ActorPlan>(
 				originals.Count * RotateAndMirrorProjectionCount(rotations, mirror));
 			foreach (var original in originals)
-			{
 				projections.AddRange(RotateAndMirrorActorPlan(original, rotations, mirror));
-			}
 
 			return projections.ToImmutableArray();
 		}
@@ -329,14 +323,12 @@ namespace OpenRA.Mods.Common.MapUtils
 		public static void RotateAndMirrorOverGridSquares(int2 size, int rotations, Mirror mirror, Action<int2[], int2> action)
 		{
 			for (var y = 0; y < size.Y; y++)
-			{
 				for (var x = 0; x < size.X; x++)
 				{
 					var destination = new int2(x, y);
 					var sources = RotateAndMirrorGridSquare(destination, size, rotations, mirror);
 					action(sources, destination);
 				}
-			}
 		}
 	}
 }

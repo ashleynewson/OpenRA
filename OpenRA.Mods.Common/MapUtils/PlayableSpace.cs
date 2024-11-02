@@ -72,12 +72,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			var regionMap = new Matrix<int>(size).Fill(NULL_REGION);
 			var playable = new Matrix<Playability>(size).Fill(Playability.Unplayable);
 			for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
-			{
 				for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
-				{
 					playable[x, y] = playabilityMap[map.Tiles[new MPos(x, y)]];
-				}
-			}
 
 			MatrixUtils.ReserveForActorPlansInPlace(
 				playable,
@@ -116,7 +112,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 
 			for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
-			{
 				for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
 				{
 					var start = new int2(x, y);
@@ -132,7 +127,6 @@ namespace OpenRA.Mods.Common.MapUtils
 						Fill(region, start);
 					}
 				}
-			}
 			return (regions.ToArray(), regionMap, playable);
 		}
 	}

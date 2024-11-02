@@ -83,9 +83,7 @@ namespace OpenRA.Mods.Common.Terrain
 				Segments = new TemplateSegment[segmentsNode.Value.Nodes.Length];
 				var i = 0;
 				foreach (var segmentNode in segmentsNode.Value.Nodes)
-				{
 					Segments[i++] = new TemplateSegment(segmentNode.Value);
-				}
 			}
 			else
 			{
