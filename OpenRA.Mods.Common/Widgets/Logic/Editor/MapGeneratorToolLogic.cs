@@ -240,7 +240,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						input.Text = value.Value.ToString(NumberFormatInfo.CurrentInfo);
 						input.OnTextEdited = () =>
 						{
-							var valid = double.TryParse(input.Text, NumberStyles.Integer, NumberFormatInfo.CurrentInfo, out value.Value);
+							var valid = double.TryParse(input.Text, NumberStyles.Float, NumberFormatInfo.CurrentInfo, out value.Value);
 							input.IsValid = () => valid;
 						};
 						break;
