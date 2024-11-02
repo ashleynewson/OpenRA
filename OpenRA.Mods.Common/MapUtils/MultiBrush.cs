@@ -98,18 +98,14 @@ namespace OpenRA.Mods.Common.MapUtils
 			var xys = new HashSet<int2>();
 
 			foreach (var (xy, _) in tiles)
-			{
 				xys.Add(xy);
-			}
 
 			foreach (var actorPlan in actorPlans)
-			{
 				foreach (var cpos in actorPlan.Footprint())
 				{
 					var mpos = cpos.Key.ToMPos(Map);
 					xys.Add(new int2(mpos.U, mpos.V));
 				}
-			}
 
 			shape = xys.OrderBy(xy => (xy.Y, xy.X)).ToArray();
 		}
@@ -126,7 +122,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			if (templateInfo.PickAny)
 				throw new ArgumentException("PickAny not supported - create separate obstacles instead.");
 			for (var y = 0; y < templateInfo.Size.Y; y++)
-			{
 				for (var x = 0; x < templateInfo.Size.X; x++)
 				{
 					var i = y * templateInfo.Size.X + x;
@@ -138,7 +133,6 @@ namespace OpenRA.Mods.Common.MapUtils
 						tiles.Add((new int2(x, y) + (int2)offset, tile));
 					}
 				}
-			}
 
 			UpdateShape();
 			return this;
@@ -169,9 +163,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			if (Area == 0)
 				throw new InvalidOperationException("No area");
 			foreach (var xy in shape)
-			{
 				tiles.Add((xy, tile));
-			}
 
 			return this;
 		}
@@ -290,13 +282,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				indexCount = 0;
 				foreach (var n in replaceIndices)
-				{
 					if (remaining[n])
 					{
 						indices[indexCount] = n;
 						indexCount++;
 					}
-				}
 
 				random.ShuffleInPlace(indices, 0, indexCount);
 			}
@@ -356,9 +346,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					var paintXY = replace.XY(n);
 					var contract = ReserveShape(paintXY, brush.Shape, brush.Contract());
 					if (contract != Replaceability.None)
-					{
 						brush.Paint(actorPlans, paintXY, contract);
-					}
 
 					remainingQuota -= brushArea;
 					if (remainingQuota <= 0)

@@ -42,8 +42,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				get
 				{
-					var direction = Direction
-						?? throw new InvalidOperationException("Direction is null");
+					var direction =
+						Direction ?? throw new InvalidOperationException("Direction is null");
 					return $"{Type}.{MapUtils.Direction.ToString(direction)}";
 				}
 			}
@@ -138,7 +138,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				var templates = new List<TemplateSegment>();
 				foreach (var templateInfo in templatedTerrainInfo.Templates.Values.OrderBy(tti => tti.Id))
-				{
 					foreach (var segment in templateInfo.Segments)
 					{
 						if (startTypes.Any(segment.HasStartType) &&
@@ -148,7 +147,6 @@ namespace OpenRA.Mods.Common.MapUtils
 							templates.Add(segment);
 						}
 					}
-				}
 
 				return templates.ToArray();
 			}
@@ -405,10 +403,8 @@ namespace OpenRA.Mods.Common.MapUtils
 						if (Progress(values[^1], values[0]) < 0)
 							return (values[0], values[^1]);
 						for (var i = 0; i < values.Count - 1; i++)
-						{
 							if (Progress(values[i], values[i + 1]) < 0)
 								return (values[i + 1], values[i]);
-						}
 
 						return (InvalidProgress, InvalidProgress);
 					}
@@ -469,7 +465,6 @@ namespace OpenRA.Mods.Common.MapUtils
 				var separationSeeds = new List<(int2, int)>();
 
 				for (var y = 0; y < size.Y; y++)
-				{
 					for (var x = 0; x < size.X; x++)
 					{
 						var xy = new int2(x, y);
@@ -501,7 +496,6 @@ namespace OpenRA.Mods.Common.MapUtils
 								separationSeeds.Add((xy, 0));
 						}
 					}
-				}
 
 				int? SeparationFiller(int2 xy, int range)
 				{
@@ -533,7 +527,8 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				void RegisterSegmentType(string type)
 				{
-					if (segmentTypeToId.ContainsKey(type)) return;
+					if (segmentTypeToId.ContainsKey(type))
+						return;
 					var newId = segmentTypeToId.Count;
 					segmentTypeToId.Add(type, newId);
 					segmentsByStart.Add(new List<TilingSegment>());
@@ -639,9 +634,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					// pointI > 0 is needed to avoid double-counting the segments's start with the
 					// previous one's end.
 					if (pointI > 0)
-					{
 						deviationAcc += deviations[point];
-					}
 				}
 
 				if (lowProgressionAcc < 0 || highProgressionAcc < 0)
@@ -661,9 +654,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				{
 					var to = from + segment.Moves;
 					if (to.X < 0 || to.X >= size.X || to.Y < 0 || to.Y >= size.Y)
-					{
 						continue;
-					}
 
 					// Most likely to fail. Check first.
 					if (deviations[to] == OverDeviation)
@@ -674,9 +665,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 					var segmentCost = ScoreSegment(segment, from);
 					if (segmentCost == MaxCost)
-					{
 						continue;
-					}
 
 					var toCost = fromCost + segmentCost;
 					var toTypeId = segment.EndTypeId;
@@ -696,7 +685,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			// Needed in case we loop back to the start.
 			costs[pathStartTypeId][pathStart] = MaxCost;
 
-			while (true)
+			for (;;)
 			{
 				var (fromTypeId, from, priority) = GetNextPriority();
 
@@ -720,9 +709,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				{
 					var from = to - segment.Moves;
 					if (from.X < 0 || from.X >= size.X || from.Y < 0 || from.Y >= size.Y)
-					{
 						continue;
-					}
 
 					// Most likely to fail. Check first.
 					if (deviations[from] == OverDeviation)
@@ -733,15 +720,11 @@ namespace OpenRA.Mods.Common.MapUtils
 
 					var segmentCost = ScoreSegment(segment, from);
 					if (segmentCost == MaxCost)
-					{
 						continue;
-					}
 
 					var fromCost = toCost - segmentCost;
 					if (fromCost == costs[segment.StartTypeId][from])
-					{
 						candidates.Add(segment);
-					}
 				}
 
 				Debug.Assert(candidates.Count >= 1, "TraceBack didn't find an original route");
@@ -771,9 +754,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 				// No need to check direction. If that is an issue, I have bigger problems to worry about.
 				while (to != pathStart)
-				{
 					(to, toTypeId) = TraceBackStep(to, toTypeId);
-				}
 			}
 
 			// Traced back in reverse, so reverse the reversal.
@@ -786,7 +767,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			if (template.PickAny)
 				throw new ArgumentException("PaintTemplate does not expect PickAny");
 			for (var y = 0; y < template.Size.Y; y++)
-			{
 				for (var x = 0; x < template.Size.X; x++)
 				{
 					var i = (byte)(y * template.Size.X + x);
@@ -797,7 +777,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (map.Tiles.Contains(mpos))
 						map.Tiles[mpos] = tile;
 				}
-			}
 		}
 
 		/// <summary>
@@ -831,16 +810,12 @@ namespace OpenRA.Mods.Common.MapUtils
 			var newPoints = new int2[points.Length + extensionLength * 2];
 
 			for (var i = 0; i < extensionLength; i++)
-			{
 				newPoints[i] = points[0] - Direction.ToOffset(sd) * (extensionLength - i);
-			}
 
 			Array.Copy(points, 0, newPoints, extensionLength, points.Length);
 
 			for (var i = 0; i < extensionLength; i++)
-			{
 				newPoints[extensionLength + points.Length + i] = points[^1] + Direction.ToOffset(ed) * (i + 1);
-			}
 
 			return newPoints;
 		}
@@ -985,9 +960,7 @@ namespace OpenRA.Mods.Common.MapUtils
 							}
 
 							if (i == scanStart)
-							{
 								break;
-							}
 						}
 
 						prevBend = prevI;
@@ -1147,10 +1120,8 @@ namespace OpenRA.Mods.Common.MapUtils
 				var isLoop = pointArray[0] == pointArray[^1];
 				int firstBad;
 				for (firstBad = 0; firstBad < pointArray.Length; firstBad++)
-				{
 					if (!(mask.ContainsXY(pointArray[firstBad]) && mask[pointArray[firstBad]]))
 						break;
-				}
 
 				if (firstBad == pointArray.Length)
 				{
@@ -1222,9 +1193,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				{
 					outputs.Add(points);
 					foreach (var point in points)
-					{
 						lookup[point] = true;
-					}
 				}
 			}
 
@@ -1235,7 +1204,6 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var output = input.Clone();
 			for (var cy = 0; cy < input.Size.Y; cy++)
-			{
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
 					var dm = input[cx, cy];
@@ -1252,7 +1220,6 @@ namespace OpenRA.Mods.Common.MapUtils
 						}
 					}
 				}
-			}
 
 			for (var x = 0; x < input.Size.X; x++)
 			{
@@ -1280,7 +1247,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			// Loops not handled, but these would be extremely rare anyway.
 			var pointArrays = new List<int2[]>();
 			for (var sy = 0; sy < input.Size.Y; sy++)
-			{
 				for (var sx = 0; sx < input.Size.X; sx++)
 				{
 					var sdm = input[sx, sy];
@@ -1295,7 +1261,6 @@ namespace OpenRA.Mods.Common.MapUtils
 							points.Add(xy);
 							var dm = input[xy] & ~reverseDm;
 							foreach (var (offset, d) in Direction.Spread8D)
-							{
 								if ((dm & (1 << d)) != 0)
 								{
 									xy += offset;
@@ -1304,19 +1269,15 @@ namespace OpenRA.Mods.Common.MapUtils
 									reverseDm = 1 << Direction.Reverse(d);
 									return true;
 								}
-							}
 
 							return false;
 						}
 
-						while (AddPoint())
-						{
-						}
+						while (AddPoint());
 
 						pointArrays.Add(points.ToArray());
 					}
 				}
-			}
 
 			return pointArrays.ToArray();
 		}

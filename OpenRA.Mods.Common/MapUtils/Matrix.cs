@@ -127,10 +127,14 @@ namespace OpenRA.Mods.Common.MapUtils
 		/// <summary>Clamp (x, y) to be the closest index within the matrix.</summary>
 		public (int Nx, int Ny) ClampXY(int x, int y)
 		{
-			if (x >= Size.X) x = Size.X - 1;
-			if (x < 0) x = 0;
-			if (y >= Size.Y) y = Size.Y - 1;
-			if (y < 0) y = 0;
+			if (x >= Size.X)
+				x = Size.X - 1;
+			if (x < 0)
+				x = 0;
+			if (y >= Size.Y)
+				y = Size.Y - 1;
+			if (y < 0)
+				y = 0;
 			return (x, y);
 		}
 
@@ -141,12 +145,8 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var transposed = new Matrix<T>(new int2(Size.Y, Size.X));
 			for (var y = 0; y < Size.Y; y++)
-			{
 				for (var x = 0; x < Size.X; x++)
-				{
 					transposed[y, x] = this[x, y];
-				}
-			}
 
 			return transposed;
 		}
@@ -159,9 +159,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var mapped = new Matrix<R>(Size);
 			for (var i = 0; i < Data.Length; i++)
-			{
 				mapped.Data[i] = func(Data[i]);
-			}
 
 			return mapped;
 		}
@@ -172,9 +170,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		public Matrix<T> Transform(Func<T, T> func)
 		{
 			for (var i = 0; i < Data.Length; i++)
-			{
 				Data[i] = func(Data[i]);
-			}
 
 			return this;
 		}
@@ -253,7 +249,6 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			var radiusSquared = radius * radius;
 			for (var y = minY; y <= maxY; y++)
-			{
 				for (var x = minX; x <= maxX; x++)
 				{
 					var rx = x - center.X;
@@ -262,7 +257,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (rx * rx + ry * ry <= radiusSquared != invert)
 						this[x, y] = setTo(thisRadiusSquared, this[x, y]);
 				}
-			}
 		}
 
 		/// <summary>

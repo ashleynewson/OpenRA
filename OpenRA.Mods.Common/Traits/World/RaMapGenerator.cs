@@ -736,7 +736,8 @@ namespace OpenRA.Mods.Common.Traits
 				var template = kv.Value;
 				for (var ti = 0; ti < template.TilesCount; ti++)
 				{
-					if (template[ti] == null) continue;
+					if (template[ti] == null)
+						continue;
 					var tile = new TerrainTile(id, (byte)ti);
 					var type = tileset.GetTerrainIndex(tile);
 
@@ -843,13 +844,11 @@ namespace OpenRA.Mods.Common.Traits
 			var mapCenter = (size.ToFloat2() - new float2(1.0f, 1.0f)) / 2.0f;
 			var externalCircleRadius = minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness);
 			if (externalCircularBias != 0)
-			{
 				elevation.DrawCircle(
 					center: mapCenter,
 					radius: externalCircleRadius,
 					setTo: (_, _) => externalCircularBias * ExternalBias,
 					invert: true);
-			}
 
 			var landPlan = MatrixUtils.BooleanBlotch(
 				elevation.Map(v => v >= 0),
@@ -957,13 +956,11 @@ namespace OpenRA.Mods.Common.Traits
 				var mountainElevation = elevation.Clone();
 				var cliffPlan = landPlan;
 				if (externalCircularBias > 0)
-				{
 					cliffPlan.DrawCircle(
 						center: mapCenter,
 						radius: minSpan / 2.0f - (minimumLandSeaThickness + minimumMountainThickness),
 						setTo: (_, _) => false,
 						invert: true);
-				}
 
 				for (var altitude = 1; altitude <= maximumAltitude; altitude++)
 				{
@@ -974,14 +971,9 @@ namespace OpenRA.Mods.Common.Traits
 					for (var n = 0; n < mountainElevation.Data.Length; n++)
 					{
 						if (roominess.Data[n] < minimumTerrainContourSpacing)
-						{
-							// Too close to existing cliffs (or coastline)
 							mountainElevation.Data[n] = -1.0f;
-						}
 						else
-						{
 							available++;
-						}
 
 						total++;
 					}
@@ -1048,26 +1040,22 @@ namespace OpenRA.Mods.Common.Traits
 				var forestPlan = forestNoise.Map(v => v >= 0.0f);
 
 				for (var y = 0; y < size.Y; y++)
-				{
 					for (var x = 0; x < size.X; x++)
 					{
 						var mpos = new MPos(x, y);
 						if (map.GetTerrainIndex(mpos) != clearIndex)
 							forestPlan[x, y] = false;
 					}
-				}
 
 				if (forestCutout > 0)
 				{
 					var space = new Matrix<bool>(size);
 					for (var y = 0; y < size.Y; y++)
-					{
 						for (var x = 0; x < size.X; x++)
 						{
 							var mpos = new MPos(x, y);
 							space[x, y] = map.GetTerrainIndex(mpos) == clearIndex;
 						}
-					}
 
 					if (trivialRotate)
 					{
@@ -1089,13 +1077,11 @@ namespace OpenRA.Mods.Common.Traits
 					var kernel = new Matrix<bool>(2 * forestCutout, 2 * forestCutout).Fill(true);
 					var inflated = MatrixUtils.KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(forestCutout - 1, forestCutout - 1), true);
 					for (var y = 0; y < size.Y; y++)
-					{
 						for (var x = 0; x < size.X; x++)
 						{
 							if (inflated[x, y])
 								forestPlan[x, y] = false;
 						}
-					}
 				}
 
 				var forestReplace = Matrix<MultiBrush.Replaceability>.Zip(
@@ -1158,10 +1144,8 @@ namespace OpenRA.Mods.Common.Traits
 						setTo: (_, _) => true,
 						invert: true);
 					for (var n = 0; n < forbiddenSpace.Data.Length; n++)
-					{
 						if (forbiddenSpace[n] && regionMask[n] != PlayableSpace.NULL_REGION)
 							disqualifications.Add(regionMask[n]);
-					}
 				}
 
 				foreach (var region in regions)
@@ -1185,21 +1169,15 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				for (var n = 0; n < playableArea.Data.Length; n++)
-				{
 					playableArea[n] = playability[n] == PlayableSpace.Playability.Playable && regionMask[n] == largest.Id;
-				}
 			}
 
 			if (roads)
 			{
 				var space = new Matrix<bool>(size);
 				for (var y = 0; y < size.Y; y++)
-				{
 					for (var x = 0; x < size.X; x++)
-					{
 						space[x, y] = playableArea[x, y] && tileset.GetTerrainIndex(map.Tiles[new MPos(x, y)]) == clearIndex;
-					}
-				}
 
 				if (trivialRotate)
 				{
@@ -1275,12 +1253,8 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				var zoneable = new Matrix<bool>(size);
 				for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
-				{
 					for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
-					{
 						zoneable[x, y] = playableArea[x, y] && tileset.GetTerrainIndex(map.Tiles[new MPos(x, y)]) == clearIndex;
-					}
-				}
 
 				MatrixUtils.ReserveForActorPlansInPlace(zoneable, actorPlans, (_) => false);
 				if (trivialRotate)
@@ -1299,23 +1273,19 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				if (!trivialRotate || !trivialMirror)
-				{
 					zoneable.DrawCircle(
 						center: mapCenter,
 						radius: minSpan / 2.0f - 1.0f,
 						setTo: (_, _) => false,
 						invert: true);
-				}
 
 				if (rotations > 1 || mirror != 0)
-				{
 					// Reserve the center of the map - otherwise it will mess with rotations
 					zoneable.DrawCircle(
 						center: mapCenter,
 						radius: 1.0f,
 						setTo: (_, _) => false,
 						invert: false);
-				}
 
 				// Spawn generation
 				for (var iteration = 0; iteration < players; iteration++)
@@ -1334,11 +1304,9 @@ namespace OpenRA.Mods.Common.Traits
 						(a, b) => a.CompareTo(b));
 
 					if (chosenValue <= 1)
-					{
 						(chosenXY, chosenValue) = roominess.FindRandomBest(
 							playerRandom,
 							(a, b) => a.CompareTo(b));
-					}
 
 					var room = chosenValue - 1;
 					var spawn = new ActorPlan(map, "mpspawn")
@@ -1378,24 +1346,20 @@ namespace OpenRA.Mods.Common.Traits
 					var projectedSpawns = Symmetry.RotateAndMirrorActorPlan(spawn, rotations, mirror);
 					actorPlans.AddRange(projectedSpawns);
 					foreach (var projectedSpawn in projectedSpawns)
-					{
 						zoneable.DrawCircle(
 							center: projectedSpawn.Int2Location,
 							radius: spawnReservation,
 							setTo: (_, _) => false,
 							invert: false);
-					}
 
 					var projectedMines = Symmetry.RotateAndMirrorActorPlans(mines, rotations, mirror);
 					actorPlans.AddRange(projectedMines);
 					foreach (var projectedMine in projectedMines)
-					{
 						zoneable.DrawCircle(
 							center: projectedMine.Int2Location,
 							radius: mineReservation,
 							setTo: (_, _) => false,
 							invert: false);
-					}
 				}
 
 				// Expansions
@@ -1405,13 +1369,11 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						var expansionZoneable = zoneable.Clone();
 						if (centralExpansionReservationFraction > 0)
-						{
 							expansionZoneable.DrawCircle(
 								center: mapCenter,
 								radius: minSpan * centralExpansionReservationFraction,
 								setTo: (_, _) => false,
 								invert: false);
-						}
 
 						var expansionRoominess = MatrixUtils.ChebyshevRoom(expansionZoneable, false)
 							.Transform((v) => Math.Min(v, maximumExpansionSize + expansionBorder));
@@ -1458,13 +1420,11 @@ namespace OpenRA.Mods.Common.Traits
 						var projectedMines = Symmetry.RotateAndMirrorActorPlans(mines, rotations, mirror);
 						actorPlans.AddRange(projectedMines);
 						foreach (var projectedMine in projectedMines)
-						{
 							zoneable.DrawCircle(
 								center: projectedMine.Int2Location,
 								radius: mineReservation,
 								setTo: (_, _) => false,
 								invert: false);
-						}
 					}
 				}
 
@@ -1509,13 +1469,11 @@ namespace OpenRA.Mods.Common.Traits
 						var projectedBuildings = Symmetry.RotateAndMirrorActorPlan(actorPlan, rotations, mirror);
 						actorPlans.AddRange(projectedBuildings);
 						foreach (var projectedBuilding in projectedBuildings)
-						{
 							zoneable.DrawCircle(
 								center: projectedBuilding.Int2Location,
 								radius: 2.0f,
 								setTo: (_, _) => false,
 								invert: false);
-						}
 					}
 				}
 
@@ -1568,39 +1526,30 @@ namespace OpenRA.Mods.Common.Traits
 
 					var orePlan = new Matrix<float>(size);
 					for (var y = 0; y < size.Y; y++)
-					{
 						for (var x = 0; x < size.X; x++)
-						{
 							if (playableArea[x, y] && map.GetTerrainIndex(new MPos(x, y)) == clearIndex)
 								orePlan[x, y] = orePattern[x, y] * MathF.Max(oreStrength[x, y], gemStrength[x, y]);
 							else
 								orePlan[x, y] = float.NegativeInfinity;
-						}
-					}
 
 					var spawnBuildSizeSq = spawnBuildSize * spawnBuildSize;
 					foreach (var actorPlan in actorPlans)
-					{
 						if (actorPlan.Reference.Type == "mpspawn")
 							orePlan.DrawCircle(
 								center: actorPlan.Int2Location,
 								radius: spawnRegionSize * 2,
 								setTo: (rSq, v) => v * (1.0f + spawnResourceBias * spawnBuildSizeSq / rSq),
 								invert: false);
-					}
 
 					foreach (var actorPlan in actorPlans)
-					{
 						if (actorPlan.Reference.Type == "mpspawn")
 							orePlan.DrawCircle(
 								center: actorPlan.Int2Location,
 								radius: spawnBuildSize,
 								setTo: (_, _) => float.NegativeInfinity,
 								invert: false);
-					}
 
 					foreach (var actorPlan in actorPlans)
-					{
 						foreach (var (cpos, _) in actorPlan.Footprint())
 						{
 							var mpos = cpos.ToMPos(map);
@@ -1608,11 +1557,9 @@ namespace OpenRA.Mods.Common.Traits
 							if (orePlan.ContainsXY(xy))
 								orePlan[xy] = float.NegativeInfinity;
 						}
-					}
 
+					// Improve symmetry
 					if (trivialRotate)
-					{
-						// Improve symmetry
 						Symmetry.RotateAndMirrorOverGridSquares(
 							size,
 							rotations,
@@ -1621,14 +1568,11 @@ namespace OpenRA.Mods.Common.Traits
 								=> orePlan.SetIfWithin(
 									destination,
 									sources.Min(source => orePlan.GetOrDefault(source, float.PositiveInfinity))));
-					}
 
 					var remaining = resourcesPerPlayer * players * Symmetry.RotateAndMirrorProjectionCount(rotations, mirror);
 					var priorities = new PriorityArray<float>(orePlan.Data.Length, float.PositiveInfinity);
 					for (var n = 0; n < orePlan.Data.Length; n++)
-					{
 						priorities[n] = -orePlan[n];
-					}
 
 					const byte ORE_RESOURCE = 1;
 					const byte GEM_RESOURCE = 2;
@@ -1649,7 +1593,6 @@ namespace OpenRA.Mods.Common.Traits
 							return 0;
 						var adjacent = 0;
 						for (var y = c.Y - 1; y <= c.Y + 1; y++)
-						{
 							for (var x = c.X - 1; x <= c.X + 1; x++)
 							{
 								if (!resources.ContainsXY(x, y))
@@ -1657,7 +1600,6 @@ namespace OpenRA.Mods.Common.Traits
 								if (resources[x, y] == resource)
 									adjacent++;
 							}
-						}
 
 						var maxDensity =
 							resource == ORE_RESOURCE ? 12 : 3;
@@ -1673,12 +1615,8 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						var total = 0;
 						for (var y = c.Y - 1; y <= c.Y + 1; y++)
-						{
 							for (var x = c.X - 1; x <= c.X + 1; x++)
-							{
 								total += CheckValue(new int2(x, y));
-							}
-						}
 
 						return total;
 					}
@@ -1688,11 +1626,10 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						var n = resources.Index(c);
 						priorities[n] = float.PositiveInfinity;
+
+						// Generally shouldn't happen, but perhaps a rotation/mirror related inaccuracy.
 						if (resources[n] != 0)
-						{
-							// Generally shouldn't happen, but perhaps a rotation/mirror related inaccuracy.
 							return 0;
-						}
 
 						var oldValue = CheckValue3By3(c);
 						resources[n] = resource;
@@ -1721,12 +1658,8 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					for (var y = 0; y < size.Y; y++)
-					{
 						for (var x = 0; x < size.X; x++)
-						{
 							map.Resources[new MPos(x, y)] = new ResourceTile(resources[x, y], densities[x, y]);
-						}
-					}
 				}
 			}
 
@@ -1769,7 +1702,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Mark areas close to the center or mirror lines as last resort.
 			for (var y = 0; y < size.Y; y++)
-			{
 				for (var x = 0; x < size.X; x++)
 				{
 					if (preferences[x, y] <= 1)
@@ -1808,7 +1740,6 @@ namespace OpenRA.Mods.Common.Traits
 					if (worstSpacing < preferences[x, y])
 						preferences[x, y] = worstSpacing;
 				}
-			}
 
 			return preferences;
 		}

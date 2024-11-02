@@ -128,21 +128,15 @@ namespace OpenRA.Support
 			{
 				acc += weights[i];
 				if (spin < acc)
-				{
 					return i;
-				}
 			}
 
 			// This might be possible due to floating point precision loss
 			// (in rare cases). Or we might have been given rubbish
 			// weights. Return anything > 0.
 			for (i = 0; i < weights.Count; i++)
-			{
 				if (weights[i] > 0)
-				{
 					return i;
-				}
-			}
 
 			// All <= 0!
 			return Next(0, weights.Count);

@@ -24,33 +24,33 @@ namespace OpenRA.Test
 		[TestCase(int.MaxValue)]
 		public void PriorityArraySequentialTest(int initialValue)
 		{
-			var input = new KeyValuePair<int, int>[]{
-				new KeyValuePair<int, int>(0, 1),
-				new KeyValuePair<int, int>(1, 5),
-				new KeyValuePair<int, int>(2, 3),
-				new KeyValuePair<int, int>(3, 2),
-				new KeyValuePair<int, int>(4, 8),
-				new KeyValuePair<int, int>(5, 7),
-				new KeyValuePair<int, int>(6, 4),
-				new KeyValuePair<int, int>(7, 6)
+			var input = new KeyValuePair<int, int>[]
+			{
+				new(0, 1),
+				new(1, 5),
+				new(2, 3),
+				new(3, 2),
+				new(4, 8),
+				new(5, 7),
+				new(6, 4),
+				new(7, 6)
 			};
-			var expected = new KeyValuePair<int, int>[]{
-				new KeyValuePair<int, int>(0, 1),
-				new KeyValuePair<int, int>(3, 2),
-				new KeyValuePair<int, int>(2, 3),
-				new KeyValuePair<int, int>(6, 4),
-				new KeyValuePair<int, int>(1, 5),
-				new KeyValuePair<int, int>(7, 6),
-				new KeyValuePair<int, int>(5, 7),
-				new KeyValuePair<int, int>(4, 8)
+			var expected = new KeyValuePair<int, int>[]
+			{
+				new(0, 1),
+				new(3, 2),
+				new(2, 3),
+				new(6, 4),
+				new(1, 5),
+				new(7, 6),
+				new(5, 7),
+				new(4, 8)
 			};
 
 			var pa = new PriorityArray<int>(8, initialValue);
 
 			foreach (var kv in input)
-			{
 				pa[kv.Key] = kv.Value;
-			}
 
 			var readback = new KeyValuePair<int, int>[8];
 			for (var i = 0; i < 8; i++)

@@ -44,9 +44,7 @@ namespace OpenRA.Mods.Common.Terrain
 		public static bool MatchesType(string type, string matcher)
 		{
 			if (type == matcher)
-			{
 				return true;
-			}
 
 			return type.StartsWith($"{matcher}.", StringComparison.InvariantCulture);
 		}

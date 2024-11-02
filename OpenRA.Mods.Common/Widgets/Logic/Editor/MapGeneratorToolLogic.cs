@@ -315,9 +315,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void GenerateMapMayThrow()
 		{
 			if (!int.TryParse(seedTextFieldWidget.Text, out var seed))
-			{
 				throw new MapGenerationException("Invalid seed.");
-			}
 
 			var random = new MersenneTwister(seed);
 			var map = world.Map;
@@ -359,9 +357,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var actorReference = new ActorReference(kv.Value.Value, kv.Value.ToDictionary());
 				var ownerInit = actorReference.Get<OwnerInit>();
 				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
-				{
 					throw new MapGenerationException("Generator produced mismatching player and actor definitions.");
-				}
 
 				var preview = new EditorActorPreview(worldRenderer, kv.Key, actorReference, owner);
 				previews.Add(kv.Key, preview);

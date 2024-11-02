@@ -217,10 +217,8 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var count = 0;
 			for (var m = dm; m != 0; m >>= 1)
-			{
 				if ((m & 1) == 1)
 					count++;
-			}
 
 			return count;
 		}

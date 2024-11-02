@@ -108,8 +108,6 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		public bool ShowInEditor(Map map, ModData modData)
-		{
-			return true;
-		}
+			=> true;
 	}
 }
