@@ -179,7 +179,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			foreach (var seed in seeds)
 				unprocessed[passable.Index(seed)] = 0;
 
-			for (;;)
+			while (true)
 			{
 				var i = unprocessed.GetMinIndex();
 				var distance = unprocessed[i];
@@ -398,7 +398,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		/// </para>
 		/// <para>
 		/// This can be applied once, transposed, then applied again to perform a full gaussian blur.
-		/// See <see cref="GaussianBlur"/>
+		/// See <see cref="GaussianBlur"/>.
 		/// </para>
 		/// </summary>
 		public static Matrix<float> GaussianKernel1D(int radius, float standardDeviation)
@@ -538,7 +538,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		/// Runtime complexity is approximately O(input.Size) for small radii.
 		/// A more precise complexity would be
 		///   O((input.Size.X + radius) * input.Size.Y +
-		///     input.Size.X            * (input.Size.Y + radius))
+		///     input.Size.X            * (input.Size.Y + radius)).
 		/// </para>
 		/// </summary>
 		public static (Matrix<bool> Output, int Changes) BooleanBlur(

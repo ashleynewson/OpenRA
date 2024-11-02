@@ -41,13 +41,16 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			/// <summary>Area of playable and partially playable space.</summary>
 			public int Area;
+
 			/// <summary>Area of fully playable space.</summary>
 			public int PlayableArea;
+
 			/// <summary>Region ID.</summary>
 			public int Id;
 		}
 
-		public const int NULL_REGION = -1;
+		/// <summary>Sentinel indicating a position isn't assigned to a region.</summary>
+		public const int NullRegion = -1;
 
 		/// <summary>
 		/// <para>
@@ -59,7 +62,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		/// </para>
 		/// <para>
 		/// RegionMap contains the mapping of map positions to Regions. If a map position is not
-		/// within a region, the value is NULL_REGION.
+		/// within a region, the value is NullRegion.
 		/// </para>
 		/// </summary>
 		public static (Region[] Regions, Matrix<int> RegionMap, Matrix<Playability> Playable) FindPlayableRegions(
@@ -69,7 +72,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		{
 			var size = map.MapSize;
 			var regions = new List<Region>();
-			var regionMap = new Matrix<int>(size).Fill(NULL_REGION);
+			var regionMap = new Matrix<int>(size).Fill(NullRegion);
 			var playable = new Matrix<Playability>(size).Fill(Playability.Unplayable);
 			for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
 				for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
@@ -91,7 +94,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 				bool? Filler(int2 xy, bool fullyPlayable)
 				{
-					if (regionMap[xy] == NULL_REGION)
+					if (regionMap[xy] == NullRegion)
 					{
 						if (fullyPlayable && playable[xy] == Playability.Playable)
 						{
@@ -115,7 +118,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				for (var x = map.Bounds.Left; x < map.Bounds.Right; x++)
 				{
 					var start = new int2(x, y);
-					if (regionMap[start] == NULL_REGION && playable[start] == Playability.Playable)
+					if (regionMap[start] == NullRegion && playable[start] == Playability.Playable)
 					{
 						var region = new Region()
 						{
@@ -123,10 +126,12 @@ namespace OpenRA.Mods.Common.MapUtils
 							PlayableArea = 0,
 							Id = regions.Count,
 						};
+
 						regions.Add(region);
 						Fill(region, start);
 					}
 				}
+
 			return (regions.ToArray(), regionMap, playable);
 		}
 	}

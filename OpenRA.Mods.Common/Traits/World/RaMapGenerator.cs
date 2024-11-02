@@ -262,8 +262,10 @@ namespace OpenRA.Mods.Common.Traits
 				new MapGeneratorSetting("RoadShrink", FluentProvider.GetString(StrRoadShrink), new MapGeneratorSetting.IntegerValue(0)),
 				new MapGeneratorSetting("#Entities", FluentProvider.GetString(StrEntities), new MapGeneratorSetting.SectionValue()),
 				new MapGeneratorSetting("CreateEntities", FluentProvider.GetString(StrCreateEntities), new MapGeneratorSetting.BooleanValue(true)),
-				new MapGeneratorSetting("CentralSpawnReservationFraction", FluentProvider.GetString(StrCentralSpawnReservationFraction), new MapGeneratorSetting.FloatValue(0.3)),
-				new MapGeneratorSetting("CentralExpansionReservationFraction", FluentProvider.GetString(StrCentralExpansionReservationFraction), new MapGeneratorSetting.FloatValue(0.1)),
+				new MapGeneratorSetting("CentralSpawnReservationFraction", FluentProvider.GetString(StrCentralSpawnReservationFraction),
+					new MapGeneratorSetting.FloatValue(0.3)),
+				new MapGeneratorSetting("CentralExpansionReservationFraction", FluentProvider.GetString(StrCentralExpansionReservationFraction),
+					new MapGeneratorSetting.FloatValue(0.1)),
 				new MapGeneratorSetting("MineReservation", FluentProvider.GetString(StrMineReservation), new MapGeneratorSetting.IntegerValue(8)),
 				new MapGeneratorSetting("SpawnRegionSize", FluentProvider.GetString(StrSpawnRegionSize), new MapGeneratorSetting.IntegerValue(12)),
 				new MapGeneratorSetting("SpawnBuildSize", FluentProvider.GetString(StrSpawnBuildSize), new MapGeneratorSetting.IntegerValue(8)),
@@ -1144,7 +1146,7 @@ namespace OpenRA.Mods.Common.Traits
 						setTo: (_, _) => true,
 						invert: true);
 					for (var n = 0; n < forbiddenSpace.Data.Length; n++)
-						if (forbiddenSpace[n] && regionMask[n] != PlayableSpace.NULL_REGION)
+						if (forbiddenSpace[n] && regionMask[n] != PlayableSpace.NullRegion)
 							disqualifications.Add(regionMask[n]);
 				}
 
@@ -1160,7 +1162,6 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("could not find a playable region");
 				if (denyWalledAreas)
 				{
-
 					var replace = Matrix<MultiBrush.Replaceability>.Zip(
 						regionMask,
 						IdentifyReplaceableTiles(map, replaceabilityMap),
@@ -1280,12 +1281,14 @@ namespace OpenRA.Mods.Common.Traits
 						invert: true);
 
 				if (rotations > 1 || mirror != 0)
+				{
 					// Reserve the center of the map - otherwise it will mess with rotations
 					zoneable.DrawCircle(
 						center: mapCenter,
 						radius: 1.0f,
 						setTo: (_, _) => false,
 						invert: false);
+				}
 
 				// Spawn generation
 				for (var iteration = 0; iteration < players; iteration++)
