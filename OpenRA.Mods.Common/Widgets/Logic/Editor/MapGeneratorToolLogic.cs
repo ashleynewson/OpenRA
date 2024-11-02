@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
@@ -45,7 +46,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		// nullable
 		IMapGenerator selectedGenerator;
 
-		// Should settings be part of the IMapGenerator itself?
 		readonly Dictionary<IMapGenerator, IEnumerable<MapGeneratorSetting>> generatorsToSettings;
 
 		readonly ScrollPanelWidget settingsPanel;
@@ -222,10 +222,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						var label = settingWidget.Get<LabelWidget>("LABEL");
 						var input = settingWidget.Get<TextFieldWidget>("INPUT");
 						label.GetText = () => setting.Label;
-						input.Text = value.Value.ToString();
+						input.Text = value.Value.ToString(NumberFormatInfo.CurrentInfo);
 						input.OnTextEdited = () =>
 						{
-							var valid = long.TryParse(input.Text, out value.Value);
+							var valid = long.TryParse(input.Text, NumberStyles.Integer, NumberFormatInfo.CurrentInfo, out value.Value);
 							input.IsValid = () => valid;
 						};
 						break;
@@ -237,10 +237,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						var label = settingWidget.Get<LabelWidget>("LABEL");
 						var input = settingWidget.Get<TextFieldWidget>("INPUT");
 						label.GetText = () => setting.Label;
-						input.Text = value.Value.ToString();
+						input.Text = value.Value.ToString(NumberFormatInfo.CurrentInfo);
 						input.OnTextEdited = () =>
 						{
-							var valid = double.TryParse(input.Text, out value.Value);
+							var valid = double.TryParse(input.Text, NumberStyles.Integer, NumberFormatInfo.CurrentInfo, out value.Value);
 							input.IsValid = () => valid;
 						};
 						break;
@@ -296,7 +296,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			// Perhaps somewhat unsatisfactory?
 			var seed = Guid.NewGuid().GetHashCode();
-			seedTextFieldWidget.Text = seed.ToString();
+			seedTextFieldWidget.Text = seed.ToString(NumberFormatInfo.CurrentInfo);
 			GenerateMap();
 		}
 
@@ -327,7 +327,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			generatedMap.SetBounds(new PPos(bounds.Left, bounds.Top), new PPos(bounds.Right - 1, bounds.Bottom - 1));
 			var settings = generatorsToSettings[selectedGenerator];
 
-			// Run main generator logic. May throw
+			// Run main generator logic. May throw.
 			var generateStopwatch = Stopwatch.StartNew();
 			Log.Write("debug", $"Running '{selectedGenerator.Info.Type}' map generator with seed {seed}");
 			selectedGenerator.Generate(generatedMap, modData, random, settings);

@@ -42,7 +42,7 @@ namespace OpenRA.Primitives
 
 		public int Length => items.Length;
 
-		/// <summary>Get the index of the minimum element</summary>
+		/// <summary>Get the index of the minimum element.</summary>
 		public int GetMinIndex() => heapOfItemIndices[0];
 
 		public T this[int itemIndex]

@@ -93,7 +93,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			/// <summary>
 			/// Creates a PermittedSegments using only the given types.
 			/// </summary>
-			public static PermittedSegments FromInner(
+			public static PermittedSegments FromType(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> types)
 				=> new(templatedTerrainInfo, FindSegments(templatedTerrainInfo, types));
@@ -102,7 +102,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			/// Creates a PermittedSegments suitable for a path with given inner and terminal types
 			/// at the start and end.
 			/// </summary>
-			public static PermittedSegments FromInnerAndTerminal(
+			public static PermittedSegments FromInnerAndTerminalTypes(
 				ITemplatedTerrainInfo templatedTerrainInfo,
 				IEnumerable<string> innerTypes,
 				IEnumerable<string> terminalTypes)
@@ -128,7 +128,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 
 			/// <summary>
-			/// Find templates that use some combination of the given start, inner, end types.
+			/// Find templates that use some combination of the given start, inner, and end types.
 			/// </summary>
 			public static IEnumerable<TemplateSegment> FindSegments(
 				ITemplatedTerrainInfo templatedTerrainInfo,
@@ -282,9 +282,9 @@ namespace OpenRA.Mods.Common.MapUtils
 			// The search is performed over a 3-dimensional space: (x, y, connection type).
 			// Connection types correspond to the .Start or .End values of TemplateSegments.
 			//
-			// The best found scores of the nodes in this space are stored as an array of matrices.
+			// The best found costs of the nodes in this space are stored as an array of matrices.
 			// There is a matrix for each possible connection type, and each matrix stores the
-			// (current) best scores at the (X, Y) locations for that given connection type.
+			// (current) best costs at the (x, y) locations for that given connection type.
 			//
 			// The directed edges between the nodes of this 3-dimensional space are defined by the
 			// TemplateSegments within the permitted set of templates. For example, a segment
@@ -304,15 +304,15 @@ namespace OpenRA.Mods.Common.MapUtils
 			//
 			// - It must not regress backward along the path (but no immediate progress is OK).
 			// - It must not deviate at any point in the segment beyond MaxDeviation from the path.
-			// - It must not skip to much later path points which are within MaxDeviation.
+			// - It must not skip to much later path points (which may be within MaxDeviation).
 			//
 			// Progress is measured as a combo of both the earliest and latest closest path points.
 			//
-			// The search is conducted from the path start node until the best possible score of
-			// the end node is confirmed. This also populates possible intermediate nodes' scores.
+			// The search is conducted from the path start node until the best possible cost of
+			// the end node is confirmed. This also populates possible intermediate nodes' costs.
 			//
 			// Then, from the end node, it works backwards. It finds any (random) suitable template
-			// segment which connects back to a previous node where the difference in score is
+			// segment which connects back to a previous node where the difference in cost is
 			// that of the template segment's cost, implying that that previous node is on an
 			// optimal path towards the end node. This process repeats until the start node is
 			// reached, painting templates along the way.
@@ -346,14 +346,14 @@ namespace OpenRA.Mods.Common.MapUtils
 			var size = new int2(1 + maxPoint.X - minPoint.X, 1 + maxPoint.Y - minPoint.Y);
 			var sizeXY = size.X * size.Y;
 
-			const int OVER_DEVIATION = int.MaxValue;
-			const int INVALID_PROGRESS = int.MaxValue;
+			const int OverDeviation = int.MaxValue;
+			const int InvalidProgress = int.MaxValue;
 
 			// How far away from the path this point is.
-			var deviations = new Matrix<int>(size).Fill(OVER_DEVIATION);
+			var deviations = new Matrix<int>(size).Fill(OverDeviation);
 
-			var lowProgress = new Matrix<int>(size).Fill(INVALID_PROGRESS);
-			var highProgress = new Matrix<int>(size).Fill(INVALID_PROGRESS);
+			var lowProgress = new Matrix<int>(size).Fill(InvalidProgress);
+			var highProgress = new Matrix<int>(size).Fill(InvalidProgress);
 
 			var progressModulus = IsLoop ? points.Length - 1 : points.Length;
 
@@ -410,7 +410,7 @@ namespace OpenRA.Mods.Common.MapUtils
 								return (values[i + 1], values[i]);
 						}
 
-						return (INVALID_PROGRESS, INVALID_PROGRESS);
+						return (InvalidProgress, InvalidProgress);
 					}
 					else
 					{
@@ -422,7 +422,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				var highs = new List<int>(8);
 				int? ProgressFiller(int2 xy, int deviation)
 				{
-					if (deviations[xy] != OVER_DEVIATION)
+					if (deviations[xy] != OverDeviation)
 						return null;
 
 					deviations[xy] = deviation;
@@ -439,8 +439,8 @@ namespace OpenRA.Mods.Common.MapUtils
 						var neighbor = xy + offset;
 						if (!deviations.ContainsXY(neighbor) ||
 							deviations[neighbor] >= deviation ||
-							lowProgress[neighbor] == INVALID_PROGRESS ||
-							highProgress[neighbor] == INVALID_PROGRESS)
+							lowProgress[neighbor] == InvalidProgress ||
+							highProgress[neighbor] == InvalidProgress)
 						{
 							continue;
 						}
@@ -475,8 +475,8 @@ namespace OpenRA.Mods.Common.MapUtils
 						var xy = new int2(x, y);
 						var low = lowProgress[xy];
 						var high = highProgress[xy];
-						if (low == INVALID_PROGRESS ||
-							high == INVALID_PROGRESS)
+						if (low == InvalidProgress ||
+							high == InvalidProgress)
 						{
 							separationSeeds.Add((xy, MinSeparation));
 							continue;
@@ -505,9 +505,9 @@ namespace OpenRA.Mods.Common.MapUtils
 
 				int? SeparationFiller(int2 xy, int range)
 				{
-					if (deviations[xy] == 0 || deviations[xy] == OVER_DEVIATION)
+					if (deviations[xy] == 0 || deviations[xy] == OverDeviation)
 						return null;
-					deviations[xy] = OVER_DEVIATION;
+					deviations[xy] = OverDeviation;
 					if (range == 0)
 						return null;
 					return range - 1;
@@ -525,11 +525,11 @@ namespace OpenRA.Mods.Common.MapUtils
 			var orderedPermittedSegments = Segments.All.ToImmutableArray();
 			var permittedSegments = orderedPermittedSegments.ToImmutableHashSet();
 
-			const int MAX_SCORE = int.MaxValue;
+			const int MaxCost = int.MaxValue;
 			var segmentTypeToId = new Dictionary<string, int>();
 			var segmentsByStart = new List<List<TilingSegment>>();
 			var segmentsByEnd = new List<List<TilingSegment>>();
-			var scores = new List<Matrix<int>>();
+			var costs = new List<Matrix<int>>();
 			{
 				void RegisterSegmentType(string type)
 				{
@@ -538,7 +538,7 @@ namespace OpenRA.Mods.Common.MapUtils
 					segmentTypeToId.Add(type, newId);
 					segmentsByStart.Add(new List<TilingSegment>());
 					segmentsByEnd.Add(new List<TilingSegment>());
-					scores.Add(new Matrix<int>(size).Fill(MAX_SCORE));
+					costs.Add(new Matrix<int>(size).Fill(MaxCost));
 				}
 
 				foreach (var segment in orderedPermittedSegments)
@@ -556,7 +556,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			var totalTypeIds = segmentTypeToId.Count;
 
-			var priorities = new PriorityArray<int>(totalTypeIds * size.X * size.Y, MAX_SCORE);
+			var priorities = new PriorityArray<int>(totalTypeIds * size.X * size.Y, MaxCost);
 			void SetPriorityAt(int typeId, int2 pos, int priority)
 				=> priorities[typeId * sizeXY + pos.Y * size.X + pos.X] = priority;
 			(int TypeId, int2 Pos, int Priority) GetNextPriority()
@@ -575,30 +575,30 @@ namespace OpenRA.Mods.Common.MapUtils
 				.Select(segmentType => segmentTypeToId[segmentType])
 				.ToImmutableHashSet();
 
-			// Lower (closer to zero) scores are better matches.
-			// MAX_SCORE means totally unacceptable.
+			// Lower (closer to zero) costs are better matches.
+			// MaxScore means totally unacceptable.
 			int ScoreSegment(TilingSegment segment, int2 from)
 			{
 				if (from == pathStart)
 				{
 					if (segment.StartTypeId != pathStartTypeId)
-						return MAX_SCORE;
+						return MaxCost;
 				}
 				else
 				{
 					if (!innerTypeIds.Contains(segment.StartTypeId))
-						return MAX_SCORE;
+						return MaxCost;
 				}
 
 				if (from + segment.Moves == pathEnd)
 				{
 					if (segment.EndTypeId != pathEndTypeId)
-						return MAX_SCORE;
+						return MaxCost;
 				}
 				else
 				{
 					if (!innerTypeIds.Contains(segment.EndTypeId))
-						return MAX_SCORE;
+						return MaxCost;
 				}
 
 				var deviationAcc = 0;
@@ -608,19 +608,19 @@ namespace OpenRA.Mods.Common.MapUtils
 				for (var pointI = 0; pointI <= lastPointI; pointI++)
 				{
 					var point = from + segment.RelativePoints[pointI];
-					if (!deviations.ContainsXY(point) || deviations[point] == OVER_DEVIATION)
+					if (!deviations.ContainsXY(point) || deviations[point] == OverDeviation)
 					{
 						// Point escapes bounds or is in an excluded position.
-						return MAX_SCORE;
+						return MaxCost;
 					}
 
 					if (pointI < lastPointI)
 					{
 						var pointNext = from + segment.RelativePoints[pointI + 1];
-						if (!deviations.ContainsXY(pointNext) || deviations[pointNext] == OVER_DEVIATION)
+						if (!deviations.ContainsXY(pointNext) || deviations[pointNext] == OverDeviation)
 						{
 							// Next point escapes bounds or is in an excluded position.
-							return MAX_SCORE;
+							return MaxCost;
 						}
 
 						var lowProgression = Progress(lowProgress[point], lowProgress[pointNext]);
@@ -629,7 +629,7 @@ namespace OpenRA.Mods.Common.MapUtils
 							Math.Abs(highProgression) > maxSkip)
 						{
 							// Fails skip rule.
-							return MAX_SCORE;
+							return MaxCost;
 						}
 
 						lowProgressionAcc += lowProgression;
@@ -647,7 +647,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				if (lowProgressionAcc < 0 || highProgressionAcc < 0)
 				{
 					// Fails progression rule.
-					return MAX_SCORE;
+					return MaxCost;
 				}
 
 				// Satisfies all requirements.
@@ -656,7 +656,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			void UpdateFrom(int2 from, int fromTypeId)
 			{
-				var fromScore = scores[fromTypeId][from];
+				var fromCost = costs[fromTypeId][from];
 				foreach (var segment in segmentsByStart[fromTypeId])
 				{
 					var to = from + segment.Moves;
@@ -666,41 +666,41 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 
 					// Most likely to fail. Check first.
-					if (deviations[to] == OVER_DEVIATION)
+					if (deviations[to] == OverDeviation)
 					{
 						// End escapes bounds.
 						continue;
 					}
 
-					var segmentScore = ScoreSegment(segment, from);
-					if (segmentScore == MAX_SCORE)
+					var segmentCost = ScoreSegment(segment, from);
+					if (segmentCost == MaxCost)
 					{
 						continue;
 					}
 
-					var toScore = fromScore + segmentScore;
+					var toCost = fromCost + segmentCost;
 					var toTypeId = segment.EndTypeId;
-					if (toScore < scores[toTypeId][to])
+					if (toCost < costs[toTypeId][to])
 					{
-						scores[toTypeId][to] = toScore;
-						SetPriorityAt(toTypeId, to, toScore);
+						costs[toTypeId][to] = toCost;
+						SetPriorityAt(toTypeId, to, toCost);
 					}
 				}
 
-				SetPriorityAt(fromTypeId, from, MAX_SCORE);
+				SetPriorityAt(fromTypeId, from, MaxCost);
 			}
 
-			scores[pathStartTypeId][pathStart] = 0;
+			costs[pathStartTypeId][pathStart] = 0;
 			UpdateFrom(pathStart, pathStartTypeId);
 
 			// Needed in case we loop back to the start.
-			scores[pathStartTypeId][pathStart] = MAX_SCORE;
+			costs[pathStartTypeId][pathStart] = MaxCost;
 
 			while (true)
 			{
 				var (fromTypeId, from, priority) = GetNextPriority();
 
-				if (priority == MAX_SCORE || from == pathEnd)
+				if (priority == MaxCost || from == pathEnd)
 					break;
 
 				UpdateFrom(from, fromTypeId);
@@ -714,7 +714,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 			(int2 From, int FromTypeId) TraceBackStep(int2 to, int toTypeId)
 			{
-				var toScore = scores[toTypeId][to];
+				var toCost = costs[toTypeId][to];
 				var candidates = new List<TilingSegment>();
 				foreach (var segment in segmentsByEnd[toTypeId])
 				{
@@ -725,20 +725,20 @@ namespace OpenRA.Mods.Common.MapUtils
 					}
 
 					// Most likely to fail. Check first.
-					if (deviations[from] == OVER_DEVIATION)
+					if (deviations[from] == OverDeviation)
 					{
 						// Start escapes bounds.
 						continue;
 					}
 
-					var segmentScore = ScoreSegment(segment, from);
-					if (segmentScore == MAX_SCORE)
+					var segmentCost = ScoreSegment(segment, from);
+					if (segmentCost == MaxCost)
 					{
 						continue;
 					}
 
-					var fromScore = toScore - segmentScore;
-					if (fromScore == scores[segment.StartTypeId][from])
+					var fromCost = toCost - segmentCost;
+					if (fromCost == costs[segment.StartTypeId][from])
 					{
 						candidates.Add(segment);
 					}
@@ -762,12 +762,12 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				var to = pathEnd;
 				var toTypeId = pathEndTypeId;
-				if (scores[toTypeId][to] == MAX_SCORE)
+				if (costs[toTypeId][to] == MaxCost)
 					return null;
 				(to, toTypeId) = TraceBackStep(to, toTypeId);
 
 				// We previously set this to MAX_SCORE in case we were a loop. Reset it for getting back to the start.
-				scores[pathStartTypeId][pathStart] = 0;
+				costs[pathStartTypeId][pathStart] = 0;
 
 				// No need to check direction. If that is an issue, I have bigger problems to worry about.
 				while (to != pathStart)
@@ -1064,7 +1064,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 		/// <summary>
 		/// Takes a path and normalizes its progression direction around the map center.
-		/// Normalized but opposing paths should rotate around the center in the same direction.
+		/// Normalized but opposing paths rotate around the center in the same direction.
 		/// </summary>
 		public TilingPath ChirallyNormalize()
 		{
@@ -1074,7 +1074,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 		/// <summary>
 		/// Takes a path and normalizes its progression direction around the map center.
-		/// Normalized but opposing paths should rotate around the center in the same direction.
+		/// Normalized but opposing paths rotate around the center in the same direction.
 		/// </summary>
 		public static int2[] ChirallyNormalizePathPoints(int2[] points, int2 size)
 		{
@@ -1192,10 +1192,11 @@ namespace OpenRA.Mods.Common.MapUtils
 
 		/// <summary>
 		/// <para>
-		/// Retains paths which have no points in common with other (previous and retained) paths.
+		/// Retains paths which have no points in common with earlier (previous and retained) paths
+		/// from the input.
 		/// </para>
 		/// <para>
-		/// The underlying point sequences are not cloned.
+		/// The underlying point sequences are NOT cloned.
 		/// </para>
 		/// <para>
 		/// All input sequences must be non-null.
