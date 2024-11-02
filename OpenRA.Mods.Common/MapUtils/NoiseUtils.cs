@@ -41,9 +41,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			var span = Math.Max(size.X, size.Y);
 			var wavelengths = new float[(int)Math.Log2(span)];
 			for (var i = 0; i < wavelengths.Length; i++)
-			{
 				wavelengths[i] = featureSize / (1 << i);
-			}
 
 			var noise = new Matrix<float>(size);
 			foreach (var wavelength in wavelengths)
@@ -60,16 +58,12 @@ namespace OpenRA.Mods.Common.MapUtils
 				var offsetX = (int)(random.NextFloat() * wavelength);
 				var offsetY = (int)(random.NextFloat() * wavelength);
 				for (var y = 0; y < size.Y; y++)
-				{
 					for (var x = 0; x < size.X; x++)
-					{
 						noise[y * size.X + x] +=
 							amps * MatrixUtils.Interpolate(
 								subNoise,
 								(offsetX + x) / wavelength,
 								(offsetY + y) / wavelength);
-					}
-				}
 			}
 
 			return noise;
@@ -83,7 +77,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			var noise = new Matrix<float>(span, span);
 			const float D = 0.25f;
 			for (var y = 0; y <= span; y++)
-			{
 				for (var x = 0; x <= span; x++)
 				{
 					var phase = MathF.Tau * random.NextFloatExclusive();
@@ -98,7 +91,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					if (x < span && y < span)
 						noise[x, y] += vx * D + vy * D;
 				}
-			}
 
 			return noise;
 		}
@@ -137,7 +129,6 @@ namespace OpenRA.Mods.Common.MapUtils
 			var templateMid = new float2(inclusiveTemplateSize) / 2.0f;
 
 			for (var y = 0; y < size.Y; y++)
-			{
 				for (var x = 0; x < size.X; x++)
 				{
 					const float Sqrt2 = 1.4142135623730951f;
@@ -150,15 +141,12 @@ namespace OpenRA.Mods.Common.MapUtils
 						templateXy, inclusiveTemplateSize, rotations, mirror);
 
 					foreach (var projection in projections)
-					{
 						output[x, y] +=
 							MatrixUtils.Interpolate(
 								template,
 								projection.X,
 								projection.Y);
-					}
 				}
-			}
 
 			return output;
 		}
