@@ -17,38 +17,31 @@ namespace OpenRA.Mods.Common.MapUtils
 {
 	public static class Symmetry
 	{
-		const double Degrees0 = 0.0;
-		const double Degrees90 = Math.Tau * 0.25;
-		const double Degrees180 = Math.Tau * 0.5;
-		const double Degrees270 = Math.Tau * 0.75;
-		const double Degrees360 = Math.Tau * 1.0;
-		const double Degrees120 = Math.Tau * (1.0 / 3.0);
-		const double Degrees240 = Math.Tau * (2.0 / 3.0);
+		const float Degrees0 = 0.0f;
+		const float Degrees90 = MathF.Tau * 0.25f;
+		const float Degrees180 = MathF.Tau * 0.5f;
+		const float Degrees270 = MathF.Tau * 0.75f;
+		const float Degrees360 = MathF.Tau * 1.0f;
+		const float Degrees120 = MathF.Tau * (1.0f / 3.0f);
+		const float Degrees240 = MathF.Tau * (2.0f / 3.0f);
 
-		const float DegreesF0 = 0.0f;
-		const float DegreesF90 = MathF.Tau * 0.25f;
-		const float DegreesF180 = MathF.Tau * 0.5f;
-		const float DegreesF270 = MathF.Tau * 0.75f;
-		const float DegreesF360 = MathF.Tau * 1.0f;
-		const float DegreesF120 = MathF.Tau * (1.0f / 3.0f);
-		const float DegreesF240 = MathF.Tau * (2.0f / 3.0f);
+		const float Cos0 = 1.0f;
+		const float Cos90 = 0.0f;
+		const float Cos180 = -1.0f;
+		const float Cos270 = 0.0f;
+		const float Cos360 = 1.0f;
+		const float Cos120 = -0.5f;
+		const float Cos240 = -0.5f;
 
-		const double Cos0 = 1.0;
-		const double Cos90 = 0.0;
-		const double Cos180 = -1.0;
-		const double Cos270 = 0.0;
-		const double Cos360 = 1.0;
-		const double Cos120 = -0.5;
-		const double Cos240 = -0.5;
+		const float Sin0 = 0.0f;
+		const float Sin90 = 1.0f;
+		const float Sin180 = 0.0f;
+		const float Sin270 = -1.0f;
+		const float Sin360 = 0.0f;
+		const float Sin120 = 0.86602540378443864676f;
+		const float Sin240 = -0.86602540378443864676f;
 
-		const double Sin0 = 0.0;
-		const double Sin90 = 1.0;
-		const double Sin180 = 0.0;
-		const double Sin270 = -1.0;
-		const double Sin360 = 0.0;
-		const double Sin120 = 0.86602540378443864676;
-		const double Sin240 = -0.86602540378443864676;
-
+		/// <summary>Trivial mirroring configurations.</summary>
 		public enum Mirror
 		{
 			None = 0,
@@ -59,9 +52,9 @@ namespace OpenRA.Mods.Common.MapUtils
 		}
 
 		/// <summary>
-		/// Math.Cos, but with special casing for special angles to preserve accuracy.
+		/// MathF.Cos, but with special casing for special angles to preserve accuracy.
 		/// </summary>
-		public static double CosSnap(double angle)
+		static float CosSnapF(float angle)
 		{
 			switch (angle)
 			{
@@ -80,14 +73,14 @@ namespace OpenRA.Mods.Common.MapUtils
 				case Degrees240:
 					return Cos240;
 				default:
-					return Math.Cos(angle);
+					return MathF.Cos(angle);
 			}
 		}
 
 		/// <summary>
-		/// Math.Sin, but with special casing for special angles to preserve accuracy.
+		/// MathF.Sin, but with special casing for special angles to preserve accuracy.
 		/// </summary>
-		public static double SinSnap(double angle)
+		static float SinSnapF(float angle)
 		{
 			switch (angle)
 			{
@@ -105,58 +98,6 @@ namespace OpenRA.Mods.Common.MapUtils
 					return Sin120;
 				case Degrees240:
 					return Sin240;
-				default:
-					return Math.Sin(angle);
-			}
-		}
-
-		/// <summary>
-		/// MathF.Cos, but with special casing for special angles to preserve accuracy.
-		/// </summary>
-		public static float CosSnapF(float angle)
-		{
-			switch (angle)
-			{
-				case DegreesF0:
-					return (float)Cos0;
-				case DegreesF90:
-					return (float)Cos90;
-				case DegreesF180:
-					return (float)Cos180;
-				case DegreesF270:
-					return (float)Cos270;
-				case DegreesF360:
-					return (float)Cos360;
-				case DegreesF120:
-					return (float)Cos120;
-				case DegreesF240:
-					return (float)Cos240;
-				default:
-					return MathF.Cos(angle);
-			}
-		}
-
-		/// <summary>
-		/// MathF.Sin, but with special casing for special angles to preserve accuracy.
-		/// </summary>
-		public static float SinSnapF(float angle)
-		{
-			switch (angle)
-			{
-				case DegreesF0:
-					return (float)Sin0;
-				case DegreesF90:
-					return (float)Sin90;
-				case DegreesF180:
-					return (float)Sin180;
-				case DegreesF270:
-					return (float)Sin270;
-				case DegreesF360:
-					return (float)Sin360;
-				case DegreesF120:
-					return (float)Sin120;
-				case DegreesF240:
-					return (float)Sin240;
 				default:
 					return MathF.Sin(angle);
 			}
@@ -284,7 +225,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		}
 
 		/// <summary>
-		/// Determine the shortest distance between projected grid squares
+	/// Determine the shortest distance between projected grid squares.
 		/// </summary>
 		public static int RotateAndMirrorProjectionProximity(int2 original, int2 size, int rotations, Mirror mirror)
 		{

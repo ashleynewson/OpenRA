@@ -29,8 +29,7 @@ namespace OpenRA.Mods.Common.Terrain
 		{
 			FieldLoader.Load(this, my);
 			{
-				// Ideally, shall we change the FieldLoader.ParseInt2Array (and similar) to ignore whitespace?
-				// It should ultimately be better than this.
+				// Unlike FieldLoader.ParseInt2Array, whitespace is ignored.
 				var value = my.NodeWithKey("Points").Value.Value;
 				var parts = Regex.Replace(value, @"\s+", string.Empty)
 					.Split(',', StringSplitOptions.RemoveEmptyEntries);
@@ -48,6 +47,7 @@ namespace OpenRA.Mods.Common.Terrain
 			{
 				return true;
 			}
+
 			return type.StartsWith($"{matcher}.", StringComparison.InvariantCulture);
 		}
 

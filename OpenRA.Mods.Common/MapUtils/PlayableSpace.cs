@@ -17,15 +17,19 @@ namespace OpenRA.Mods.Common.MapUtils
 	{
 		public enum Playability
 		{
-			// Area is unplayable by land/naval units.
+			/// <summary>Area is unplayable by land/naval units.</summary>
 			Unplayable = 0,
 
-			// Area is unplayable by land/naval units, but should count as
-			// being "within" a playable region. This usually applies to random
-			// rock or river tiles in largely passable templates.
+			/// <summary>
+			/// Area is unplayable by land/naval units, but should count as
+			/// being "within" a playable region. This usually applies to random
+			/// rock or river tiles in largely passable templates.
+			/// </summary>
 			Partial = 1,
 
-			// Area is playable by either land or naval units.
+			/// <summary>
+			/// Area is playable by either land or naval units.
+			/// </summary>
 			Playable = 2,
 		}
 

@@ -783,8 +783,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			Log.Write("debug", "deriving random generators");
-
 			// Use `random` to derive separate independent random number generators.
 			//
 			// This prevents changes in one part of the algorithm from affecting randomness in
@@ -799,6 +797,8 @@ namespace OpenRA.Mods.Common.Traits
 			var cliffTilingRandom = new MersenneTwister(random.Next());
 			var forestRandom = new MersenneTwister(random.Next());
 			var forestTilingRandom = new MersenneTwister(random.Next());
+			var symmetryTilingRandom = new MersenneTwister(random.Next());
+			var debrisTilingRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
 			var roadTilingRandom = new MersenneTwister(random.Next());
 			var playerRandom = new MersenneTwister(random.Next());
@@ -813,7 +813,6 @@ namespace OpenRA.Mods.Common.Traits
 					return new TerrainTile(tileType, 0);
 			}
 
-			Log.Write("debug", "clearing map");
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(map);
@@ -822,7 +821,6 @@ namespace OpenRA.Mods.Common.Traits
 				map.Height[mpos] = 0;
 			}
 
-			Log.Write("debug", "elevation: generating noise");
 			var elevation = NoiseUtils.SymmetricFractalNoise(
 				waterRandom,
 				size,
@@ -833,7 +831,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (terrainSmoothing > 0)
 			{
-				Log.Write("debug", "elevation: applying gaussian blur");
 				var radius = terrainSmoothing;
 				elevation = MatrixUtils.GaussianBlur(elevation, radius, radius);
 			}
@@ -854,7 +851,6 @@ namespace OpenRA.Mods.Common.Traits
 					invert: true);
 			}
 
-			Log.Write("debug", "land planning: producing terrain");
 			var landPlan = MatrixUtils.BooleanBlotch(
 				elevation.Map(v => v >= 0),
 				terrainSmoothing,
@@ -862,12 +858,11 @@ namespace OpenRA.Mods.Common.Traits
 				minimumLandSeaThickness,
 				/*bias=*/water < 0.5);
 
-			Log.Write("debug", "beaches");
 			var beaches = MatrixUtils.BordersToPoints(landPlan);
 			if (beaches.Length > 0)
 			{
 				var beachPermittedTemplates =
-					TilingPath.PermittedSegments.FromInner(tileset, new[] { "Beach" });
+					TilingPath.PermittedSegments.FromType(tileset, new[] { "Beach" });
 				var tiledBeaches = new int2[beaches.Length][];
 				for (var i = 0; i < beaches.Length; i++)
 				{
@@ -886,7 +881,6 @@ namespace OpenRA.Mods.Common.Traits
 							?? throw new MapGenerationException("Could not fit tiles for beach");
 				}
 
-				Log.Write("debug", "filling water");
 				var beachChirality = MatrixUtils.PointsChirality(size, tiledBeaches);
 				foreach (var cell in map.AllCells)
 				{
@@ -910,14 +904,13 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			var nonLoopedCliffPermittedTemplates =
-				TilingPath.PermittedSegments.FromInnerAndTerminal(
+				TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
 					tileset, new[] { "Cliff" }, new[] { "Clear" });
 			var loopedCliffPermittedTemplates =
-				TilingPath.PermittedSegments.FromInner(
+				TilingPath.PermittedSegments.FromType(
 					tileset, new[] { "Cliff" });
 			if (externalCircularBias > 0)
 			{
-				Log.Write("debug", "creating circular cliff map border");
 				var cliffRing = new Matrix<bool>(size);
 				cliffRing.DrawCircle(
 					center: mapCenter,
@@ -955,7 +948,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (mountains > 0.0f || externalCircularBias == 1)
 			{
-				Log.Write("debug", "mountains: calculating elevation roughness");
 				var roughnessMatrix = MatrixUtils.GridVariance(elevation, roughnessRadius).Map(v => MathF.Sqrt(v));
 				MatrixUtils.CalibrateQuantileInPlace(
 					roughnessMatrix,
@@ -975,8 +967,6 @@ namespace OpenRA.Mods.Common.Traits
 
 				for (var altitude = 1; altitude <= maximumAltitude; altitude++)
 				{
-					Log.Write("debug", $"mountains: altitude {altitude}: determining eligible area for cliffs");
-
 					// Limit mountain area to the existing mountain space (starting with all available land)
 					var roominess = MatrixUtils.ChebyshevRoom(cliffPlan, true);
 					var available = 0;
@@ -1001,21 +991,17 @@ namespace OpenRA.Mods.Common.Traits
 						mountainElevation,
 						0.0f,
 						1.0f - availableFraction * mountains);
-					Log.Write("debug", $"mountains: altitude {altitude}: fixing terrain anomalies");
 					cliffPlan = MatrixUtils.BooleanBlotch(
 						mountainElevation.Map(v => v >= 0),
 						terrainSmoothing,
 						smoothingThreshold,
 						minimumMountainThickness,
 						/*bias=*/false);
-					Log.Write("debug", $"mountains: altitude {altitude}: tracing cliffs");
 					var unmaskedCliffs = MatrixUtils.BordersToPoints(cliffPlan);
-					Log.Write("debug", $"mountains: altitude {altitude}: appling roughness mask to cliffs");
 					var maskedCliffs = TilingPath.MaskPathPoints(unmaskedCliffs, cliffMask);
 					var cliffs = maskedCliffs.Where(cliff => cliff.Length >= minimumCliffLength).ToArray();
 					if (cliffs.Length == 0)
 						break;
-					Log.Write("debug", $"mountains: altitude {altitude}: fitting and laying tiles");
 					foreach (var cliff in cliffs)
 					{
 						var isLoop = cliff[0] == cliff[^1];
@@ -1047,7 +1033,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (forests > 0.0f)
 			{
-				Log.Write("debug", "forests: generating noise");
 				var forestNoise = NoiseUtils.SymmetricFractalNoise(
 					forestRandom,
 					size,
@@ -1062,7 +1047,6 @@ namespace OpenRA.Mods.Common.Traits
 
 				var forestPlan = forestNoise.Map(v => v >= 0.0f);
 
-				Log.Write("debug", "forests: planting trees");
 				for (var y = 0; y < size.Y; y++)
 				{
 					for (var x = 0; x < size.X; x++)
@@ -1123,7 +1107,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (enforceSymmetry != 0)
 			{
-				Log.Write("debug", "symmatry enforcement: analysing");
 				if (!trivialRotate)
 					throw new MapGenerationException("cannot use symmetry enforcement on non-trivial rotations");
 
@@ -1158,13 +1141,11 @@ namespace OpenRA.Mods.Common.Traits
 							.All(source => CheckCompatibility(main, source));
 						replace[destination] = compatible ? MultiBrush.Replaceability.None : MultiBrush.Replaceability.Actor;
 					});
-				Log.Write("debug", "symmetry enforcement: obstructing");
-				MultiBrush.PaintArea(map, actorPlans, replace, forestObstacles, random);
+				MultiBrush.PaintArea(map, actorPlans, replace, forestObstacles, symmetryTilingRandom);
 			}
 
 			var playableArea = new Matrix<bool>(size);
 			{
-				Log.Write("debug", "determining playable regions");
 				var (regions, regionMask, playability) = PlayableSpace.FindPlayableRegions(map, actorPlans, playabilityMap);
 				PlayableSpace.Region largest = null;
 				var disqualifications = new HashSet<int>();
@@ -1195,13 +1176,12 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("could not find a playable region");
 				if (denyWalledAreas)
 				{
-					Log.Write("debug", "obstructing semi-unreachable areas");
 
 					var replace = Matrix<MultiBrush.Replaceability>.Zip(
 						regionMask,
 						IdentifyReplaceableTiles(map, replaceabilityMap),
 						(a, b) => a == largest.Id ? MultiBrush.Replaceability.None : b);
-					MultiBrush.PaintArea(map, actorPlans, replace, unplayableObstacles, random);
+					MultiBrush.PaintArea(map, actorPlans, replace, unplayableObstacles, debrisTilingRandom);
 				}
 
 				for (var n = 0; n < playableArea.Data.Length; n++)
@@ -1255,7 +1235,7 @@ namespace OpenRA.Mods.Common.Traits
 				pointArrays = TilingPath.RetainDisjointPaths(pointArrays, size);
 
 				var roadPermittedTemplates =
-					TilingPath.PermittedSegments.FromInnerAndTerminal(
+					TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
 						tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" });
 
 				foreach (var pointArray in pointArrays)
@@ -1293,8 +1273,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (createEntities)
 			{
-				Log.Write("debug", "entities: determining eligible space");
-
 				var zoneable = new Matrix<bool>(size);
 				for (var y = map.Bounds.Top; y < map.Bounds.Bottom; y++)
 				{
@@ -1340,7 +1318,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				// Spawn generation
-				Log.Write("debug", "entities: zoning for spawns");
 				for (var iteration = 0; iteration < players; iteration++)
 				{
 					var roominess = MatrixUtils.ChebyshevRoom(zoneable, false)
@@ -1358,7 +1335,6 @@ namespace OpenRA.Mods.Common.Traits
 
 					if (chosenValue <= 1)
 					{
-						Log.Write("debug", "No ideal spawn location. Ignoring central reservation constraint.");
 						(chosenXY, chosenValue) = roominess.FindRandomBest(
 							playerRandom,
 							(a, b) => a.CompareTo(b));
@@ -1423,7 +1399,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				// Expansions
-				Log.Write("debug", "entities: zoning for expansions");
 				{
 					var minesRemaining = maximumExpansionMines;
 					while (minesRemaining > 0)
@@ -1494,7 +1469,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				// Neutral buildings
-				Log.Write("debug", "entities: zoning for tech structures");
 				{
 					var targetBuildingCount =
 						(maximumBuildings != 0)
@@ -1517,7 +1491,7 @@ namespace OpenRA.Mods.Common.Traits
 								"bio",
 								"oilb",
 							};
-						var typeChoice = random.PickWeighted(
+						var typeChoice = buildingRandom.PickWeighted(
 							new float[]
 							{
 								weightFcom,
@@ -1547,7 +1521,6 @@ namespace OpenRA.Mods.Common.Traits
 
 				// Grow resources
 				{
-					Log.Write("debug", "ore: generating noise");
 					var orePattern = NoiseUtils.SymmetricFractalNoise(
 						resourceRandom,
 						size,
@@ -1568,7 +1541,6 @@ namespace OpenRA.Mods.Common.Traits
 						}
 					}
 
-					Log.Write("debug", "ore: planning ore");
 					var oreStrength = new Matrix<float>(size);
 					var gemStrength = new Matrix<float>(size);
 					foreach (var actorPlan in actorPlans)
@@ -1729,15 +1701,11 @@ namespace OpenRA.Mods.Common.Traits
 						return newValue - oldValue;
 					}
 
-					Log.Write("debug", "ore: placing ore");
 					while (remaining > 0)
 					{
 						var n = priorities.GetMinIndex();
 						if (priorities[n] == float.PositiveInfinity)
-						{
-							Log.Write("debug", "Could not meet resource target");
 							break;
-						}
 
 						var chosenXY = resources.XY(n);
 						foreach (var square in Symmetry.RotateAndMirrorGridSquare(chosenXY, size, rotations, mirror))
