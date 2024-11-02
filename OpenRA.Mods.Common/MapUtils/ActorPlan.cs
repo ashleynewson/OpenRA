@@ -131,9 +131,9 @@ namespace OpenRA.Mods.Common.MapUtils
 		/// Return an MPos-like center offset for the actor.
 		/// </para>
 		/// <para>
-		/// For example, for a 1x1 actor, this would be (0.5, 0.5)
+		/// For example, for a 1x1 actor, this would be (0.5, 0.5).
 		/// </para>
-		/// <summary>
+		/// </summary>
 		public float2 CenterOffset()
 		{
 			var bi = Info.TraitInfoOrDefault<BuildingInfo>();

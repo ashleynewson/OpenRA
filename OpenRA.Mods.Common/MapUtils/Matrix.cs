@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapUtils
@@ -140,7 +139,7 @@ namespace OpenRA.Mods.Common.MapUtils
 
 		/// <summary>
 		/// Creates a transposed (shallow) copy of the matrix.
-		/// <summary>
+		/// </summary>
 		public Matrix<T> Transpose()
 		{
 			var transposed = new Matrix<T>(new int2(Size.Y, Size.X));
@@ -185,7 +184,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		}
 
 		/// <summary>
-		/// Return a shallow clone of this matrix
+		/// Return a shallow clone of this matrix.
 		/// </summary>
 		public Matrix<T> Clone()
 		{
@@ -210,11 +209,11 @@ namespace OpenRA.Mods.Common.MapUtils
 		/// <para>
 		/// Draw (update values within) a circle of given center and radius.
 		/// The values are updated based on the setTo function,
-		/// (radiusSquared, oldValue) => newValue.
+		/// (radiusSquared, oldValue) =&gt; newValue.
 		/// If invert is true, values outside of the circle are updated instead.
 		/// </para>
 		/// <para>
-		/// A matrix cell is inside the circle if its distance from the center is <= radius.
+		/// A matrix cell is inside the circle if its distance from the center is &lt;= radius.
 		/// Coordinates outside of the matrix are ignored.
 		/// </para>
 		/// </summary>

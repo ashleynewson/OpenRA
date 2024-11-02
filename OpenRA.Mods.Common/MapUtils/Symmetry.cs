@@ -223,7 +223,7 @@ namespace OpenRA.Mods.Common.MapUtils
 		}
 
 		/// <summary>
-	/// Determine the shortest distance between projected grid squares.
+		/// Determine the shortest distance between projected grid squares.
 		/// </summary>
 		public static int RotateAndMirrorProjectionProximity(int2 original, int2 size, int rotations, Mirror mirror)
 		{

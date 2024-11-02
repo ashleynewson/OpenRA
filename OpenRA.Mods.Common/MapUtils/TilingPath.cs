@@ -117,7 +117,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			}
 
 			/// <summary>
-			/// Equivalent to FindSegments(templatedTerrainInfo, types, types, types)
+			/// Equivalent to FindSegments(templatedTerrainInfo, types, types, types).
 			/// </summary>
 			public static IEnumerable<TemplateSegment> FindSegments(
 				ITemplatedTerrainInfo templatedTerrainInfo,
@@ -685,7 +685,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			// Needed in case we loop back to the start.
 			costs[pathStartTypeId][pathStart] = MaxCost;
 
-			for (;;)
+			while (true)
 			{
 				var (fromTypeId, from, priority) = GetNextPriority();
 
@@ -1273,7 +1273,7 @@ namespace OpenRA.Mods.Common.MapUtils
 							return false;
 						}
 
-						while (AddPoint());
+						while (AddPoint()) { }
 
 						pointArrays.Add(points.ToArray());
 					}

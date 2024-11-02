@@ -16,58 +16,58 @@ namespace OpenRA.Mods.Common.MapUtils
 {
 	public static class Direction
 	{
-		/// <summary>No direction</summary>
+		/// <summary>No direction.</summary>
 		public const int None = -1;
 
-		/// <summary>Right, 0 degrees, +X</summary>
+		/// <summary>Right, 0 degrees, +X.</summary>
 		public const int R = 0;
 
-		/// <summary>Right-down, 45 degrees, +X+Y</summary>
+		/// <summary>Right-down, 45 degrees, +X+Y.</summary>
 		public const int RD = 1;
 
-		/// <summary>Down, 90 degrees, +Y</summary>
+		/// <summary>Down, 90 degrees, +Y.</summary>
 		public const int D = 2;
 
-		/// <summary>Left-down, 135 degrees, -X+Y</summary>
+		/// <summary>Left-down, 135 degrees, -X+Y.</summary>
 		public const int LD = 3;
 
-		/// <summary>Left, 180 degrees, -X</summary>
+		/// <summary>Left, 180 degrees, -X.</summary>
 		public const int L = 4;
 
-		/// <summary>Left-up, 225 degrees, -X-Y</summary>
+		/// <summary>Left-up, 225 degrees, -X-Y.</summary>
 		public const int LU = 5;
 
-		/// <summary>Up, 270 degrees, -Y</summary>
+		/// <summary>Up, 270 degrees, -Y.</summary>
 		public const int U = 6;
 
-		/// <summary>Right-up, 315 degrees, +X-Y</summary>
+		/// <summary>Right-up, 315 degrees, +X-Y.</summary>
 		public const int RU = 7;
 
-		/// <summary>Bitmask right</summary>
+		/// <summary>Bitmask right.</summary>
 		public const int MR = 1 << R;
 
-		/// <summary>Bitmask right-down</summary>
+		/// <summary>Bitmask right-down.</summary>
 		public const int MRD = 1 << RD;
 
-		/// <summary>Bitmask down</summary>
+		/// <summary>Bitmask down.</summary>
 		public const int MD = 1 << D;
 
-		/// <summary>Bitmask left-down</summary>
+		/// <summary>Bitmask left-down.</summary>
 		public const int MLD = 1 << LD;
 
-		/// <summary>Bitmask left</summary>
+		/// <summary>Bitmask left.</summary>
 		public const int ML = 1 << L;
 
-		/// <summary>Bitmask left-up</summary>
+		/// <summary>Bitmask left-up.</summary>
 		public const int MLU = 1 << LU;
 
-		/// <summary>Bitmask up</summary>
+		/// <summary>Bitmask up.</summary>
 		public const int MU = 1 << U;
 
-		/// <summary>Bitmask right-up</summary>
+		/// <summary>Bitmask right-up.</summary>
 		public const int MRU = 1 << RU;
 
-		/// <summary>Adjacent offsets, excluding diagonals</summary>
+		/// <summary>Adjacent offsets, excluding diagonals.</summary>
 		public static readonly ImmutableArray<int2> Spread4 = ImmutableArray.Create(new[]
 		{
 			new int2(1, 0),
@@ -76,7 +76,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			new int2(0, -1)
 		});
 
-		/// <summary>Adjacent offsets with directions, excluding diagonals</summary>
+		/// <summary>Adjacent offsets with directions, excluding diagonals.</summary>
 		public static readonly ImmutableArray<(int2, int)> Spread4D = ImmutableArray.Create(new[]
 		{
 			(new int2(1, 0), R),
@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			(new int2(0, -1), U)
 		});
 
-		/// <summary>Adjacent offsets, including diagonals</summary>
+		/// <summary>Adjacent offsets, including diagonals.</summary>
 		public static readonly ImmutableArray<int2> Spread8 = ImmutableArray.Create(new[]
 		{
 			new int2(1, 0),
@@ -98,7 +98,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			new int2(1, -1)
 		});
 
-		/// <summary>Adjacent offsets with directions, including diagonals</summary>
+		/// <summary>Adjacent offsets with directions, including diagonals.</summary>
 		public static readonly ImmutableArray<(int2, int)> Spread8D = ImmutableArray.Create(new[]
 		{
 			(new int2(1, 0), R),
