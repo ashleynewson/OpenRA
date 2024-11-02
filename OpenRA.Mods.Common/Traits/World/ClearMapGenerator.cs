@@ -19,8 +19,8 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	[Desc("A map generator that clears a map.")]
-	[TraitLocation(SystemActors.World)]
 	public sealed class ClearMapGeneratorInfo : TraitInfo, IMapGeneratorInfo
 	{
 		[FieldLoader.Require]
