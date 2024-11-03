@@ -213,7 +213,7 @@ namespace OpenRA.Mods.Common.MapUtils
 			foreach (var (xy, tile) in tiles)
 			{
 				var mpos = new MPos(paintXY.X + xy.X, paintXY.Y + xy.Y);
-				if (Map.Contains(mpos))
+				if (Map.Tiles.Contains(mpos))
 					Map.Tiles[mpos] = tile;
 			}
 		}

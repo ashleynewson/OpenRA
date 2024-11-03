@@ -1166,6 +1166,10 @@ namespace OpenRA.Mods.Common.Traits
 						regionMask,
 						IdentifyReplaceableTiles(map, replaceabilityMap),
 						(a, b) => a == largest.Id ? MultiBrush.Replaceability.None : b);
+					for (var y = 0; y < size.Y; y++)
+						for (var x = 0; x < size.X; x++)
+							if (!map.Bounds.Contains(x, y))
+								replace[x, y] = MultiBrush.Replaceability.None;
 					MultiBrush.PaintArea(map, actorPlans, replace, unplayableObstacles, debrisTilingRandom);
 				}
 
