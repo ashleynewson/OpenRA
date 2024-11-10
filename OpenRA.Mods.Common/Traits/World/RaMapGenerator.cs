@@ -181,6 +181,8 @@ namespace OpenRA.Mods.Common.Traits
 		[FluentReference]
 		const string StrPresetPuddles = "label-ra-map-generator-preset-puddles";
 		[FluentReference]
+		const string StrPresetGardens = "label-ra-map-generator-preset-gardens";
+		[FluentReference]
 		const string StrPresetPlains = "label-ra-map-generator-preset-plains";
 		[FluentReference]
 		const string StrPresetParks = "label-ra-map-generator-preset-parks";
@@ -302,6 +304,14 @@ namespace OpenRA.Mods.Common.Traits
 				case "puddles":
 					settings.First(s => s.Name == "Water").Set(0.1);
 					break;
+				case "gardens":
+					settings.First(s => s.Name == "Water").Set(0.05);
+					settings.First(s => s.Name == "Forests").Set(0.3);
+					settings.First(s => s.Name == "ForestCutout").Set(3);
+					settings.First(s => s.Name == "EnforceSymmetry").Set(2);
+					settings.First(s => s.Name == "RoadSpacing").Set(3);
+					settings.First(s => s.Name == "RoadShrink").Set(4);
+					break;
 				case "plains":
 					settings.First(s => s.Name == "Water").Set(0.0);
 					break;
@@ -370,6 +380,7 @@ namespace OpenRA.Mods.Common.Traits
 			return ImmutableList.Create(
 				new KeyValuePair<string, string>("lakes", FluentProvider.GetString(StrPresetLakes)),
 				new KeyValuePair<string, string>("puddles", FluentProvider.GetString(StrPresetPuddles)),
+				new KeyValuePair<string, string>("gardens", FluentProvider.GetString(StrPresetGardens)),
 				new KeyValuePair<string, string>("plains", FluentProvider.GetString(StrPresetPlains)),
 				new KeyValuePair<string, string>("parks", FluentProvider.GetString(StrPresetParks)),
 				new KeyValuePair<string, string>("woodlands", FluentProvider.GetString(StrPresetWoodlands)),
