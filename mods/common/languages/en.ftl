@@ -1199,6 +1199,7 @@ label-ra-map-generator-weight-oilb = Building weight: Oil Derrick
 
 label-ra-map-generator-preset-lakes = Lakes
 label-ra-map-generator-preset-puddles = Puddles
+label-ra-map-generator-preset-gardens = Gardens
 label-ra-map-generator-preset-plains = Plains
 label-ra-map-generator-preset-parks = Parks
 label-ra-map-generator-preset-woodlands = Woodlands
