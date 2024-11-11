@@ -114,11 +114,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					continue;
 
 				tiles.Add(cell, new ClipboardTile(mapTiles[cell], mapResources[cell], resourceLayer?.GetResource(cell), mapHeight[cell]));
-
-				if (copyFilters.HasFlag(MapCopyFilters.Actors))
-					foreach (var preview in editorActorLayer.PreviewsInCellRegion(selection.CellCoords))
-						previews.TryAdd(preview.ID, preview);
 			}
+
+			if (copyFilters.HasFlag(MapCopyFilters.Actors))
+				foreach (var preview in editorActorLayer.PreviewsInCellRegion(selection.CellCoords))
+					previews.TryAdd(preview.ID, preview);
 
 			return new EditorClipboard(selection, previews, tiles);
 		}

@@ -173,11 +173,11 @@ namespace OpenRA.Mods.Common.Widgets
 
 				var resourceLayerContents = resourceLayer?.GetResource(cell);
 				tiles.Add(cell, new ClipboardTile(mapTiles[cell], mapResources[cell], resourceLayerContents, mapHeight[cell]));
-
-				if (copyFilters.HasFlag(MapCopyFilters.Actors))
-					foreach (var preview in editorActorLayer.PreviewsInCellRegion(selection.CellCoords))
-						previews.TryAdd(preview.ID, preview);
 			}
+
+			if (copyFilters.HasFlag(MapCopyFilters.Actors))
+				foreach (var preview in editorActorLayer.PreviewsInCellRegion(selection.CellCoords))
+					previews.TryAdd(preview.ID, preview);
 
 			return new EditorClipboard(selection, previews, tiles);
 		}
