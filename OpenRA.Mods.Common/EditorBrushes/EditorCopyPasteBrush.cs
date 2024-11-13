@@ -128,7 +128,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public void Do()
 		{
-			editorBlit.Blit();
+			editorBlit.Commit();
 		}
 
 		public void Undo()
