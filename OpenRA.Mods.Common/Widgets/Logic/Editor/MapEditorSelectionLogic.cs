@@ -98,29 +98,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		EditorBlitSource CopySelectionContents()
 		{
-			var selection = editor.DefaultBrush.Selection.Area;
-			var source = new CellCoordsRegion(selection.TopLeft, selection.BottomRight);
-
-			var mapTiles = map.Tiles;
-			var mapHeight = map.Height;
-			var mapResources = map.Resources;
-
-			var previews = new Dictionary<string, EditorActorPreview>();
-			var tiles = new Dictionary<CPos, BlitTile>();
-
-			foreach (var cell in source)
-			{
-				if (!mapTiles.Contains(cell))
-					continue;
-
-				tiles.Add(cell, new BlitTile(mapTiles[cell], mapResources[cell], resourceLayer?.GetResource(cell), mapHeight[cell]));
-			}
-
-			if (copyFilters.HasFlag(MapBlitFilters.Actors))
-				foreach (var preview in editorActorLayer.PreviewsInCellRegion(selection.CellCoords))
-					previews.TryAdd(preview.ID, preview);
-
-			return new EditorBlitSource(selection, previews, tiles);
+			return EditorBlit.CopyRegionContents(
+				map,
+				editorActorLayer,
+				resourceLayer,
+				editor.DefaultBrush.Selection.Area,
+				copyFilters);
 		}
 
 		void CreateCategoryPanel(MapBlitFilters copyFilter, CheckboxWidget checkbox)
