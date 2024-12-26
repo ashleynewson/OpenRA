@@ -1,0 +1,741 @@
+^TemperatSnowForestObstacles:
+	MultiBrush@t01:
+		Actor: t01
+	MultiBrush@t02:
+		Actor: t02
+	MultiBrush@t03:
+		Actor: t03
+	MultiBrush@t05:
+		Actor: t05
+	MultiBrush@t06:
+		Actor: t06
+	MultiBrush@t07:
+		Actor: t07
+	MultiBrush@t08:
+		Actor: t08
+	MultiBrush@t10:
+		Actor: t10
+	MultiBrush@t11:
+		Actor: t11
+	MultiBrush@t12:
+		Actor: t12
+	MultiBrush@t13:
+		Actor: t13
+	MultiBrush@t14:
+		Actor: t14
+	MultiBrush@t15:
+		Actor: t15
+	MultiBrush@t16:
+		Actor: t16
+	MultiBrush@t17:
+		Actor: t17
+	MultiBrush@tc01:
+		Actor: tc01
+	MultiBrush@tc02:
+		Actor: tc02
+	MultiBrush@tc03:
+		Actor: tc03
+	MultiBrush@tc04:
+		Actor: tc04
+	MultiBrush@tc05:
+		Actor: tc05
+	MultiBrush@t01.husk:
+		Actor: t01.husk
+		Weight: 0.1
+	MultiBrush@t02.husk:
+		Actor: t02.husk
+		Weight: 0.1
+	MultiBrush@t03.husk:
+		Actor: t03.husk
+		Weight: 0.1
+	MultiBrush@t05.husk:
+		Actor: t05.husk
+		Weight: 0.1
+	MultiBrush@t06.husk:
+		Actor: t06.husk
+		Weight: 0.1
+	MultiBrush@t07.husk:
+		Actor: t07.husk
+		Weight: 0.1
+	MultiBrush@t08.husk:
+		Actor: t08.husk
+		Weight: 0.1
+	MultiBrush@t10.husk:
+		Actor: t10.husk
+		Weight: 0.1
+	MultiBrush@t11.husk:
+		Actor: t11.husk
+		Weight: 0.1
+	MultiBrush@t12.husk:
+		Actor: t12.husk
+		Weight: 0.1
+	MultiBrush@t13.husk:
+		Actor: t13.husk
+		Weight: 0.1
+	MultiBrush@t14.husk:
+		Actor: t14.husk
+		Weight: 0.1
+	MultiBrush@t15.husk:
+		Actor: t15.husk
+		Weight: 0.1
+	MultiBrush@t16.husk:
+		Actor: t16.husk
+		Weight: 0.1
+	MultiBrush@t17.husk:
+		Actor: t17.husk
+		Weight: 0.1
+	MultiBrush@tc01.husk:
+		Actor: tc01.husk
+		Weight: 0.1
+	MultiBrush@tc02.husk:
+		Actor: tc02.husk
+		Weight: 0.1
+	MultiBrush@tc03.husk:
+		Actor: tc03.husk
+		Weight: 0.1
+	MultiBrush@tc04.husk:
+		Actor: tc04.husk
+		Weight: 0.1
+	MultiBrush@tc05.husk:
+		Actor: tc05.husk
+		Weight: 0.1
+^TemperatSnowUnplayableObstacles:
+	MultiBrush@97:
+		Template: 97
+	MultiBrush@98:
+		Template: 98
+	MultiBrush@99:
+		Template: 99
+	MultiBrush@217:
+		Template: 217
+	MultiBrush@218:
+		Template: 218
+	MultiBrush@219:
+		Template: 219
+	MultiBrush@220:
+		Template: 220
+	MultiBrush@221:
+		Template: 221
+	MultiBrush@222:
+		Template: 222
+	MultiBrush@223:
+		Template: 223
+	MultiBrush@224:
+		Template: 224
+	MultiBrush@225:
+		Template: 225
+	MultiBrush@226:
+		Template: 226
+	MultiBrush@103:
+		Template: 103
+	MultiBrush@104:
+		Template: 104
+	MultiBrush@105:
+		Template: 105
+		Weight: 0.05
+	MultiBrush@106:
+		Template: 106
+		Weight: 0.05
+	MultiBrush@109:
+		Template: 109
+	MultiBrush@110:
+		Template: 110
+	MultiBrush@t01:
+		Actor: t01
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t02:
+		Actor: t02
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t03:
+		Actor: t03
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t05:
+		Actor: t05
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t06:
+		Actor: t06
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t07:
+		Actor: t07
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t08:
+		Actor: t08
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t10:
+		Actor: t10
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t11:
+		Actor: t11
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t12:
+		Actor: t12
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t13:
+		Actor: t13
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t14:
+		Actor: t14
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t15:
+		Actor: t15
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t16:
+		Actor: t16
+		BackingTile: 255,0
+		Weight: 0.1
+	MultiBrush@t17:
+		Actor: t17
+		BackingTile: 255,0
+		Weight: 0.1
+
+^MapGenerators:
+	RaMapGenerator@ra:
+		Type: ra
+		Name: map-generator-ra
+		Settings:
+			Option@hidden_defaults:
+				Choice@hidden_defaults:
+					Settings:
+						TerrainFeatureSize: 20.0
+						ForestFeatureSize: 20.0
+						ResourceFeatureSize: 20.0
+						Water: 0.2
+						Mountains: 0.1
+						Forests: 0.025
+						ForestCutout: 2
+						TerrainSmoothing: 4
+						SmoothingThreshold: 0.833333
+						MinimumLandSeaThickness: 5
+						MinimumMountainThickness: 5
+						MaximumAltitude: 8
+						RoughnessRadius: 5
+						Roughness: 0.5
+						MinimumTerrainContourSpacing: 6
+						MinimumCliffLength: 10
+						ForestClumpiness: 0.5
+						DenyWalledAreas: True
+						EnforceSymmetry: 0
+						Roads: True
+						RoadSpacing: 5
+						RoadShrink: 0
+						CreateEntities: True
+						CentralSpawnReservationFraction: 0.25
+						ResourceSpawnReservation: 8
+						SpawnRegionSize: 12
+						SpawnBuildSize: 8
+						SpawnResourceSpawns: 3
+						SpawnReservation: 20
+						SpawnResourceBias: 1.15
+						ResourcesPerPlayer: 50000
+						OreUniformity: 0.25
+						OreClumpiness: 0.25
+						MaximumExpansionResourceSpawns: 5
+						MaximumResourceSpawnsPerExpansion: 2
+						MinimumExpansionSize: 2
+						MaximumExpansionSize: 12
+						ExpansionInner: 2
+						ExpansionBorder: 1
+						DefaultResource: Ore
+						ResourceSpawnSeeds:
+							mine: Ore
+							gmine: Gems
+			Option@hidden_tileset_overrides:
+				Choice@desert:
+					Tileset: DESERT
+					Settings:
+						LandTile: 255
+						WaterTile: 256
+						ForestObstacles:
+							MultiBrush@14:
+								Template: 14
+							MultiBrush@15:
+								Template: 15
+							MultiBrush@16:
+								Template: 16
+							MultiBrush@17:
+								Template: 17
+							MultiBrush@18:
+								Template: 18
+							MultiBrush@19:
+								Template: 19
+							MultiBrush@20:
+								Template: 20
+							MultiBrush@21:
+								Template: 21
+							MultiBrush@22:
+								Template: 22
+							MultiBrush@23:
+								Template: 23
+							MultiBrush@t04:
+								Actor: t04
+							MultiBrush@t08:
+								Actor: t08
+							MultiBrush@t09:
+								Actor: t09
+							MultiBrush@tc01:
+								Actor: tc01
+							MultiBrush@t04.husk:
+								Actor: t04.husk
+								Weight: 0.1
+							MultiBrush@t08.husk:
+								Actor: t08.husk
+								Weight: 0.1
+							MultiBrush@t09.husk:
+								Actor: t09.husk
+								Weight: 0.1
+							MultiBrush@tc01.husk:
+								Actor: tc01.husk
+								Weight: 0.1
+						UnplayableObstacles:
+							MultiBrush@2:
+								Template: 2
+							MultiBrush@3:
+								Template: 3
+							MultiBrush@4:
+								Template: 4
+							MultiBrush@5:
+								Template: 5
+							MultiBrush@6:
+								Template: 6
+							MultiBrush@7:
+								Template: 7
+							MultiBrush@14:
+								Template: 14
+								Weight: 0.5
+							MultiBrush@15:
+								Template: 15
+								Weight: 0.5
+							MultiBrush@16:
+								Template: 16
+								Weight: 0.5
+							MultiBrush@17:
+								Template: 17
+								Weight: 0.5
+							MultiBrush@18:
+								Template: 18
+								Weight: 0.5
+							MultiBrush@19:
+								Template: 19
+								Weight: 0.5
+							MultiBrush@20:
+								Template: 20
+								Weight: 0.5
+							MultiBrush@21:
+								Template: 21
+								Weight: 0.5
+							MultiBrush@22:
+								Template: 22
+								Weight: 0.5
+							MultiBrush@23:
+								Template: 23
+								Weight: 0.5
+							MultiBrush@35:
+								Template: 35
+							MultiBrush@36:
+								Template: 36
+							MultiBrush@37:
+								Template: 37
+							MultiBrush@38:
+								Template: 38
+							MultiBrush@43:
+								Template: 43
+							MultiBrush@t04:
+								Actor: t04
+								WithBackingTile: 255,0
+								Weight: 0.1
+							MultiBrush@t08:
+								Actor: t08
+								WithBackingTile: 255,0
+								Weight: 0.1
+							MultiBrush@t09:
+								Actor: t09
+								WithBackingTile: 255,0
+								Weight: 0.1
+							MultiBrush@tc01:
+								Actor: tc01
+								WithBackingTile: 255,0
+								Weight: 0.1
+							MultiBrush@t04.husk:
+								Actor: t04.husk
+								WithBackingTile: 255,0
+								Weight: 0.1
+							MultiBrush@t08.husk:
+								Actor: t08.husk
+								WithBackingTile: 255,0
+								Weight: 0.1
+							MultiBrush@t09.husk:
+								Actor: t09.husk
+								WithBackingTile: 255,0
+								Weight: 0.1
+							MultiBrush@tc01.husk:
+								Actor: tc01.husk
+								WithBackingTile: 255,0
+								Weight: 0.1
+				Choice@temperat:
+					Tileset: TEMPERAT
+					Settings:
+						LandTile: 255
+						WaterTile: 1
+						ForestObstacles:
+							Inherits: ^TemperatSnowForestObstacles
+						UnplayableObstacles:
+							Inherits: ^TemperatSnowUnplayableObstacles
+							MultiBrush@580:
+								Template: 580
+								Weight: 0.1
+							MultiBrush@581:
+								Template: 581
+								Weight: 0.1
+							MultiBrush@582:
+								Template: 582
+								Weight: 0.1
+							MultiBrush@583:
+								Template: 583
+								Weight: 0.1
+							MultiBrush@584:
+								Template: 584
+								Weight: 0.1
+							MultiBrush@585:
+								Template: 585
+								Weight: 0.1
+							MultiBrush@586:
+								Template: 586
+								Weight: 0.1
+							MultiBrush@587:
+								Template: 587
+								Weight: 0.1
+							MultiBrush@588:
+								Template: 588
+								Weight: 0.1
+				Choice@snow:
+					Tileset: SNOW
+					Settings:
+						LandTile: 255
+						WaterTile: 1
+						ForestObstacles:
+							Inherits: ^TemperatSnowForestObstacles
+						UnplayableObstacles:
+							Inherits: ^TemperatSnowUnplayableObstacles
+			Option@Seed:
+				Label: label-ra-map-generator-option-seed
+				Random: True
+				Default: 0
+				Integer: Seed
+			Option@TerrainType:
+				Label: label-ra-map-generator-option-terrain-type
+				Priority: 2
+				Default: Gardens
+				Choice@Lakes:
+					Label: label-ra-map-generator-choice-terrain-type-lakes
+					Settings:
+				Choice@Puddles:
+					Label: label-ra-map-generator-choice-terrain-type-puddles
+					Settings:
+						Water: 0.1
+				Choice@Gardens:
+					Label: label-ra-map-generator-choice-terrain-type-gardens
+					Settings:
+						Water: 0.05
+						Forests: 0.3
+						ForestCutout: 3
+						EnforceSymmetry: 2
+						RoadSpacing: 3
+						RoadShrink: 4
+				Choice@Plains:
+					Label: label-ra-map-generator-choice-terrain-type-plains
+					Settings:
+						Water: 0.0
+				Choice@Parks:
+					Label: label-ra-map-generator-choice-terrain-type-parks
+					Settings:
+						Water: 0.0
+						Forests: 0.1
+				Choice@Woodlands:
+					Label: label-ra-map-generator-choice-terrain-type-woodlands
+					Settings:
+						Water: 0.0
+						Forests: 0.4
+						ForestCutout: 3
+						EnforceSymmetry: 2
+						RoadSpacing: 3
+						RoadShrink: 4
+				Choice@Overgrown:
+					Label: label-ra-map-generator-choice-terrain-type-overgrown
+					Settings:
+						Water: 0.0
+						Forests: 0.5
+						EnforceSymmetry: 2
+						Mountains: 0.5
+						Roughness: 0.25
+				Choice@Rocky:
+					Label: label-ra-map-generator-choice-terrain-type-rocky
+					Settings:
+						Water: 0.0
+						Forests: 0.3
+						ForestCutout: 3
+						EnforceSymmetry: 2
+						Mountains: 0.5
+						Roughness: 0.25
+				Choice@Mountains:
+					Label: label-ra-map-generator-choice-terrain-type-mountains
+					Settings:
+						Water: 0.0
+						Mountains: 1.0
+						Roughness: 0.60
+						MinimumTerrainContourSpacing: 5
+				Choice@MountainLakes:
+					Label: label-ra-map-generator-choice-terrain-type-mountain-lakes
+					Settings:
+						Water: 0.2
+						Mountains: 1.0
+						Roughness: 0.85
+						MinimumTerrainContourSpacing: 5
+				Choice@Oceanic:
+					Label: label-ra-map-generator-choice-terrain-type-oceanic
+					Settings:
+						Water: 0.8
+						Forests: 0.0
+				Choice@LargeIslands:
+					Label: label-ra-map-generator-choice-terrain-type-large-islands
+					Settings:
+						Water: 0.75
+						TerrainFeatureSize: 50.0
+						Forests: 0.0
+				Choice@Continents:
+					Label: label-ra-map-generator-choice-terrain-type-continents
+					Settings:
+						Water: 0.5
+						TerrainFeatureSize: 100.0
+				Choice@Wetlands:
+					Label: label-ra-map-generator-choice-terrain-type-wetlands
+					Settings:
+						Water: 0.5
+				Choice@NarrowWetlands:
+					Label: label-ra-map-generator-choice-terrain-type-narrow-wetlands
+					Settings:
+						Water: 0.5
+						TerrainFeatureSize: 5.0
+						Forests: 0.0
+						SpawnBuildSize: 6
+			Option@Rotations:
+				Label: label-ra-map-generator-option-rotations
+				SimpleChoice: Rotations
+					Values: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+				Default: 2
+				Priority: 1
+			Option@Mirror:
+				Label: label-ra-map-generator-option-mirror
+				Default: None
+				Priority: 1
+				Choice@None:
+					Label: label-ra-map-generator-choice-mirror-none
+					Settings:
+						Mirror: None
+				Choice@LeftMatchesRight:
+					Label: label-ra-map-generator-choice-mirror-left-matches-right
+					Settings:
+						Mirror: LeftMatchesRight
+				Choice@TopLeftMatchesBottomRight:
+					Label: label-ra-map-generator-choice-mirror-top-left-matches-bottom-right
+					Settings:
+						Mirror: TopLeftMatchesBottomRight
+				Choice@TopMatchesBottom:
+					Label: label-ra-map-generator-choice-mirror-top-matches-bottom
+					Settings:
+						Mirror: TopMatchesBottom
+				Choice@TopRightMatchesBottomLeft:
+					Label: label-ra-map-generator-choice-mirror-top-right-matches-bottom-left
+					Settings:
+						Mirror: TopRightMatchesBottomLeft
+			Option@Shape:
+				Label: label-ra-map-generator-option-shape
+				Default: Square
+				Priority: 1
+				Choice@Square:
+					Label: label-ra-map-generator-choice-shape-square
+					Settings:
+						ExternalCircularBias: 0
+				Choice@CircleMountain:
+					Label: label-ra-map-generator-choice-shape-circle-mountain
+					Settings:
+						ExternalCircularBias: 1
+				Choice@CircleWater:
+					Label: label-ra-map-generator-choice-shape-circle-water
+					Settings:
+						ExternalCircularBias: -1
+			Option@Players:
+				Label: label-ra-map-generator-option-players
+				SimpleChoice: Players
+					Values: 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
+				Default: 1
+				Priority: 1
+			Option@Resources:
+				Label: label-ra-map-generator-option-resources
+				Default: Medium
+				Choice@None:
+					Label: label-ra-map-generator-choice-resources-none
+					Settings:
+						SpawnResourceSpawns: 0
+						ResourcesPerPlayer: 0
+						ResourceSpawnWeights:
+						MaximumExpansionResourceSpawns: 0
+						MaximumResourceSpawnsPerExpansion: 1
+				Choice@Low:
+					Label: label-ra-map-generator-choice-resources-low
+					Settings:
+						SpawnResourceSpawns: 2
+						ResourcesPerPlayer: 25000
+						ResourceSpawnWeights:
+							mine: 1.0
+						MaximumExpansionResourceSpawns: 3
+						MaximumResourceSpawnsPerExpansion: 1
+				Choice@Medium:
+					Label: label-ra-map-generator-choice-resources-medium
+					Settings:
+						SpawnResourceSpawns: 3
+						ResourcesPerPlayer: 50000
+						ResourceSpawnWeights:
+							mine: 0.95
+							gmine: 0.05
+						MaximumExpansionResourceSpawns: 5
+						MaximumResourceSpawnsPerExpansion: 2
+				Choice@High:
+					Label: label-ra-map-generator-choice-resources-high
+					Settings:
+						SpawnResourceSpawns: 3
+						ResourcesPerPlayer: 75000
+						ResourceSpawnWeights:
+							mine: 0.9
+							gmine: 0.1
+						MaximumExpansionResourceSpawns: 8
+						MaximumResourceSpawnsPerExpansion: 3
+				Choice@VeryHigh:
+					Label: label-ra-map-generator-choice-resources-very-high
+					Settings:
+						SpawnResourceSpawns: 4
+						ResourcesPerPlayer: 100000
+						ResourceSpawnWeights:
+							mine: 0.8
+							gmine: 0.2
+						MaximumExpansionResourceSpawns: 10
+						MaximumResourceSpawnsPerExpansion: 3
+				Choice@Full:
+					Label: label-ra-map-generator-choice-resources-full
+					Settings:
+						SpawnResourceSpawns: 0
+						ResourcesPerPlayer: 1000000000
+						ResourceSpawnWeights:
+						MaximumExpansionResourceSpawns: 0
+						MaximumResourceSpawnsPerExpansion: 1
+			Option@Buildings:
+				Label: label-ra-map-generator-option-buildings
+				Default: Standard
+				Choice@None:
+					Label: label-ra-map-generator-choice-buildings-none
+					Settings:
+						MinimumBuildings: 0
+						MaximumBuildings: 0
+						BuildingWeights:
+				Choice@Standard:
+					Label: label-ra-map-generator-choice-buildings-standard
+					Settings:
+						MinimumBuildings: 0
+						MaximumBuildings: 3
+						BuildingWeights:
+							hosp: 2
+							miss: 1
+							oilb: 9
+				Choice@Extra:
+					Label: label-ra-map-generator-choice-buildings-extra
+					Settings:
+						MinimumBuildings: 3
+						MaximumBuildings: 6
+						BuildingWeights:
+							fcom: 3
+							hosp: 2
+							miss: 1
+							oilb: 9
+							pbox: 2
+				Choice@OilOnly:
+					Label: label-ra-map-generator-choice-buildings-oil-only
+					Settings:
+						MinimumBuildings: 0
+						MaximumBuildings: 3
+						BuildingWeights:
+							oilb: 1
+				Choice@OilRush:
+					Label: label-ra-map-generator-choice-buildings-oil-rush
+					Settings:
+						MinimumBuildings: 8
+						MaximumBuildings: 10
+						BuildingWeights:
+							oilb: 1
+			Option@DenyWalledArea:
+				Label: label-ra-map-generator-option-deny-walled-areas
+				Checkbox: DenyWalledAreas
+				Default: True
+				Priority: 1
+			Option@Roads:
+				Label: label-ra-map-generator-option-roads
+				Checkbox: Roads
+				Default: True
+				Priority: 1
+	ClearMapGenerator@clear:
+		Type: clear
+		Name: map-generator-clear
+		Settings:
+			Option@Tile:
+				Label: label-clear-map-generator-option-tile
+				Choice@DesertClear:
+					Label: label-clear-map-generator-choice-tile-clear
+					Tileset: DESERT
+					Settings:
+						Tile: 255
+				Choice@DesertWater:
+					Label: label-clear-map-generator-choice-tile-water
+					Tileset: DESERT
+					Settings:
+						Tile: 256
+				Choice@SnowClear:
+					Label: label-clear-map-generator-choice-tile-clear
+					Tileset: SNOW
+					Settings:
+						Tile: 255
+				Choice@SnowWater:
+					Label: label-clear-map-generator-choice-tile-water
+					Tileset: SNOW
+					Settings:
+						Tile: 1
+				Choice@TemperatClear:
+					Label: label-clear-map-generator-choice-tile-clear
+					Tileset: TEMPERAT
+					Settings:
+						Tile: 255
+				Choice@TemperatWater:
+					Label: label-clear-map-generator-choice-tile-water
+					Tileset: TEMPERAT
+					Settings:
+						Tile: 1
+				Choice@InteriorClear:
+					Label: label-clear-map-generator-choice-tile-clear
+					Tileset: INTERIOR
+					Settings:
+						Tile: 275
+				Choice@InteriorEmpty:
+					Label: label-clear-map-generator-choice-tile-empty
+					Tileset: INTERIOR
+					Settings:
+						Tile: 255
