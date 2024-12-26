@@ -1120,3 +1120,71 @@ keycode =
     .sleep = Sleep
     .mouse4 = Mouse 4
     .mouse5 = Mouse 5
+
+## MapGeneratorToolLogic
+label-map-generator-default-settings = Default settings
+label-map-generator-failed-cancel = Dismiss
+notification-map-generator-generated = Generated using { $name }
+notification-map-generator-bad-option = Option "{ $option }" is invalid
+notification-map-generator-failed = Map generation failed
+
+## ClearMapGenerator
+label-clear-map-generator-tile = Tile
+label-clear-map-generator-option-tile = Tile
+label-clear-map-generator-choice-tile-clear = Clear
+label-clear-map-generator-choice-tile-water = Water
+label-clear-map-generator-choice-tile-empty = Empty space
+
+## RaMapGenerator
+label-ra-map-generator-option-seed = Seed
+
+label-ra-map-generator-option-terrain-type = Terrain Type
+label-ra-map-generator-choice-terrain-type-lakes = Lakes
+label-ra-map-generator-choice-terrain-type-puddles = Puddles
+label-ra-map-generator-choice-terrain-type-gardens = Gardens
+label-ra-map-generator-choice-terrain-type-plains = Plains
+label-ra-map-generator-choice-terrain-type-parks = Parks
+label-ra-map-generator-choice-terrain-type-woodlands = Woodlands
+label-ra-map-generator-choice-terrain-type-overgrown = Overgrown
+label-ra-map-generator-choice-terrain-type-rocky = Rocky
+label-ra-map-generator-choice-terrain-type-mountains = Mountains
+label-ra-map-generator-choice-terrain-type-mountain-lakes = Mountain Lakes
+label-ra-map-generator-choice-terrain-type-oceanic = Oceanic
+label-ra-map-generator-choice-terrain-type-large-islands = Large Islands
+label-ra-map-generator-choice-terrain-type-continents = Continents
+label-ra-map-generator-choice-terrain-type-wetlands = Wetlands
+label-ra-map-generator-choice-terrain-type-narrow-wetlands = Narrow Wetlands
+
+label-ra-map-generator-option-rotations = Rotations
+
+label-ra-map-generator-option-mirror = Mirror
+label-ra-map-generator-choice-mirror-none = None
+label-ra-map-generator-choice-mirror-left-matches-right = Left vs right
+label-ra-map-generator-choice-mirror-top-left-matches-bottom-right = Top left vs bottom right
+label-ra-map-generator-choice-mirror-top-matches-bottom = Top vs bottom
+label-ra-map-generator-choice-mirror-top-right-matches-bottom-left = Top right vs bottom left
+
+label-ra-map-generator-option-shape = Bounds Shape
+label-ra-map-generator-choice-shape-square = Square
+label-ra-map-generator-choice-shape-circle-mountain = Circle in mountains
+label-ra-map-generator-choice-shape-circle-water = Circle in water
+
+label-ra-map-generator-option-players = Players per side
+
+label-ra-map-generator-option-resources = Resources
+label-ra-map-generator-choice-resources-none = None
+label-ra-map-generator-choice-resources-low = Low
+label-ra-map-generator-choice-resources-medium = Medium
+label-ra-map-generator-choice-resources-high = High
+label-ra-map-generator-choice-resources-very-high = Very High
+label-ra-map-generator-choice-resources-full = Oreful
+
+label-ra-map-generator-option-buildings = Buildings
+label-ra-map-generator-choice-buildings-none = None
+label-ra-map-generator-choice-buildings-standard = Standard
+label-ra-map-generator-choice-buildings-extra = Extra
+label-ra-map-generator-choice-buildings-oil-only = Oil Only
+label-ra-map-generator-choice-buildings-oil-rush = Oil Rush
+
+label-ra-map-generator-option-roads = Roads
+label-ra-map-generator-option-deny-walled-areas = Obstruct walled areas

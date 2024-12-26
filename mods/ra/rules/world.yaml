@@ -1,5 +1,6 @@
 ^BaseWorld:
 	Inherits: ^Palettes
+	Inherits@MapGenerators: ^MapGenerators
 	AlwaysVisible:
 	ActorMap:
 	ScreenMap:
