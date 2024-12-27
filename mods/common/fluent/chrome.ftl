@@ -73,10 +73,8 @@ label-marker-alpha = Tile Alpha
 label-marker-mirror-mode = Mirror Mode
 label-marker-axis-angle = Axis Angle
 label-map-generator-generator = Generator
-label-map-generator-seed = Seed
 button-map-generator-generate = Generate
 button-map-generator-generate-random = Generate Random
-dropdownbutton-map-generator-presets = Settings Presets
 
 button-map-editor-tab-container-select-tooltip = Selection
 button-map-editor-tab-container-tiles-tooltip = Tiles
