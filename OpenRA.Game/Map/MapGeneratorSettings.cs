@@ -65,6 +65,13 @@ namespace OpenRA
 				Settings = new MiniYaml(null, new[] { new MiniYamlNode(setting, value) });
 			}
 
+			public static void DumpFluent(MiniYaml my, List<string> references)
+			{
+				var label = my.NodeWithKeyOrDefault("Label")?.Value.Value;
+				if (label != null)
+					references.Add(label);
+			}
+
 			static MiniYaml SettingsLoader(MiniYaml my) => my.NodeWithKey("Settings").Value;
 
 			/// <summary>Check whether this choice is permitted for this map.</summary>
@@ -218,6 +225,16 @@ namespace OpenRA
 				}
 			}
 
+			public static void DumpFluent(MiniYaml my, List<string> references)
+			{
+				var label = my.NodeWithKeyOrDefault("Label")?.Value.Value;
+				if (label != null)
+					references.Add(label);
+				foreach (var node in my.Nodes)
+					if (node.Key.Split('@')[0] == "Choice")
+						Choice.DumpFluent(node.Value, references);
+			}
+
 			public bool ValidateChoice(Choice choice)
 			{
 				switch (Ui)
@@ -300,6 +317,20 @@ namespace OpenRA
 			}
 
 			return new MapGeneratorSettings(options);
+		}
+
+		public static List<string> DumpFluent(MiniYaml my)
+		{
+			var references = new List<string>();
+			DumpFluent(my, references);
+			return references;
+		}
+
+		public static void DumpFluent(MiniYaml my, List<string> references)
+		{
+			foreach (var node in my.Nodes)
+				if (node.Key.Split('@')[0] == "Option")
+					Option.DumpFluent(node.Value, references);
 		}
 
 		MapGeneratorSettings(IReadOnlyList<Option> options)

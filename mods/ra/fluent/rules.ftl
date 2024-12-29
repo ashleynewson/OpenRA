@@ -946,7 +946,6 @@ bot-naval-ai =
    .name = Naval AI
 
 ## map-generators.yaml
-label-clear-map-generator-tile = Tile
 label-clear-map-generator-option-tile = Tile
 label-clear-map-generator-choice-tile-clear = Clear
 label-clear-map-generator-choice-tile-water = Water
