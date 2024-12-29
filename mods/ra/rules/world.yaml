@@ -1,6 +1,5 @@
 ^BaseWorld:
 	Inherits: ^Palettes
-	Inherits@MapGenerators: ^MapGenerators
 	AlwaysVisible:
 	ActorMap:
 	ScreenMap:
@@ -299,6 +298,7 @@ World:
 
 EditorWorld:
 	Inherits: ^BaseWorld
+	Inherits@MapGenerators: ^MapGenerators
 	EditorActorLayer:
 	EditorCursorLayer:
 	EditorResourceLayer:
