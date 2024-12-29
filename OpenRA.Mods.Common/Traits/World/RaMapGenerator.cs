@@ -170,11 +170,11 @@ namespace OpenRA.Mods.Common.Traits
 			public readonly IReadOnlyList<MultiBrush> UnplayableObstacles;
 
 			[FieldLoader.Ignore]
-			public readonly Dictionary<string, ResourceTypeInfo> ResourceTypes;
+			public readonly IReadOnlyDictionary<string, ResourceTypeInfo> ResourceTypes;
 			[FieldLoader.Ignore]
 			public readonly ResourceTypeInfo DefaultResource;
 			[FieldLoader.Ignore]
-			public readonly Dictionary<ResourceTypeInfo, int> ResourceValues;
+			public readonly IReadOnlyDictionary<ResourceTypeInfo, int> ResourceValues;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyDictionary<string, ResourceTypeInfo> ResourceSpawnSeeds;
 			[FieldLoader.LoadUsing(nameof(ResourceSpawnWeightsLoader))]
