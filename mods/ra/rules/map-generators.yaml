@@ -252,6 +252,16 @@
 						ResourceSpawnSeeds:
 							mine: Ore
 							gmine: Gems
+						ClearTerrain: Clear
+						PlayableTerrain: Beach,Bridge,Clear,Gems,Ore,Road,Rough,Wall,Water
+						PartiallyPlayableTerrain: Tree
+						UnplayableTerrain: River,Rock
+						DominantTerrain: River,Rock,Tree,Water
+						PartiallyPlayableCategories: Beach,Road
+						ClearSegmentTypes: Clear
+						BeachSegmentTypes: Beach
+						CliffSegmentTypes: Cliff
+						RoadSegmentTypes: Road,RoadIn,RoadOut
 			Option@hidden_tileset_overrides:
 				Choice@desert:
 					Tileset: DESERT

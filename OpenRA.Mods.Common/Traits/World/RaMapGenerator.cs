@@ -180,6 +180,27 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.LoadUsing(nameof(ResourceSpawnWeightsLoader))]
 			public readonly IReadOnlyDictionary<string, float> ResourceSpawnWeights = default;
 
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> ClearTerrain;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> PlayableTerrain;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> PartiallyPlayableTerrain;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> UnplayableTerrain;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> DominantTerrain;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<string> PartiallyPlayableCategories;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<string> ClearSegmentTypes;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<string> BeachSegmentTypes;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<string> CliffSegmentTypes;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<string> RoadSegmentTypes;
+
 			public readonly int TotalPlayers;
 
 			public Parameters(Map map, MiniYaml my)
@@ -219,6 +240,36 @@ namespace OpenRA.Mods.Common.Traits
 						EnforceSymmetry = 0;
 						break;
 				}
+
+				IReadOnlySet<byte> ParseTerrainIndexes(string key)
+				{
+					return my.NodeWithKey(key).Value.Value
+						.Split(',', StringSplitOptions.RemoveEmptyEntries)
+						.Select(TemplatedTerrainInfo.GetTerrainIndex)
+						.ToImmutableHashSet();
+				}
+
+				IReadOnlyList<string> ParseSegmentTypes(string key)
+				{
+					return my.NodeWithKey(key).Value.Value
+						.Split(',', StringSplitOptions.RemoveEmptyEntries)
+						.ToImmutableArray();
+				}
+
+				ClearTerrain = ParseTerrainIndexes("ClearTerrain");
+				PlayableTerrain = ParseTerrainIndexes("PlayableTerrain");
+				PartiallyPlayableTerrain = ParseTerrainIndexes("PartiallyPlayableTerrain");
+				UnplayableTerrain = ParseTerrainIndexes("UnplayableTerrain");
+				DominantTerrain = ParseTerrainIndexes("DominantTerrain");
+
+				PartiallyPlayableCategories = my.NodeWithKey("PartiallyPlayableCategories").Value.Value
+					.Split(',', StringSplitOptions.RemoveEmptyEntries)
+					.ToImmutableHashSet();
+
+				ClearSegmentTypes = ParseSegmentTypes("ClearSegmentTypes");
+				BeachSegmentTypes = ParseSegmentTypes("BeachSegmentTypes");
+				CliffSegmentTypes = ParseSegmentTypes("CliffSegmentTypes");
+				RoadSegmentTypes = ParseSegmentTypes("RoadSegmentTypes");
 
 				Validate();
 			}
@@ -408,19 +459,9 @@ namespace OpenRA.Mods.Common.Traits
 				param.Mirror == Symmetry.Mirror.TopMatchesBottom;
 
 			var tileset = param.TemplatedTerrainInfo;
-			var beachIndex = tileset.GetTerrainIndex("Beach");
-			var clearIndex = tileset.GetTerrainIndex("Clear");
-			var gemsIndex = tileset.GetTerrainIndex("Gems");
-			var oreIndex = tileset.GetTerrainIndex("Ore");
-			var riverIndex = tileset.GetTerrainIndex("River");
-			var roadIndex = tileset.GetTerrainIndex("Road");
-			var rockIndex = tileset.GetTerrainIndex("Rock");
-			var roughIndex = tileset.GetTerrainIndex("Rough");
-			var treeIndex = tileset.GetTerrainIndex("Tree");
-			var waterIndex = tileset.GetTerrainIndex("Water");
 
 			var beachPermittedTemplates =
-				TilingPath.PermittedSegments.FromType(tileset, new[] { "Beach" });
+				TilingPath.PermittedSegments.FromType(tileset, param.BeachSegmentTypes);
 			var beachTiles = beachPermittedTemplates.PossibleTiles().ToImmutableHashSet();
 
 			var replaceabilityMap = new Dictionary<TerrainTile, MultiBrush.Replaceability>();
@@ -436,45 +477,35 @@ namespace OpenRA.Mods.Common.Traits
 					var tile = new TerrainTile(id, (byte)ti);
 					var type = tileset.GetTerrainIndex(tile);
 
-					if (type == beachIndex ||
-						type == clearIndex ||
-						type == gemsIndex ||
-						type == oreIndex ||
-						type == roadIndex ||
-						type == roughIndex ||
-						type == waterIndex)
-					{
+					if (param.PlayableTerrain.Contains(type))
 						playabilityMap[tile] = PlayableSpace.Playability.Playable;
-					}
-					else if (type == treeIndex)
-					{
+					else if (param.PartiallyPlayableTerrain.Contains(type))
 						playabilityMap[tile] = PlayableSpace.Playability.Partial;
-					}
-					else
-					{
+					else if (param.UnplayableTerrain.Contains(type))
 						playabilityMap[tile] = PlayableSpace.Playability.Unplayable;
-					}
+					else
+						throw new MapGenerationException($"Terrain index {type} has unknown playability.");
 
-					if (id == param.WaterTile)
+					if (id == param.LandTile)
+					{
+						replaceabilityMap[tile] = MultiBrush.Replaceability.Any;
+					}
+					else if (id == param.WaterTile)
 					{
 						replaceabilityMap[tile] = MultiBrush.Replaceability.Tile;
 					}
-					else if (template.Categories.Contains("Cliffs"))
+					else
 					{
-						if (type == rockIndex)
+						if (playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
 							replaceabilityMap[tile] = MultiBrush.Replaceability.None;
 						else
 							replaceabilityMap[tile] = MultiBrush.Replaceability.Actor;
-					}
-					else if (template.Categories.Contains("Debris"))
-					{
-						replaceabilityMap[tile] = MultiBrush.Replaceability.None;
-					}
-					else if (template.Categories.Contains("Beach") || template.Categories.Contains("Road"))
-					{
-						replaceabilityMap[tile] = MultiBrush.Replaceability.Actor;
-						if (playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
+
+						if (param.PartiallyPlayableCategories.Overlaps(template.Categories)
+							&& playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
+						{
 							playabilityMap[tile] = PlayableSpace.Playability.Partial;
+						}
 					}
 				}
 			}
@@ -565,8 +596,8 @@ namespace OpenRA.Mods.Common.Traits
 						map,
 						beaches[i],
 						(param.MinimumLandSeaThickness - 1) / 2,
-						"Beach",
-						"Beach",
+						param.BeachSegmentTypes[0],
+						param.BeachSegmentTypes[0],
 						beachPermittedTemplates);
 					beachPath
 						.ExtendEdge(4)
@@ -601,10 +632,10 @@ namespace OpenRA.Mods.Common.Traits
 
 			var nonLoopedCliffPermittedTemplates =
 				TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
-					tileset, new[] { "Cliff" }, new[] { "Clear" });
+					tileset, param.CliffSegmentTypes, param.ClearSegmentTypes);
 			var loopedCliffPermittedTemplates =
 				TilingPath.PermittedSegments.FromType(
-					tileset, new[] { "Cliff" });
+					tileset, param.CliffSegmentTypes);
 			if (param.ExternalCircularBias > 0)
 			{
 				var cliffRing = new CellLayer<bool>(map);
@@ -623,16 +654,16 @@ namespace OpenRA.Mods.Common.Traits
 							map,
 							cliff,
 							(param.MinimumMountainThickness - 1) / 2,
-							"Cliff",
-							"Cliff",
+							param.CliffSegmentTypes[0],
+							param.CliffSegmentTypes[0],
 							loopedCliffPermittedTemplates);
 					else
 						cliffPath = new TilingPath(
 							map,
 							cliff,
 							(param.MinimumMountainThickness - 1) / 2,
-							"Clear",
-							"Clear",
+							param.ClearSegmentTypes[0],
+							param.ClearSegmentTypes[0],
 							nonLoopedCliffPermittedTemplates);
 					cliffPath
 						.ExtendEdge(4)
@@ -705,16 +736,16 @@ namespace OpenRA.Mods.Common.Traits
 								map,
 								cliff,
 								(param.MinimumMountainThickness - 1) / 2,
-								"Cliff",
-								"Cliff",
+								param.CliffSegmentTypes[0],
+								param.CliffSegmentTypes[0],
 								loopedCliffPermittedTemplates);
 						else
 							cliffPath = new TilingPath(
 								map,
 								cliff,
 								(param.MinimumMountainThickness - 1) / 2,
-								"Clear",
-								"Clear",
+								param.ClearSegmentTypes[0],
+								param.ClearSegmentTypes[0],
 								nonLoopedCliffPermittedTemplates);
 						cliffPath
 							.ExtendEdge(4)
@@ -742,14 +773,14 @@ namespace OpenRA.Mods.Common.Traits
 
 				var forestPlan = new CellLayer<bool>(map);
 				foreach (var mpos in map.AllCells.MapCoords)
-					if (map.GetTerrainIndex(mpos) == clearIndex && forestNoise[mpos] >= 0.0f)
+					if (param.ClearTerrain.Contains(map.GetTerrainIndex(mpos)) && forestNoise[mpos] >= 0.0f)
 						forestPlan[mpos] = true;
 
 				if (param.ForestCutout > 0)
 				{
 					var space = new CellLayer<bool>(map);
 					foreach (var mpos in map.AllCells.MapCoords)
-						space[mpos] = map.GetTerrainIndex(mpos) == clearIndex;
+						space[mpos] = param.ClearTerrain.Contains(map.GetTerrainIndex(mpos));
 
 					// Improve symmetry.
 					{
@@ -789,24 +820,17 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (param.EnforceSymmetry != 0)
 			{
-				// This is not commutative. It can be true if main is impassable, even if other is.
+				// This is not commutative.
 				bool CheckCompatibility(byte main, byte other)
 				{
 					if (main == other)
 						return true;
-					else if (main == riverIndex || main == rockIndex || main == waterIndex || main == treeIndex)
+					else if (param.DominantTerrain.Contains(main))
 						return true;
-					else if (main == beachIndex || main == clearIndex || main == roughIndex)
-					{
-						if (other == riverIndex || other == rockIndex || other == waterIndex || other == treeIndex)
-							return false;
-						if (other == beachIndex || other == clearIndex || other == roughIndex)
-							return param.EnforceSymmetry < 2;
-						else
-							throw new MapGenerationException("ambiguous symmetry policy");
-					}
+					else if (param.DominantTerrain.Contains(other))
+						return false;
 					else
-						throw new MapGenerationException("ambiguous symmetry policy");
+						return param.EnforceSymmetry < 2;
 				}
 
 				var replace = new CellLayer<MultiBrush.Replaceability>(map);
@@ -939,7 +963,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				var space = new CellLayer<bool>(map);
 				foreach (var mpos in map.AllCells.MapCoords)
-					space[mpos] = playableArea[mpos] && tileset.GetTerrainIndex(map.Tiles[mpos]) == clearIndex;
+					space[mpos] = playableArea[mpos] && param.ClearTerrain.Contains(tileset.GetTerrainIndex(map.Tiles[mpos]));
 
 				// Improve symmetry.
 				{
@@ -974,7 +998,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				var roadPermittedTemplates =
 					TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
-						tileset, new[] { "Road", "RoadIn", "RoadOut" }, new[] { "Clear" });
+						tileset, param.RoadSegmentTypes, param.ClearSegmentTypes);
 
 				foreach (var pointArray in pointArrays)
 				{
@@ -983,8 +1007,8 @@ namespace OpenRA.Mods.Common.Traits
 						map,
 						pointArray,
 						param.RoadSpacing - 1,
-						"Clear",
-						"Clear",
+						param.ClearSegmentTypes[0],
+						param.ClearSegmentTypes[0],
 						roadPermittedTemplates);
 					path
 						.ChirallyNormalize(cvec => CellLayerUtils.CornerToWPos(cvec, gridType) - wMapCenter)
@@ -1033,7 +1057,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				var zoneable = new CellLayer<bool>(map);
 				foreach (var mpos in map.AllCells.MapCoords)
-					zoneable[mpos] = playableArea[mpos] && tileset.GetTerrainIndex(map.Tiles[mpos]) == clearIndex;
+					zoneable[mpos] = playableArea[mpos] && param.ClearTerrain.Contains(tileset.GetTerrainIndex(map.Tiles[mpos]));
 
 				foreach (var actorPlan in actorPlans)
 					foreach (var cpos in actorPlan.Footprint().Keys)
@@ -1327,7 +1351,7 @@ namespace OpenRA.Mods.Common.Traits
 					// Closer to +inf means "more preferable" for plan.
 					var plan = new CellLayer<float>(map);
 					foreach (var mpos in map.AllCells.MapCoords)
-						if (playableArea[mpos] && map.GetTerrainIndex(mpos) == clearIndex)
+						if (playableArea[mpos] && param.ClearTerrain.Contains(map.GetTerrainIndex(mpos)))
 							plan[mpos] = pattern[mpos] * maxStrength[mpos];
 						else
 							plan[mpos] = float.NegativeInfinity;
