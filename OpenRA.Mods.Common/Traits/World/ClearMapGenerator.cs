@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
@@ -25,6 +26,11 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Human-readable name this generator uses.")]
 		[FluentReference]
 		public readonly string Name = null;
+
+		// This is purely of interest to the linter.
+		[FieldLoader.LoadUsing(nameof(FluentReferencesLoader))]
+		[FluentReference]
+		public readonly List<string> FluentReferences = null;
 
 		[FieldLoader.Require]
 		[Desc("Internal id for this map generator.")]
@@ -42,6 +48,11 @@ namespace OpenRA.Mods.Common.Traits
 		static MiniYaml SettingsLoader(MiniYaml my)
 		{
 			return my.NodeWithKey("Settings").Value;
+		}
+
+		static List<string> FluentReferencesLoader(MiniYaml my)
+		{
+			return MapGeneratorSettings.DumpFluent(my.NodeWithKey("Settings").Value);
 		}
 	}
 
