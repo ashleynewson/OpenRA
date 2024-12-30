@@ -180,6 +180,8 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyDictionary<ResourceTypeInfo, int> ResourceValues;
 			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<(ResourceTypeInfo, byte)> AllowedTerrainResourceCombos;
+			[FieldLoader.Ignore]
 			public readonly IReadOnlyDictionary<string, ResourceTypeInfo> ResourceSpawnSeeds;
 			[FieldLoader.LoadUsing(nameof(ResourceSpawnWeightsLoader))]
 			public readonly IReadOnlyDictionary<string, float> ResourceSpawnWeights = default;
@@ -224,6 +226,11 @@ namespace OpenRA.Mods.Common.Traits
 				var playerResourcesInfo = map.Rules.Actors[SystemActors.Player].TraitInfoOrDefault<PlayerResourcesInfo>();
 				ResourceValues = playerResourcesInfo.ResourceValues
 					.ToDictionary(kv => ResourceTypes[kv.Key], kv => kv.Value);
+				AllowedTerrainResourceCombos = ResourceTypes
+					.Values
+					.SelectMany(resourceTypeInfo => resourceTypeInfo.AllowedTerrainTypes
+						.Select(terrainName => (resourceTypeInfo, TemplatedTerrainInfo.GetTerrainIndex(terrainName))))
+					.ToImmutableHashSet();
 				try
 				{
 					ResourceSpawnSeeds = my.NodeWithKey("ResourceSpawnSeeds").Value
@@ -1377,7 +1384,7 @@ namespace OpenRA.Mods.Common.Traits
 					// Closer to +inf means "more preferable" for plan.
 					var plan = new CellLayer<float>(map);
 					foreach (var mpos in map.AllCells.MapCoords)
-						if (playableArea[mpos] && param.ClearTerrain.Contains(map.GetTerrainIndex(mpos)))
+						if (playableArea[mpos] && param.AllowedTerrainResourceCombos.Contains((bestResource[mpos], map.GetTerrainIndex(mpos))))
 							plan[mpos] = pattern[mpos] * maxStrength[mpos];
 						else
 							plan[mpos] = float.NegativeInfinity;
