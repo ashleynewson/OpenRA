@@ -1001,5 +1001,14 @@ label-ra-map-generator-choice-buildings-extra = Extra
 label-ra-map-generator-choice-buildings-oil-only = Oil Only
 label-ra-map-generator-choice-buildings-oil-rush = Oil Rush
 
+label-ra-map-generator-option-density = Entity Density
+label-ra-map-generator-choice-density-players = Scale with players
+label-ra-map-generator-choice-density-area-and-players = Scale with area and players
+label-ra-map-generator-choice-density-area-very-low = Scale with area (very low density)
+label-ra-map-generator-choice-density-area-low = Scale with area (low density)
+label-ra-map-generator-choice-density-area-medium = Scale with area (medium density)
+label-ra-map-generator-choice-density-area-high = Scale with area (high density)
+label-ra-map-generator-choice-density-area-very-high = Scale with area (very high density)
+
 label-ra-map-generator-option-roads = Roads
 label-ra-map-generator-option-deny-walled-areas = Obstruct walled areas

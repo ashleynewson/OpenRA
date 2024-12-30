@@ -122,6 +122,10 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly bool CreateEntities = default;
 			[FieldLoader.Require]
+			public readonly float AreaEntityBonus = default;
+			[FieldLoader.Require]
+			public readonly float PlayerCountEntityBonus = default;
+			[FieldLoader.Require]
 			public readonly float CentralSpawnReservationFraction = default;
 			[FieldLoader.Require]
 			public readonly int ResourceSpawnReservation = default;
@@ -201,6 +205,9 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<string> RoadSegmentTypes;
 
+			[FieldLoader.Ignore]
+			public readonly int SymmetryCount;
+			[FieldLoader.Ignore]
 			public readonly int TotalPlayers;
 
 			public Parameters(Map map, MiniYaml my)
@@ -227,8 +234,6 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					throw new YamlException("Bad ResourceSpawnSeeds resource: " + e);
 				}
-
-				TotalPlayers = Players * Rotations * (Mirror == Symmetry.Mirror.None ? 1 : 2);
 
 				switch (Rotations)
 				{
@@ -270,6 +275,9 @@ namespace OpenRA.Mods.Common.Traits
 				BeachSegmentTypes = ParseSegmentTypes("BeachSegmentTypes");
 				CliffSegmentTypes = ParseSegmentTypes("CliffSegmentTypes");
 				RoadSegmentTypes = ParseSegmentTypes("RoadSegmentTypes");
+
+				SymmetryCount = Symmetry.RotateAndMirrorProjectionCount(Rotations, Mirror);
+				TotalPlayers = Players * SymmetryCount;
 
 				Validate();
 			}
@@ -348,6 +356,10 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("Players must be >= 0");
 				if (CentralSpawnReservationFraction < 0.0f)
 					throw new MapGenerationException("CentralSpawnReservationFraction must be >= 0.0");
+				if (AreaEntityBonus < 0.0f)
+					throw new MapGenerationException("PlayableAreaDensityBonus must be >= 0.0");
+				if (PlayerCountEntityBonus < 0.0f)
+					throw new MapGenerationException("PlayerCountDensityBonus must be >= 0.0");
 				if (SpawnRegionSize < 1)
 					throw new MapGenerationException("SpawnRegionSize must be >= 1");
 				if (SpawnReservation < 1)
@@ -1088,6 +1100,12 @@ namespace OpenRA.Mods.Common.Traits
 						action: (mpos, _, _, _) => zoneable[mpos] = false);
 				}
 
+				var zoneableArea = zoneable.Count(v => v);
+				var entityMultiplier =
+					zoneableArea * param.AreaEntityBonus +
+					param.TotalPlayers * param.PlayerCountEntityBonus;
+				var perSymmetryEntityMultiplier = entityMultiplier / param.SymmetryCount;
+
 				// Spawn generation
 				for (var iteration = 0; iteration < param.Players; iteration++)
 				{
@@ -1179,7 +1197,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				// Expansions
 				{
-					var resourceSpawnsRemaining = param.MaximumExpansionResourceSpawns;
+					var resourceSpawnsRemaining = (int)(param.MaximumExpansionResourceSpawns * perSymmetryEntityMultiplier);
 					while (resourceSpawnsRemaining > 0)
 					{
 						var roominess = new CellLayer<int>(map);
@@ -1250,7 +1268,9 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					var targetBuildingCount =
 						(param.MaximumBuildings != 0)
-							? expansionRandom.Next(param.MinimumBuildings, param.MaximumBuildings + 1)
+							? expansionRandom.Next(
+								(int)(param.MinimumBuildings * perSymmetryEntityMultiplier),
+								(int)(param.MaximumBuildings * perSymmetryEntityMultiplier) + 1)
 							: 0;
 					for (var i = 0; i < targetBuildingCount; i++)
 					{
@@ -1394,7 +1414,7 @@ namespace OpenRA.Mods.Common.Traits
 						plan = newPlan;
 					}
 
-					var remaining = param.ResourcesPerPlayer * param.Players * Symmetry.RotateAndMirrorProjectionCount(param.Rotations, param.Mirror);
+					var remaining = param.ResourcesPerPlayer * entityMultiplier;
 
 					// Closer to -inf means "more preferable" for priorities.
 					var priorities = new PriorityArray<float>(

@@ -693,6 +693,45 @@
 						MaximumBuildings: 10
 						BuildingWeights:
 							oilb: 1
+			Option@Density:
+				Label: label-ra-map-generator-option-density
+				Default: Players
+				Priority: 1
+				Choice@Players:
+					Label: label-ra-map-generator-choice-density-players
+					Settings:
+						AreaEntityBonus: 0.0
+						PlayerCountEntityBonus: 1.0
+				Choice@AreaAndPlayers:
+					Label: label-ra-map-generator-choice-density-area-and-players
+					Settings:
+						AreaEntityBonus: 0.0002
+						PlayerCountEntityBonus: 0.5
+				Choice@AreaVeryLow:
+					Label: label-ra-map-generator-choice-density-area-very-low
+					Settings:
+						AreaEntityBonus: 0.0001
+						PlayerCountEntityBonus: 0.0
+				Choice@AreaLow:
+					Label: label-ra-map-generator-choice-density-area-low
+					Settings:
+						AreaEntityBonus: 0.0002
+						PlayerCountEntityBonus: 0.0
+				Choice@AreaMedium:
+					Label: label-ra-map-generator-choice-density-area-medium
+					Settings:
+						AreaEntityBonus: 0.0004
+						PlayerCountEntityBonus: 0.0
+				Choice@AreaHigh:
+					Label: label-ra-map-generator-choice-density-area-high
+					Settings:
+						AreaEntityBonus: 0.0006
+						PlayerCountEntityBonus: 0.0
+				Choice@AreaVeryHigh:
+					Label: label-ra-map-generator-choice-density-area-very-high
+					Settings:
+						AreaEntityBonus: 0.0008
+						PlayerCountEntityBonus: 0.0
 			Option@DenyWalledArea:
 				Label: label-ra-map-generator-option-deny-walled-areas
 				Checkbox: DenyWalledAreas
