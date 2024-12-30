@@ -930,20 +930,26 @@ namespace OpenRA.Mods.Common.Traits
 					// of water, they should be obliterated. If they're just surrounded by rocks,
 					// trees, etc, they should be filled in with actors.
 					{
-						var unplayableWater = new List<(CPos, bool)>();
+						var unplayableWater = new HashSet<CPos>();
 						foreach (var mpos in map.AllCells.MapCoords)
 							if (map.Contains(mpos) &&
 								map.Tiles[mpos].Type == param.WaterTile &&
 								regionMask[mpos] != largest.Id)
 							{
 								var cpos = mpos.ToCPos(gridType);
-								unplayableWater.Add((cpos, true));
+								var projections = Symmetry.RotateAndMirrorCPos(
+									cpos, map.Tiles, param.Rotations, param.Mirror);
+								foreach (var projection in projections)
+									if (map.Tiles[projection].Type == param.WaterTile)
+										unplayableWater.Add(projection);
 							}
 
-						bool? ClearWaterBody(CPos cpos, bool firstPass)
+						bool? ClearWaterBody(CPos cpos, bool _)
 						{
 							var mpos = cpos.ToMPos(gridType);
-							var propagate = firstPass || beachTiles.Contains(map.Tiles[mpos]);
+							var propagate =
+								map.Tiles[mpos].Type == param.WaterTile ||
+								beachTiles.Contains(map.Tiles[mpos]);
 							map.Tiles[mpos] = PickTile(param.LandTile);
 							regionMask[mpos] = PlayableSpace.NullRegion;
 							return propagate ? false : null;
@@ -951,7 +957,7 @@ namespace OpenRA.Mods.Common.Traits
 
 						CellLayerUtils.FloodFill(
 							map.Tiles,
-							unplayableWater,
+							unplayableWater.Select(cpos => (cpos, false)),
 							ClearWaterBody,
 							Direction.Spread4CVec);
 					}
