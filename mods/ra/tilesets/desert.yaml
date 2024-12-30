@@ -4038,3 +4038,131 @@ Templates:
 		Tiles:
 			0: Rock
 			1: Rock
+
+MultiBrushCollections:
+	Trees:
+		MultiBrush@14:
+			Template: 14
+		MultiBrush@15:
+			Template: 15
+		MultiBrush@16:
+			Template: 16
+		MultiBrush@17:
+			Template: 17
+		MultiBrush@18:
+			Template: 18
+		MultiBrush@19:
+			Template: 19
+		MultiBrush@20:
+			Template: 20
+		MultiBrush@21:
+			Template: 21
+		MultiBrush@22:
+			Template: 22
+		MultiBrush@23:
+			Template: 23
+		MultiBrush@t04:
+			Actor: t04
+		MultiBrush@t08:
+			Actor: t08
+		MultiBrush@t09:
+			Actor: t09
+		MultiBrush@tc01:
+			Actor: tc01
+		MultiBrush@t04.husk:
+			Actor: t04.husk
+			Weight: 0.1
+		MultiBrush@t08.husk:
+			Actor: t08.husk
+			Weight: 0.1
+		MultiBrush@t09.husk:
+			Actor: t09.husk
+			Weight: 0.1
+		MultiBrush@tc01.husk:
+			Actor: tc01.husk
+			Weight: 0.1
+	Obstructions:
+		MultiBrush@2:
+			Template: 2
+		MultiBrush@3:
+			Template: 3
+		MultiBrush@4:
+			Template: 4
+		MultiBrush@5:
+			Template: 5
+		MultiBrush@6:
+			Template: 6
+		MultiBrush@7:
+			Template: 7
+		MultiBrush@14:
+			Template: 14
+			Weight: 0.5
+		MultiBrush@15:
+			Template: 15
+			Weight: 0.5
+		MultiBrush@16:
+			Template: 16
+			Weight: 0.5
+		MultiBrush@17:
+			Template: 17
+			Weight: 0.5
+		MultiBrush@18:
+			Template: 18
+			Weight: 0.5
+		MultiBrush@19:
+			Template: 19
+			Weight: 0.5
+		MultiBrush@20:
+			Template: 20
+			Weight: 0.5
+		MultiBrush@21:
+			Template: 21
+			Weight: 0.5
+		MultiBrush@22:
+			Template: 22
+			Weight: 0.5
+		MultiBrush@23:
+			Template: 23
+			Weight: 0.5
+		MultiBrush@35:
+			Template: 35
+		MultiBrush@36:
+			Template: 36
+		MultiBrush@37:
+			Template: 37
+		MultiBrush@38:
+			Template: 38
+		MultiBrush@43:
+			Template: 43
+		MultiBrush@t04:
+			Actor: t04
+			WithBackingTile: 255,0
+			Weight: 0.1
+		MultiBrush@t08:
+			Actor: t08
+			WithBackingTile: 255,0
+			Weight: 0.1
+		MultiBrush@t09:
+			Actor: t09
+			WithBackingTile: 255,0
+			Weight: 0.1
+		MultiBrush@tc01:
+			Actor: tc01
+			WithBackingTile: 255,0
+			Weight: 0.1
+		MultiBrush@t04.husk:
+			Actor: t04.husk
+			WithBackingTile: 255,0
+			Weight: 0.1
+		MultiBrush@t08.husk:
+			Actor: t08.husk
+			WithBackingTile: 255,0
+			Weight: 0.1
+		MultiBrush@t09.husk:
+			Actor: t09.husk
+			WithBackingTile: 255,0
+			Weight: 0.1
+		MultiBrush@tc01.husk:
+			Actor: tc01.husk
+			WithBackingTile: 255,0
+			Weight: 0.1
