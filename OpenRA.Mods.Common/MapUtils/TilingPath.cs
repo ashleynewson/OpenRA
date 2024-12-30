@@ -677,9 +677,8 @@ namespace OpenRA.Mods.Common.MapUtils
 				return deviationAcc;
 			}
 
-			void UpdateFrom(CVec from, int fromTypeId)
+			void UpdateFrom(CVec from, int fromTypeId, int fromCost)
 			{
-				var fromCost = costs[fromTypeId][from.X, from.Y];
 				foreach (var segment in segmentsByStart[fromTypeId])
 				{
 					var to = from + segment.Moves;
@@ -709,11 +708,11 @@ namespace OpenRA.Mods.Common.MapUtils
 				SetPriorityAt(fromTypeId, from, MaxCost);
 			}
 
-			costs[pathStartTypeId][pathStart.X, pathStart.Y] = 0;
-			UpdateFrom(pathStart, pathStartTypeId);
-
-			// Needed in case we loop back to the start.
-			costs[pathStartTypeId][pathStart.X, pathStart.Y] = MaxCost;
+			// costs[pathStartTypeId][pathStart.X, pathStart.Y] is preset to
+			// MaxCost, but we pass in a cost of 0 for the first iteration. We
+			// leave it like this in case this is a looped path with a shared
+			// start and end point. We set it to 0 later when tracing back.
+			UpdateFrom(pathStart, pathStartTypeId, 0);
 
 			while (true)
 			{
@@ -722,7 +721,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				if (priority == MaxCost || from == pathEnd)
 					break;
 
-				UpdateFrom(from, fromTypeId);
+				UpdateFrom(from, fromTypeId, costs[fromTypeId][from.X, from.Y]);
 			}
 
 			// Trace back and update tiles
@@ -731,9 +730,8 @@ namespace OpenRA.Mods.Common.MapUtils
 				new(pathEnd.X + minPoint.X, pathEnd.Y + minPoint.Y)
 			};
 
-			(CVec From, int FromTypeId) TraceBackStep(CVec to, int toTypeId)
+			(CVec From, int FromTypeId) TraceBackStep(CVec to, int toTypeId, int toCost)
 			{
-				var toCost = costs[toTypeId][to.X, to.Y];
 				var candidates = new List<TilingSegment>();
 				foreach (var segment in segmentsByEnd[toTypeId])
 				{
@@ -775,16 +773,22 @@ namespace OpenRA.Mods.Common.MapUtils
 			{
 				var to = pathEnd;
 				var toTypeId = pathEndTypeId;
-				if (costs[toTypeId][to.X, to.Y] == MaxCost)
+				var bestCost = costs[toTypeId][to.X, to.Y];
+				if (bestCost == MaxCost)
 					return null;
-				(to, toTypeId) = TraceBackStep(to, toTypeId);
 
-				// We previously set this to MAX_SCORE in case we were a loop. Reset it for getting back to the start.
+				// For non-loops, this remained unset at MaxCost. For loops,
+				// this was the shared start and end point and got set to
+				// bestCost. We set it to 0 for traceback, but perform the
+				// first iteration using bestCost. (The opposite of how we
+				// traced forward.)
 				costs[pathStartTypeId][pathStart.X, pathStart.Y] = 0;
+
+				(to, toTypeId) = TraceBackStep(to, toTypeId, bestCost);
 
 				// No need to check direction. If that is an issue, I have bigger problems to worry about.
 				while (to != pathStart)
-					(to, toTypeId) = TraceBackStep(to, toTypeId);
+					(to, toTypeId) = TraceBackStep(to, toTypeId, costs[toTypeId][to.X, to.Y]);
 			}
 
 			// Traced back in reverse, so reverse the reversal.
