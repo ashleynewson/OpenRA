@@ -13,7 +13,7 @@
 						Mountains: 0.1
 						Forests: 0.025
 						ForestCutout: 2
-						MinimumCutoutSpacing: 12
+						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
 						SmoothingThreshold: 0.833333
 						MinimumLandSeaThickness: 5

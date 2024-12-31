@@ -88,7 +88,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int ForestCutout = default;
 			[FieldLoader.Require]
-			public readonly int MinimumCutoutSpacing = default;
+			public readonly int MaximumCutoutSpacing = default;
 			[FieldLoader.Require]
 			public readonly int ExternalCircularBias = default;
 			[FieldLoader.Require]
@@ -349,7 +349,7 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("Forest must be between 0.0 and 1.0 inclusive");
 				if (ForestCutout < 0)
 					throw new MapGenerationException("ForestCutout must be >= 0");
-				if (MinimumCutoutSpacing < 0)
+				if (MaximumCutoutSpacing < 0)
 					throw new MapGenerationException("TopologyAugmentationThreshold must be >= 0");
 				if (ForestClumpiness < 0.0f)
 					throw new MapGenerationException("ForestClumpiness must be >= 0.0");
@@ -825,13 +825,13 @@ namespace OpenRA.Mods.Common.Traits
 						space = newSpace;
 					}
 
-					if (param.MinimumCutoutSpacing > 0)
+					if (param.MaximumCutoutSpacing > 0)
 					{
 						var roominess = new CellLayer<int>(map);
 						CellLayerUtils.ChebyshevRoom(roominess, space, false);
 						foreach (var mpos in map.AllCells.MapCoords)
 							roominess[mpos] = Math.Min(
-								param.MinimumCutoutSpacing,
+								param.MaximumCutoutSpacing,
 								roominess[mpos]);
 
 						while (true)
@@ -840,7 +840,7 @@ namespace OpenRA.Mods.Common.Traits
 								roominess,
 								topologyRandom,
 								(a, b) => a.CompareTo(b));
-							if (room < param.MinimumCutoutSpacing)
+							if (room < param.MaximumCutoutSpacing)
 								break;
 
 							var projections = Symmetry.RotateAndMirrorCPos(
@@ -852,10 +852,10 @@ namespace OpenRA.Mods.Common.Traits
 							{
 								if (space.Contains(projection))
 									space[projection] = false;
-								var minX = projection.X - 2 * param.MinimumCutoutSpacing + 1;
-								var minY = projection.Y - 2 * param.MinimumCutoutSpacing + 1;
-								var maxX = projection.X + 2 * param.MinimumCutoutSpacing - 1;
-								var maxY = projection.Y + 2 * param.MinimumCutoutSpacing - 1;
+								var minX = projection.X - 2 * param.MaximumCutoutSpacing + 1;
+								var minY = projection.Y - 2 * param.MaximumCutoutSpacing + 1;
+								var maxX = projection.X + 2 * param.MaximumCutoutSpacing - 1;
+								var maxY = projection.Y + 2 * param.MaximumCutoutSpacing - 1;
 								for (var y = minY; y <= maxY; y++)
 									for (var x = minX; x <= maxX; x++)
 									{
