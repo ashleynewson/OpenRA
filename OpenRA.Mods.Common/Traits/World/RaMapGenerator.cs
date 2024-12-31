@@ -88,6 +88,8 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int ForestCutout = default;
 			[FieldLoader.Require]
+			public readonly int MinimumCutoutSpacing = default;
+			[FieldLoader.Require]
 			public readonly int ExternalCircularBias = default;
 			[FieldLoader.Require]
 			public readonly int TerrainSmoothing = default;
@@ -342,13 +344,17 @@ namespace OpenRA.Mods.Common.Traits
 				if (MinimumMountainThickness < 1)
 					throw new MapGenerationException("MinimumMountainThickness must be >= 1");
 				if (Water < 0.0f || Water > 1.0f)
-					throw new MapGenerationException("Water setting must be between 0 and 1 inclusive");
+					throw new MapGenerationException("Water must be between 0.0 and 1.0 inclusive");
 				if (Forests < 0.0f || Forests > 1.0f)
-					throw new MapGenerationException("Forest setting must be between 0 and 1 inclusive");
+					throw new MapGenerationException("Forest must be between 0.0 and 1.0 inclusive");
+				if (ForestCutout < 0)
+					throw new MapGenerationException("ForestCutout must be >= 0");
+				if (MinimumCutoutSpacing < 0)
+					throw new MapGenerationException("TopologyAugmentationThreshold must be >= 0");
 				if (ForestClumpiness < 0.0f)
-					throw new MapGenerationException("ForestClumpiness setting must be >= 0");
+					throw new MapGenerationException("ForestClumpiness must be >= 0.0");
 				if (Mountains < 0.0f || Mountains > 1.0f)
-					throw new MapGenerationException("Mountains fraction must be between 0 and 1 inclusive");
+					throw new MapGenerationException("Mountains must be between 0.0 and 1.0 inclusive");
 				if (Roughness < 0.0f || Roughness > 1.0f)
 					throw new MapGenerationException("Roughness must be between 0.0 and 1.0");
 				if (RoughnessRadius < 1)
@@ -556,6 +562,7 @@ namespace OpenRA.Mods.Common.Traits
 			var playerRandom = new MersenneTwister(random.Next());
 			var expansionRandom = new MersenneTwister(random.Next());
 			var buildingRandom = new MersenneTwister(random.Next());
+			var topologyRandom = new MersenneTwister(random.Next());
 
 			TerrainTile PickTile(ushort tileType)
 			{
@@ -816,6 +823,47 @@ namespace OpenRA.Mods.Common.Traits
 								=> newSpace[destination] =
 									sources.All(source => !space.TryGetValue(source, out var value) || value));
 						space = newSpace;
+					}
+
+					if (param.MinimumCutoutSpacing > 0)
+					{
+						var roominess = new CellLayer<int>(map);
+						CellLayerUtils.ChebyshevRoom(roominess, space, false);
+						foreach (var mpos in map.AllCells.MapCoords)
+							roominess[mpos] = Math.Min(
+								param.MinimumCutoutSpacing,
+								roominess[mpos]);
+
+						while (true)
+						{
+							var (chosenMPos, room) = CellLayerUtils.FindRandomBest(
+								roominess,
+								topologyRandom,
+								(a, b) => a.CompareTo(b));
+							if (room < param.MinimumCutoutSpacing)
+								break;
+
+							var projections = Symmetry.RotateAndMirrorCPos(
+								chosenMPos.ToCPos(map),
+								space,
+								param.Rotations,
+								param.Mirror);
+							foreach (var projection in projections)
+							{
+								space[projection] = false;
+								var minX = projection.X - 2 * param.MinimumCutoutSpacing + 1;
+								var minY = projection.Y - 2 * param.MinimumCutoutSpacing + 1;
+								var maxX = projection.X + 2 * param.MinimumCutoutSpacing - 1;
+								var maxY = projection.Y + 2 * param.MinimumCutoutSpacing - 1;
+								for (var y = minY; y <= maxY; y++)
+									for (var x = minX; x <= maxX; x++)
+									{
+										var mpos = new CPos(x, y).ToMPos(map);
+										if (roominess.Contains(mpos))
+											roominess[mpos] = 0;
+									}
+							}
+						}
 					}
 
 					var matrixSpace = CellLayerUtils.ToMatrix(space, false);
