@@ -850,7 +850,8 @@ namespace OpenRA.Mods.Common.Traits
 								param.Mirror);
 							foreach (var projection in projections)
 							{
-								space[projection] = false;
+								if (space.Contains(projection))
+									space[projection] = false;
 								var minX = projection.X - 2 * param.MinimumCutoutSpacing + 1;
 								var minY = projection.Y - 2 * param.MinimumCutoutSpacing + 1;
 								var maxX = projection.X + 2 * param.MinimumCutoutSpacing - 1;
