@@ -15,7 +15,7 @@ using System.Linq;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	/// <summary>A super template that can be used to paint both tiles and actors.</summary>
 	sealed class MultiBrush

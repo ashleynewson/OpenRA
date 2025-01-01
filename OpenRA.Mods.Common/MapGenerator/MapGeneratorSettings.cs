@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace OpenRA
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	public sealed class MapGeneratorSettings
 	{

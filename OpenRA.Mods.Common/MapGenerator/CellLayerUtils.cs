@@ -16,7 +16,7 @@ using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	public static class CellLayerUtils
 	{

@@ -16,7 +16,7 @@ using System.Globalization;
 using System.Linq;
 using OpenRA.Primitives;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	public static class MatrixUtils
 	{

@@ -12,7 +12,7 @@
 using System;
 using OpenRA.Support;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	public static class NoiseUtils
 	{
