@@ -15,8 +15,8 @@ using System.Diagnostics;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
+using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic

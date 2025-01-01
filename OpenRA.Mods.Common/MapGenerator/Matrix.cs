@@ -11,7 +11,7 @@
 
 using System;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	/// <summary>
 	/// A fixed-size 2D array that can be indexed either linearly or by coordinates.

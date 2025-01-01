@@ -18,7 +18,7 @@ using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	/// <summary>Path to be tiled onto a map using TemplateSegments.</summary>
 	public sealed class TilingPath
@@ -44,7 +44,7 @@ namespace OpenRA.Mods.Common.MapUtils
 				{
 					var direction =
 						Direction ?? throw new InvalidOperationException("Direction is null");
-					return $"{Type}.{MapUtils.Direction.ToString(direction)}";
+					return $"{Type}.{MapGenerator.Direction.ToString(direction)}";
 				}
 			}
 

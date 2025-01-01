@@ -15,7 +15,7 @@ using System.Linq;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	/// <summary>Description of an actor to add to a map.</summary>
 	public sealed class ActorPlan

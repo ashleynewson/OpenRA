@@ -659,40 +659,4 @@ namespace OpenRA.Traits
 		bool CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses);
 		LongBitSet<PlayerBitMask> CrushableBy(Actor self, BitSet<CrushClass> crushClasses);
 	}
-
-	public class MapGenerationException : Exception
-	{
-		public MapGenerationException(string message)
-			: base(message) { }
-		public MapGenerationException(string message, Exception inner)
-			: base(message, inner) { }
-	}
-
-	public interface IMapGeneratorInfo : ITraitInfoInterface
-	{
-		string Type { get; }
-		string Name { get; }
-	}
-
-	public interface IMapGenerator
-	{
-		/// <summary>
-		/// Get the generator settings available for this map.
-		/// Returns null if not compatible with the given map.
-		/// </summary>
-		MapGeneratorSettings GetSettings(Map map);
-
-		/// <summary>
-		/// Generate or manipulate a supplied map in-place.
-		/// </summary>
-		/// <exception cref="YamlException">
-		/// May be thrown if the map settings are invalid. Map should be discarded.
-		/// </exception>
-		/// <exception cref="MapGenerationException">
-		/// Thrown if the map could not be generated with the requested configuration. Map should be discarded.
-		/// </exception>
-		void Generate(Map map, MiniYaml settings);
-
-		IMapGeneratorInfo Info { get; }
-	}
 }

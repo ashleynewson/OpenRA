@@ -11,7 +11,7 @@
 
 using System.Collections.Generic;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	public static class PlayableSpace
 	{

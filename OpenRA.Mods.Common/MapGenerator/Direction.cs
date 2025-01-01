@@ -13,7 +13,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace OpenRA.Mods.Common.MapUtils
+namespace OpenRA.Mods.Common.MapGenerator
 {
 	/// <summary>
 	/// Utilities for simple directions and adjacency. Note that coordinate systems might not agree
