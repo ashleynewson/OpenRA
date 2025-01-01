@@ -36,7 +36,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		public float Weight;
-		public readonly Map Map;
 		readonly List<(CVec, TerrainTile)> tiles;
 		readonly List<ActorPlan> actorPlans;
 		CVec[] shape;
@@ -64,10 +63,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>
 		/// Create a new empty MultiBrush with a default weight of 1.0.
 		/// </summary>
-		public MultiBrush(Map map)
+		public MultiBrush()
 		{
 			Weight = 1.0f;
-			Map = map;
 			tiles = new List<(CVec, TerrainTile)>();
 			actorPlans = new List<ActorPlan>();
 			shape = Array.Empty<CVec>();
@@ -76,14 +74,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 		MultiBrush(MultiBrush other)
 		{
 			Weight = other.Weight;
-			Map = other.Map;
 			tiles = new List<(CVec, TerrainTile)>(other.tiles);
 			actorPlans = new List<ActorPlan>(other.actorPlans);
 			shape = other.shape.ToArray();
 		}
 
 		public MultiBrush(Map map, MiniYaml my)
-			: this(map)
+			: this()
 		{
 			foreach (var node in my.Nodes)
 				switch (node.Key.Split('@')[0])
@@ -96,7 +93,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						break;
 					case "Template":
 						if (Exts.TryParseUshortInvariant(node.Value.Value, out var template))
-							WithTemplate(template);
+							WithTemplate(map, template);
 						else
 							throw new YamlException($"Invalid MultiBrush Template `${node.Value.Value}`");
 						break;
@@ -154,10 +151,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// default, it will be auto-offset such that the first tile is
 		/// under (0, 0).
 		/// </summary>
-		public MultiBrush WithTemplate(ushort templateId, CVec? offset = null)
+		public MultiBrush WithTemplate(Map map, ushort templateId, CVec? offset = null)
 		{
-			var tileset = Map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			var tileset = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
 			var templateInfo = tileset.Templates[templateId];
+			return WithTemplate(templateInfo, offset);
+		}
+
+		public MultiBrush WithTemplate(TerrainTemplateInfo templateInfo, CVec? offset = null)
+		{
 			if (templateInfo.PickAny)
 				throw new ArgumentException("PickAny not supported - create separate obstacles instead.");
 			for (var y = 0; y < templateInfo.Size.Y; y++)
@@ -168,7 +170,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 					{
 						if (offset == null)
 							offset = new CVec(-x, -y);
-						var tile = new TerrainTile(templateId, (byte)i);
+						var tile = new TerrainTile(templateInfo.Id, (byte)i);
 						tiles.Add((new CVec(x, y) + (CVec)offset, tile));
 					}
 				}
@@ -219,7 +221,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <para>contract specifies whether tiles or actors are allowed to be painted.</para>
 		/// <para>If nothing could be painted, throws ArgumentException.</para>
 		/// </summary>
-		public void Paint(List<ActorPlan> actorPlans, CPos paintAt, Replaceability contract)
+		public void Paint(Map map, List<ActorPlan> actorPlans, CPos paintAt, Replaceability contract)
 		{
 			switch (contract)
 			{
@@ -227,40 +229,42 @@ namespace OpenRA.Mods.Common.MapGenerator
 					throw new ArgumentException("Cannot paint: Replaceability.None");
 				case Replaceability.Any:
 					if (this.actorPlans.Count > 0)
-						PaintActors(actorPlans, paintAt);
+						PaintActors(map, actorPlans, paintAt);
 					else if (tiles.Count > 0)
-						PaintTiles(paintAt);
+						PaintTiles(map, paintAt);
 					else
 						throw new ArgumentException("Cannot paint: no tiles or actors");
 					break;
 				case Replaceability.Tile:
 					if (tiles.Count == 0)
 						throw new ArgumentException("Cannot paint: no tiles");
-					PaintTiles(paintAt);
-					PaintActors(actorPlans, paintAt);
+					PaintTiles(map, paintAt);
+					PaintActors(map, actorPlans, paintAt);
 					break;
 				case Replaceability.Actor:
 					if (this.actorPlans.Count == 0)
 						throw new ArgumentException("Cannot paint: no actors");
-					PaintActors(actorPlans, paintAt);
+					PaintActors(map, actorPlans, paintAt);
 					break;
 			}
 		}
 
-		void PaintTiles(CPos paintAt)
+		void PaintTiles(Map map, CPos paintAt)
 		{
 			foreach (var (xy, tile) in tiles)
 			{
-				var mpos = (paintAt + xy).ToMPos(Map);
-				if (Map.Tiles.Contains(mpos))
-					Map.Tiles[mpos] = tile;
+				var mpos = (paintAt + xy).ToMPos(map);
+				if (map.Tiles.Contains(mpos))
+					map.Tiles[mpos] = tile;
 			}
 		}
 
-		void PaintActors(List<ActorPlan> actorPlans, CPos paintAt)
+		void PaintActors(Map map, List<ActorPlan> actorPlans, CPos paintAt)
 		{
 			foreach (var actorPlan in this.actorPlans)
 			{
+				if (map != actorPlan.Map)
+					throw new ArgumentException("ActorPlan is for a different map");
 				var plan = actorPlan.Clone();
 				var offset = plan.Location;
 				plan.Location = paintAt + new CVec(offset.X, offset.Y);
@@ -386,7 +390,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 					var paintAt = mpos.ToCPos(map);
 					var contract = ReserveShape(paintAt, brush.Shape, brush.Contract());
 					if (contract != Replaceability.None)
-						brush.Paint(actorPlans, paintAt, contract);
+						brush.Paint(map, actorPlans, paintAt, contract);
 
 					remainingQuota -= brushArea;
 					if (remainingQuota <= 0)
