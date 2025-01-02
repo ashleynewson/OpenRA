@@ -219,12 +219,8 @@ namespace OpenRA.Mods.Common.Traits
 				FieldLoader.Load(this, my);
 				Map = map;
 				TemplatedTerrainInfo = Map.Rules.TerrainInfo as ITemplatedTerrainInfo;
-				ForestObstacles = MultiBrush.LoadMultiBrushList(
-					map,
-					TemplatedTerrainInfo.MultiBrushCollections[my.NodeWithKey("ForestObstacles").Value.Value]);
-				UnplayableObstacles = MultiBrush.LoadMultiBrushList(
-					map,
-					TemplatedTerrainInfo.MultiBrushCollections[my.NodeWithKey("UnplayableObstacles").Value.Value]);
+				ForestObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("ForestObstacles").Value.Value);
+				UnplayableObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("UnplayableObstacles").Value.Value);
 
 				ResourceTypes = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes;
 				if (!ResourceTypes.TryGetValue(my.NodeWithKey("DefaultResource").Value.Value, out DefaultResource))
