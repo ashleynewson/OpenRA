@@ -11,12 +11,81 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapGenerator
 {
+	/// <summary>
+	/// MiniYaml-loaded definition of a MultiBrush. Can be loaded into a MultiBrush once a map is
+	/// available.
+	/// </summary>
+	public sealed class MultiBrushInfo
+	{
+		public readonly float Weight;
+		public readonly ImmutableArray<string> Actors;
+		public readonly TerrainTile? BackingTile;
+		public readonly ImmutableArray<ushort> Templates;
+		public readonly ImmutableArray<TerrainTile> Tiles;
+
+		// Currently doesn't support specifying offsets. Add this capability if/when needed.
+		public MultiBrushInfo(MiniYaml my)
+		{
+			Weight = 1.0f;
+			var actors = new List<string>();
+			var templates = new List<ushort>();
+			var tiles = new List<TerrainTile>();
+			foreach (var node in my.Nodes)
+				switch (node.Key.Split('@')[0])
+				{
+					case "Weight":
+						if (!Exts.TryParseFloatOrPercentInvariant(node.Value.Value, out Weight))
+							throw new YamlException($"Invalid MultiBrush Weight `${node.Value.Value}`");
+						break;
+					case "Actor":
+						actors.Add(node.Value.Value);
+						break;
+					case "BackingTile":
+						if (TerrainTile.TryParse(node.Value.Value, out var backingTile))
+							BackingTile = backingTile;
+						else
+							throw new YamlException($"Invalid MultiBrush BackingTile `${node.Value.Value}`");
+						break;
+					case "Template":
+						if (Exts.TryParseUshortInvariant(node.Value.Value, out var template))
+							templates.Add(template);
+						else
+							throw new YamlException($"Invalid MultiBrush Template `${node.Value.Value}`");
+						break;
+					case "Tile":
+						if (TerrainTile.TryParse(node.Value.Value, out var tile))
+							Tiles.Add(tile);
+						else
+							throw new YamlException($"Invalid MultiBrush Tile `${node.Value.Value}`");
+						break;
+					default:
+						throw new YamlException($"Unrecognized MultiBrush key {node.Key.Split('@')[0]}");
+				}
+
+			Actors = actors.ToImmutableArray();
+			Templates = templates.ToImmutableArray();
+			Tiles = tiles.ToImmutableArray();
+		}
+
+		public static ImmutableArray<MultiBrushInfo> ParseCollection(MiniYaml my)
+		{
+			var brushes = new List<MultiBrushInfo>();
+			foreach (var node in my.Nodes)
+				if (node.Key.Split('@')[0] == "MultiBrush")
+					brushes.Add(new MultiBrushInfo(node.Value));
+				else
+					throw new YamlException($"Expected `MultiBrush@*` but got `{node.Key}`");
+			return brushes.ToImmutableArray();
+		}
+	}
+
 	/// <summary>A super template that can be used to paint both tiles and actors.</summary>
 	sealed class MultiBrush
 	{
@@ -79,49 +148,27 @@ namespace OpenRA.Mods.Common.MapGenerator
 			shape = other.shape.ToArray();
 		}
 
-		public MultiBrush(Map map, MiniYaml my)
+		public MultiBrush(Map map, MultiBrushInfo info)
 			: this()
 		{
-			foreach (var node in my.Nodes)
-				switch (node.Key.Split('@')[0])
-				{
-					case "Weight":
-						if (Exts.TryParseFloatOrPercentInvariant(node.Value.Value, out var weight))
-							WithWeight(weight);
-						else
-							throw new YamlException($"Invalid MultiBrush Weight `${node.Value.Value}`");
-						break;
-					case "Template":
-						if (Exts.TryParseUshortInvariant(node.Value.Value, out var template))
-							WithTemplate(map, template);
-						else
-							throw new YamlException($"Invalid MultiBrush Template `${node.Value.Value}`");
-						break;
-					case "Tile":
-						if (TerrainTile.TryParse(node.Value.Value, out var tile))
-							WithTile(tile);
-						else
-							throw new YamlException($"Invalid MultiBrush Tile `${node.Value.Value}`");
-						break;
-					case "Actor":
-						WithActor(new ActorPlan(map, node.Value.Value).AlignFootprint());
-						break;
-					case "BackingTile":
-						if (TerrainTile.TryParse(node.Value.Value, out var backingTile))
-							WithBackingTile(backingTile);
-						else
-							throw new YamlException($"Invalid MultiBrush BackingTile `${node.Value.Value}`");
-						break;
-				}
+			WithWeight(info.Weight);
+			foreach (var actor in info.Actors)
+				WithActor(new ActorPlan(map, actor).AlignFootprint());
+			if (info.BackingTile != null)
+				WithBackingTile((TerrainTile)info.BackingTile);
+			foreach (var template in info.Templates)
+				WithTemplate(map, template);
+			foreach (var tile in info.Tiles)
+				WithTile(tile);
 		}
 
-		public static List<MultiBrush> LoadMultiBrushList(Map map, MiniYaml my)
+		/// <summary>Load a named MultiBrush collection from a map's tileset.</summary>
+		public static ImmutableArray<MultiBrush> LoadCollection(Map map, string name)
 		{
-			var brushes = new List<MultiBrush>();
-			foreach (var node in my.Nodes)
-				if (node.Key.Split('@')[0] == "MultiBrush")
-					brushes.Add(new MultiBrush(map, node.Value));
-			return brushes;
+			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			return templatedTerrainInfo.MultiBrushCollections[name]
+				.Select(info => new MultiBrush(map, info))
+				.ToImmutableArray();
 		}
 
 		/// <summary>
@@ -161,7 +208,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public MultiBrush WithTemplate(TerrainTemplateInfo templateInfo, CVec? offset = null)
 		{
 			if (templateInfo.PickAny)
-				throw new ArgumentException("PickAny not supported - create separate obstacles instead.");
+				throw new ArgumentException("PickAny not supported - create separate MultiBrushes using WithTile instead.");
 			for (var y = 0; y < templateInfo.Size.Y; y++)
 				for (var x = 0; x < templateInfo.Size.X; x++)
 				{
@@ -179,15 +226,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return this;
 		}
 
-		/// <summary>Add a single tile at (0, 0).</summary>
-		public MultiBrush WithTile(TerrainTile tile)
+		/// <summary>
+		/// Add a single tile, optionally with a given offset. By default, it
+		/// will be positioned under (0, 0).
+		/// </summary>
+		public MultiBrush WithTile(TerrainTile tile, CVec? offset = null)
 		{
-			tiles.Add((new CVec(0, 0), tile));
+			tiles.Add((offset ?? new CVec(0, 0), tile));
 			UpdateShape();
 			return this;
 		}
 
-		/// <summary>Add an actor at (0, 0).</summary>
+		/// <summary>Add an actor (using the ActorPlan's location as an offset).</summary>
 		public MultiBrush WithActor(ActorPlan actor)
 		{
 			actorPlans.Add(actor);

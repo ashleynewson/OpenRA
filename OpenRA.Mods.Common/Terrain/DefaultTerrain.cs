@@ -14,6 +14,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using OpenRA.FileSystem;
+using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
@@ -83,7 +84,7 @@ namespace OpenRA.Mods.Common.Terrain
 		[FieldLoader.Ignore]
 		public readonly IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates;
 		[FieldLoader.Ignore]
-		public readonly IReadOnlyDictionary<string, MiniYaml> MultiBrushCollections;
+		public readonly IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> MultiBrushCollections;
 
 		[FieldLoader.Ignore]
 		public readonly TerrainTypeInfo[] TerrainInfo;
@@ -131,7 +132,11 @@ namespace OpenRA.Mods.Common.Terrain
 			MultiBrushCollections =
 				yaml.TryGetValue("MultiBrushCollections", out var collectionDefinitions)
 					? collectionDefinitions.ToDictionary()
-					: ImmutableDictionary<string, MiniYaml>.Empty;
+						.Select(kv => new KeyValuePair<string, IEnumerable<MultiBrushInfo>>(
+							kv.Key,
+							MultiBrushInfo.ParseCollection(kv.Value)))
+						.ToImmutableDictionary()
+					: ImmutableDictionary<string, IEnumerable<MultiBrushInfo>>.Empty;
 		}
 
 		public TerrainTypeInfo this[byte index] => TerrainInfo[index];
@@ -183,7 +188,7 @@ namespace OpenRA.Mods.Common.Terrain
 		string[] ITemplatedTerrainInfo.EditorTemplateOrder => EditorTemplateOrder;
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> ITemplatedTerrainInfo.Templates => Templates;
 		IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> ITemplatedTerrainInfo.SegmentsToTemplates => SegmentsToTemplates;
-		IReadOnlyDictionary<string, MiniYaml> ITemplatedTerrainInfo.MultiBrushCollections => MultiBrushCollections;
+		IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> ITemplatedTerrainInfo.MultiBrushCollections => MultiBrushCollections;
 
 		void ITerrainInfoNotifyMapCreated.MapCreated(Map map)
 		{
