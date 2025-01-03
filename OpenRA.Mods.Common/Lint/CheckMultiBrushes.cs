@@ -21,8 +21,7 @@ namespace OpenRA.Mods.Common.Lint
 		{
 			foreach (var (terrainInfoName, terrainInfo) in modData.DefaultTerrainInfo)
 			{
-				var templatedTerrainInfo = terrainInfo as ITemplatedTerrainInfo;
-				if (templatedTerrainInfo != null && templatedTerrainInfo.MultiBrushCollections.Count > 0)
+				if (terrainInfo is ITemplatedTerrainInfo templatedTerrainInfo && templatedTerrainInfo.MultiBrushCollections.Count > 0)
 				{
 					var map = new Map(modData, terrainInfo, 1, 1);
 					foreach (var (collectionName, collection) in templatedTerrainInfo.MultiBrushCollections)
