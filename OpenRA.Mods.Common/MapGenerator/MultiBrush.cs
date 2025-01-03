@@ -201,7 +201,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public MultiBrush WithTemplate(Map map, ushort templateId, CVec? offset = null)
 		{
 			var tileset = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
-			var templateInfo = tileset.Templates[templateId];
+			if (!tileset.Templates.TryGetValue(templateId, out var templateInfo))
+				throw new ArgumentException($"Map's tileset does not contain template with ID {templateId}.");
 			return WithTemplate(templateInfo, offset);
 		}
 
@@ -262,6 +263,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>Update the weight.</summary>
 		public MultiBrush WithWeight(float weight)
 		{
+			if (!(weight > 0.0f))
+				throw new ArgumentException("Weight was not > 0.0");
 			Weight = weight;
 			return this;
 		}
