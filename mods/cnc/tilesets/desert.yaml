@@ -3139,33 +3139,33 @@ MultiBrushCollections:
 			Template: 220
 		MultiBrush@t04:
 			Actor: t04
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
 		MultiBrush@t08:
 			Actor: t08
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
 		MultiBrush@t09:
 			Actor: t09
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
 		MultiBrush@t18:
 			Actor: t18
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
 		MultiBrush@t04.husk:
 			Actor: t04.husk
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
 		MultiBrush@t08.husk:
 			Actor: t08.husk
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
 		MultiBrush@t09.husk:
 			Actor: t09.husk
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
 		MultiBrush@t18.husk:
 			Actor: t18.husk
-			WithBackingTile: 255,0
+			BackingTile: 255,0
 			Weight: 0.1
