@@ -15,35 +15,36 @@ using OpenRA.Mods.Common.Terrain;
 
 namespace OpenRA.Mods.Common.Lint
 {
-	public class CheckMultiBrushes : ILintMapPass
+	public class CheckMultiBrushes : ILintPass
 	{
-		public void Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Map map)
+		public void Run(Action<string> emitError, Action<string> emitWarning, ModData modData)
 		{
-			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
-			foreach (var kv in templatedTerrainInfo.MultiBrushCollections)
+			foreach (var (terrainInfoName, terrainInfo) in modData.DefaultTerrainInfo)
 			{
-				var name = kv.Key;
-				var collection = kv.Value;
-				foreach (var info in collection)
+				var templatedTerrainInfo = terrainInfo as ITemplatedTerrainInfo;
+				if (templatedTerrainInfo != null && templatedTerrainInfo.MultiBrushCollections.Count > 0)
 				{
-					try
-					{
-						// Includes validation of actor types and template IDs.
-						var multiBrush = new MultiBrush(map, info);
-
-						// Validates there is at least something in the MultiBrush.
-						multiBrush.Contract();
-
-						foreach (var (_, tile) in multiBrush.Tiles)
+					var map = new Map(modData, terrainInfo, 1, 1);
+					foreach (var (collectionName, collection) in templatedTerrainInfo.MultiBrushCollections)
+						foreach (var info in collection)
 						{
-							if (!templatedTerrainInfo.TryGetTerrainInfo(tile, out var _))
-								emitError($"Invalid MultiBrush collection `{name}`: Map's tileset does not contain tile {tile.Type},{tile.Index}");
+							try
+							{
+								// Includes validation of actor types and template IDs.
+								var multiBrush = new MultiBrush(map, info);
+
+								// Validates there is at least something in the MultiBrush.
+								multiBrush.Contract();
+
+								foreach (var (_, tile) in multiBrush.Tiles)
+									if (!templatedTerrainInfo.TryGetTerrainInfo(tile, out var _))
+										emitError($"Tileset {terrainInfoName} has invalid MultiBrush collection `{collectionName}`: tileset does not have tile {tile.Type},{tile.Index}");
+							}
+							catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
+							{
+								emitError($"Tileset {terrainInfoName} has invalid MultiBrush collection `{collectionName}`: {e.Message}");
+							}
 						}
-					}
-					catch (Exception e) when (e is ArgumentException || e is InvalidOperationException)
-					{
-						emitError($"Invalid MultiBrush collection `{name}`: {e.Message}");
-					}
 				}
 			}
 		}
