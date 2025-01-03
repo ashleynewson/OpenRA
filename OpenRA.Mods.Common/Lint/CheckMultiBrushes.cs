@@ -19,14 +19,15 @@ namespace OpenRA.Mods.Common.Lint
 	{
 		public void Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Map map)
 		{
-			var TemplatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
-			foreach (var kv in TemplatedTerrainInfo.MultiBrushCollections)
+			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			foreach (var kv in templatedTerrainInfo.MultiBrushCollections)
 			{
 				var name = kv.Key;
 				var collection = kv.Value;
 				foreach (var info in collection)
 				{
-					try {
+					try
+					{
 						// Includes validation of actor types and template IDs.
 						var multiBrush = new MultiBrush(map, info);
 
@@ -35,7 +36,7 @@ namespace OpenRA.Mods.Common.Lint
 
 						foreach (var (_, tile) in multiBrush.Tiles)
 						{
-							if (!TemplatedTerrainInfo.TryGetTerrainInfo(tile, out var _))
+							if (!templatedTerrainInfo.TryGetTerrainInfo(tile, out var _))
 								emitError($"Invalid MultiBrush collection `{name}`: Map's tileset does not contain tile {tile.Type},{tile.Index}");
 						}
 					}
