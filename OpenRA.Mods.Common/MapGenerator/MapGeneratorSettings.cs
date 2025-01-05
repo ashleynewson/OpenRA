@@ -213,7 +213,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						{
 							Default = Choices.FirstOrDefault(choice => choice.Id == defaultNode.Value.Value);
 							if (Default == null)
-								throw new YamlException($"Option `{id}` default choice `{Default}` is not valid");
+								throw new YamlException($"Option `{id}` default choice `{defaultNode.Value.Value}` is not valid");
 						}
 						else
 						{
