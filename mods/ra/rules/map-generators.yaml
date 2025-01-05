@@ -138,6 +138,8 @@
 						EnforceSymmetry: 2
 						Mountains: 0.5
 						Roughness: 0.25
+						RoadSpacing: 3
+						RoadShrink: 4
 				Choice@Mountains:
 					Label: label-ra-map-generator-choice-terrain-type-mountains
 					Settings:
