@@ -9,7 +9,7 @@
 						TerrainFeatureSize: 20.0
 						ForestFeatureSize: 20.0
 						ResourceFeatureSize: 20.0
-						Water: 0.2
+						Water: 0.0
 						Mountains: 0.1
 						Forests: 0.025
 						ForestCutout: 2
@@ -69,6 +69,11 @@
 					Settings:
 						LandTile: 255
 						WaterTile: 1
+				Choice@temperat:
+					Tileset: TEMPERAT
+					Settings:
+						LandTile: 255
+						WaterTile: 1
 			Option@Seed:
 				Label: label-cnc-map-generator-option-seed
 				Random: True
@@ -77,16 +82,20 @@
 			Option@TerrainType:
 				Label: label-cnc-map-generator-option-terrain-type
 				Priority: 2
-				Default: Gardens
+				Default: Gardens,Rocky
 				Choice@Lakes:
 					Label: label-cnc-map-generator-choice-terrain-type-lakes
+					Tileset: DESERT
 					Settings:
+						Water: 0.2
 				Choice@Puddles:
 					Label: label-cnc-map-generator-choice-terrain-type-puddles
+					Tileset: DESERT
 					Settings:
 						Water: 0.1
 				Choice@Gardens:
 					Label: label-cnc-map-generator-choice-terrain-type-gardens
+					Tileset: DESERT
 					Settings:
 						Water: 0.05
 						Forests: 0.3
@@ -129,6 +138,8 @@
 						EnforceSymmetry: 2
 						Mountains: 0.5
 						Roughness: 0.25
+						RoadSpacing: 3
+						RoadShrink: 4
 				Choice@Mountains:
 					Label: label-cnc-map-generator-choice-terrain-type-mountains
 					Settings:
@@ -138,38 +149,12 @@
 						MinimumTerrainContourSpacing: 5
 				Choice@MountainLakes:
 					Label: label-cnc-map-generator-choice-terrain-type-mountain-lakes
+					Tileset: DESERT
 					Settings:
 						Water: 0.2
 						Mountains: 1.0
 						Roughness: 0.85
 						MinimumTerrainContourSpacing: 5
-				Choice@Oceanic:
-					Label: label-cnc-map-generator-choice-terrain-type-oceanic
-					Settings:
-						Water: 0.8
-						Forests: 0.0
-				Choice@LargeIslands:
-					Label: label-cnc-map-generator-choice-terrain-type-large-islands
-					Settings:
-						Water: 0.75
-						TerrainFeatureSize: 50.0
-						Forests: 0.0
-				Choice@Continents:
-					Label: label-cnc-map-generator-choice-terrain-type-continents
-					Settings:
-						Water: 0.5
-						TerrainFeatureSize: 100.0
-				Choice@Wetlands:
-					Label: label-cnc-map-generator-choice-terrain-type-wetlands
-					Settings:
-						Water: 0.5
-				Choice@NarrowWetlands:
-					Label: label-cnc-map-generator-choice-terrain-type-narrow-wetlands
-					Settings:
-						Water: 0.5
-						TerrainFeatureSize: 5.0
-						Forests: 0.0
-						SpawnBuildSize: 6
 			Option@Rotations:
 				Label: label-cnc-map-generator-option-rotations
 				SimpleChoice: Rotations

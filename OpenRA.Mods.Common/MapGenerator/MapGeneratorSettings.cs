@@ -208,12 +208,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					if (Choices.Count > 0)
 					{
-						var defaultNode = my.NodeWithKeyOrDefault("Default");
-						if (defaultNode != null)
+						var defaultOrder = my.NodeWithKeyOrDefault("Default")?.Value.Value;
+						if (defaultOrder != null)
 						{
-							Default = Choices.FirstOrDefault(choice => choice.Id == defaultNode.Value.Value);
+							foreach (var defaultChoice in defaultOrder.Split(','))
+							{
+								Default = Choices.FirstOrDefault(choice => choice.Id == defaultChoice);
+								if (Default != null)
+									break;
+							}
+
 							if (Default == null)
-								throw new YamlException($"Option `{id}` default choice `{defaultNode.Value.Value}` is not valid");
+								throw new YamlException($"None of option `{id}`'s default choices `{defaultOrder}` are not valid");
 						}
 						else
 						{
