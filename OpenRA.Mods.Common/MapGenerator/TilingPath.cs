@@ -615,7 +615,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 						return MaxCost;
 				}
 
-				if (from + segment.Moves == pathEnd)
+				var to = from + segment.Moves;
+				if (to == pathEnd)
 				{
 					if (segment.EndTypeId != pathEndTypeId)
 						return MaxCost;
@@ -624,6 +625,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 				{
 					if (!innerTypeIds.Contains(segment.EndTypeId))
 						return MaxCost;
+
+					if (isLoop && lowProgress[from.X, from.Y] > highProgress[to.X, to.Y] && highProgress[to.X, to.Y] != 0)
+					{
+						// We've missed the start/end of the loop and have potentially gone past it
+						// (as far as low and high progress are concerned).
+						return MaxCost;
+					}
 				}
 
 				var deviationAcc = 0;
