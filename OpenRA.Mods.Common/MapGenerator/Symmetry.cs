@@ -37,30 +37,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			TopRightMatchesBottomLeft = 4,
 		}
 
-		public static bool TryParseMirror(string s, out Mirror mirror)
-		{
-			switch (s)
-			{
-				case "None":
-					mirror = Mirror.None;
-					return true;
-				case "LeftMatchesRight":
-					mirror = Mirror.LeftMatchesRight;
-					return true;
-				case "TopLeftMatchesBottomRight":
-					mirror = Mirror.TopLeftMatchesBottomRight;
-					return true;
-				case "TopMatchesBottom":
-					mirror = Mirror.TopMatchesBottom;
-					return true;
-				case "TopRightMatchesBottomLeft":
-					mirror = Mirror.TopRightMatchesBottomLeft;
-					return true;
-			}
-
-			mirror = default;
-			return false;
-		}
+		public static bool TryParseMirror(string s, out Mirror mirror) => Enum.TryParse(s, out mirror);
 
 		/// <summary>
 		/// <para>

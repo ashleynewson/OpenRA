@@ -10,7 +10,9 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
@@ -46,11 +48,17 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var markerToolPanel = widget.Get("MARKER_TOOL_PANEL");
 			toolPanels.Add(MapTool.MarkerTiles, markerToolPanel);
-			var mapGeneratorToolPanel = widget.Get<ScrollPanelWidget>("MAP_GENERATOR_TOOL_PANEL");
-			toolPanels.Add(MapTool.MapGenerator, mapGeneratorToolPanel);
+			if (world.WorldActor.TraitsImplementing<IMapGenerator>().Any())
+			{
+				var mapGeneratorToolPanel = widget.GetOrNull("MAP_GENERATOR_TOOL_PANEL");
+				if (mapGeneratorToolPanel != null)
+					toolPanels.Add(MapTool.MapGenerator, mapGeneratorToolPanel);
+			}
 
 			toolsDropdown.OnMouseDown = _ => ShowToolsDropDown(toolsDropdown);
 			toolsDropdown.GetText = () => FluentProvider.GetMessage(toolNames[selectedTool]);
+			if (toolPanels.Count <= 1)
+				toolsDropdown.Disabled = true;
 		}
 
 		void ShowToolsDropDown(DropDownButtonWidget dropdown)

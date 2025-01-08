@@ -580,10 +580,9 @@ Container@EDITOR_WORLD_ROOT:
 							Align: Left
 							Visible: false
 				ScrollPanel@MAP_GENERATOR_TOOL_PANEL:
-					X: 9
-					Y: 35
-					Width: 290
-					Height: WINDOW_HEIGHT - 490
+					Y: 25
+					Width: PARENT_WIDTH
+					Height: PARENT_HEIGHT - 25
 					Visible: false
 					ScrollBar: Hidden
 					ScrollbarWidth: 0
@@ -621,7 +620,7 @@ Container@EDITOR_WORLD_ROOT:
 							X: 0
 							Y: 85
 							Width: PARENT_WIDTH
-							Height: PARENT_HEIGHT - 115
+							Height: PARENT_HEIGHT - 85
 							Children:
 								Container@CHECKBOX_TEMPLATE:
 									X: 5
