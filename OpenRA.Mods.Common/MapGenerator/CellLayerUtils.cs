@@ -268,6 +268,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Uniformally add to or subtract from all cells such that count out of every outOf cells,
+		/// are no greater than the given target value.
+		/// </summary>
+		public static void CalibrateQuantileInPlace(CellLayer<int> cellLayer, int target, int count, int outOf)
+		{
+			var sorted = Entries(cellLayer);
+			Array.Sort(sorted);
+			var adjustment = target - sorted[(sorted.Length - 1) * count / outOf];
+			foreach (var mpos in cellLayer.CellRegion.MapCoords)
+				cellLayer[mpos] += adjustment;
+		}
+
+		/// <summary>
 		/// Get the smallest CPos rectangle that contains all cells for the specified grid.
 		/// </summary>
 		public static Rectangle CellBounds(Size size, MapGridType gridType)

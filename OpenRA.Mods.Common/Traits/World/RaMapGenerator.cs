@@ -74,17 +74,17 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int Players = default;
 			[FieldLoader.Require]
-			public readonly float TerrainFeatureSize = default;
+			public readonly int TerrainFeatureSize = default;
 			[FieldLoader.Require]
-			public readonly float ForestFeatureSize = default;
+			public readonly int ForestFeatureSize = default;
 			[FieldLoader.Require]
-			public readonly float ResourceFeatureSize = default;
+			public readonly int ResourceFeatureSize = default;
 			[FieldLoader.Require]
 			public readonly float Water = default;
 			[FieldLoader.Require]
 			public readonly float Mountains = default;
 			[FieldLoader.Require]
-			public readonly float Forests = default;
+			public readonly int Forests = default;
 			[FieldLoader.Require]
 			public readonly int ForestCutout = default;
 			[FieldLoader.Require]
@@ -110,7 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int MinimumCliffLength = default;
 			[FieldLoader.Require]
-			public readonly float ForestClumpiness = default;
+			public readonly int ForestClumpiness = default;
 			[FieldLoader.Require]
 			public readonly bool DenyWalledAreas = default;
 			[FieldLoader.Require]
@@ -144,9 +144,9 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int ResourcesPerPlayer = default;
 			[FieldLoader.Require]
-			public readonly float OreUniformity = default;
+			public readonly int OreUniformity = default;
 			[FieldLoader.Require]
-			public readonly float OreClumpiness = default;
+			public readonly int OreClumpiness = default;
 			[FieldLoader.Require]
 			public readonly int MaximumExpansionResourceSpawns = default;
 			[FieldLoader.Require]
@@ -337,12 +337,12 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (Rotations < 1)
 					throw new MapGenerationException("Rotations must be >= 1");
-				if (TerrainFeatureSize < 1.0f)
-					throw new MapGenerationException("TerrainFeatureSize must be >= 1.0");
-				if (ForestFeatureSize < 1.0f)
-					throw new MapGenerationException("ForestFeatureSize must be >= 1.0");
-				if (ResourceFeatureSize < 1.0f)
-					throw new MapGenerationException("ResourceFeatureSize must be >= 1.0");
+				if (TerrainFeatureSize < 1)
+					throw new MapGenerationException("TerrainFeatureSize must be >= 1");
+				if (ForestFeatureSize < 1)
+					throw new MapGenerationException("ForestFeatureSize must be >= 1");
+				if (ResourceFeatureSize < 1)
+					throw new MapGenerationException("ResourceFeatureSize must be >= 1");
 				if (TerrainSmoothing < 1)
 					throw new MapGenerationException("TerrainSmoothing must be < 1");
 				if (SmoothingThreshold < 0.5f || SmoothingThreshold > 1.0f)
@@ -353,14 +353,14 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("MinimumMountainThickness must be >= 1");
 				if (Water < 0.0f || Water > 1.0f)
 					throw new MapGenerationException("Water must be between 0.0 and 1.0 inclusive");
-				if (Forests < 0.0f || Forests > 1.0f)
-					throw new MapGenerationException("Forest must be between 0.0 and 1.0 inclusive");
+				if (Forests < 0 || Forests > 1024)
+					throw new MapGenerationException("Forest must be between 0 and 1024 inclusive");
 				if (ForestCutout < 0)
 					throw new MapGenerationException("ForestCutout must be >= 0");
 				if (MaximumCutoutSpacing < 0)
 					throw new MapGenerationException("TopologyAugmentationThreshold must be >= 0");
-				if (ForestClumpiness < 0.0f)
-					throw new MapGenerationException("ForestClumpiness must be >= 0.0");
+				if (ForestClumpiness < 0)
+					throw new MapGenerationException("ForestClumpiness must be >= 0");
 				if (Mountains < 0.0f || Mountains > 1.0f)
 					throw new MapGenerationException("Mountains must be between 0.0 and 1.0 inclusive");
 				if (Roughness < 0.0f || Roughness > 1.0f)
@@ -417,10 +417,10 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("MinimumBuildings must be <= maximumBuildings");
 				if (ResourcesPerPlayer < 0)
 					throw new MapGenerationException("ResourcesPerPlayer must be >= 0");
-				if (OreUniformity < 0.0f)
-					throw new MapGenerationException("OreUniformity must be >= 0.0");
-				if (OreClumpiness < 0.0f)
-					throw new MapGenerationException("OreClumpiness must be >= 0.0");
+				if (OreUniformity < 0)
+					throw new MapGenerationException("OreUniformity must be >= 0");
+				if (OreClumpiness < 0)
+					throw new MapGenerationException("OreClumpiness must be >= 0");
 				foreach (var kv in BuildingWeights)
 					if (kv.Value < 0.0f)
 						throw new MapGenerationException("BuildingWeights.* must be >= 0.0");
@@ -595,7 +595,7 @@ namespace OpenRA.Mods.Common.Traits
 				param.Rotations,
 				param.Mirror,
 				param.TerrainFeatureSize,
-				NoiseUtils.PinkAmplitude);
+				NoiseUtils.PinkAmplitude).Map(v => (float)v);
 
 			if (param.TerrainSmoothing > 0)
 			{
@@ -795,24 +795,24 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			if (param.Forests > 0.0f)
+			if (param.Forests > 0)
 			{
-				var forestNoise = new CellLayer<float>(map);
+				var forestNoise = new CellLayer<int>(map);
 				NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 					forestRandom,
 					forestNoise,
 					param.Rotations,
 					param.Mirror,
 					param.ForestFeatureSize,
-					wavelength => MathF.Pow(wavelength, param.ForestClumpiness));
+					wavelength => ClumpinessAmplitude(wavelength, param.ForestClumpiness));
 				CellLayerUtils.CalibrateQuantileInPlace(
 					forestNoise,
-					0.0f,
-					1.0f - param.Forests);
+					0,
+					1024 - param.Forests, 1024);
 
 				var forestPlan = new CellLayer<bool>(map);
 				foreach (var mpos in map.AllCells.MapCoords)
-					if (param.ClearTerrain.Contains(map.GetTerrainIndex(mpos)) && forestNoise[mpos] >= 0.0f)
+					if (param.ClearTerrain.Contains(map.GetTerrainIndex(mpos)) && forestNoise[mpos] >= 0)
 						forestPlan[mpos] = true;
 
 				if (param.ForestCutout > 0)
@@ -1415,23 +1415,23 @@ namespace OpenRA.Mods.Common.Traits
 
 				// Grow resources
 				{
-					var pattern = new CellLayer<float>(map);
+					var pattern = new CellLayer<int>(map);
 					NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 						resourceRandom,
 						pattern,
 						param.Rotations,
 						param.Mirror,
 						param.ResourceFeatureSize,
-						wavelength => MathF.Pow(wavelength, param.OreClumpiness));
+						wavelength => ClumpinessAmplitude(wavelength, param.OreClumpiness));
 					{
 						CellLayerUtils.CalibrateQuantileInPlace(
 							pattern,
-							0.0f,
-							0.0f);
+							0,
+							0, 1);
 						var max = pattern.Max();
 						foreach (var mpos in map.AllCells.MapCoords)
 						{
-							pattern[mpos] /= max;
+							pattern[mpos] = pattern[mpos] * 1024 / max;
 							pattern[mpos] += param.OreUniformity;
 						}
 					}
@@ -1656,6 +1656,16 @@ namespace OpenRA.Mods.Common.Traits
 							output[cpos] = MultiBrush.Replaceability.None;
 
 			return output;
+		}
+
+		static int ClumpinessAmplitude(int wavelength, int clumpiness)
+		{
+			// return 1 << (BitOperations.Log2((uint)wavelength / 1024) / clumpiness));
+			// return (int)MathF.Pow(wavelength, 0.5f / clumpiness);
+			var amplitude = wavelength;
+			for (var i = 0; i < clumpiness; i++)
+				amplitude = Exts.ISqrt(amplitude);
+			return amplitude;
 		}
 	}
 }

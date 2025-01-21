@@ -686,6 +686,65 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Read a linearly interpolated value between the cells of a matrix. xWeight and yWeight
+		/// must be between 0 and scale inclusive and define the interpolation position
+		/// between x and x+1, and y and y+1.
+		/// </summary>
+		public static int IntegerInterpolate(
+			Matrix<int> matrix,
+			int x,
+			int y,
+			int xWeight,
+			int yWeight,
+			int scale)
+		{
+			var xa = x;
+			var xb = x + 1;
+			var ya = y;
+			var yb = y + 1;
+
+			if (scale <= 0)
+				throw new ArgumentException("Interpolation scale was not be >= 0");
+
+			if (xWeight < 0 || yWeight < 0 || xWeight > scale || yWeight > scale)
+				throw new ArgumentException("Interpolation weights were not between 0 and scale inclusive.");
+
+			// "w" for "weight"
+			var xbw = xWeight;
+			var ybw = yWeight;
+			var xaw = scale - xWeight;
+			var yaw = scale - yWeight;
+
+			if (xa < 0)
+			{
+				xa = 0;
+				xb = 0;
+			}
+			else if (xb > matrix.Size.X - 1)
+			{
+				xa = matrix.Size.X - 1;
+				xb = matrix.Size.X - 1;
+			}
+
+			if (ya < 0)
+			{
+				ya = 0;
+				yb = 0;
+			}
+			else if (yb > matrix.Size.Y - 1)
+			{
+				ya = matrix.Size.Y - 1;
+				yb = matrix.Size.Y - 1;
+			}
+
+			long naa = matrix[xa, ya];
+			long nba = matrix[xb, ya];
+			long nab = matrix[xa, yb];
+			long nbb = matrix[xb, yb];
+			return (int)(((naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw) / scale / scale);
+		}
+
+		/// <summary>
 		/// Finds the (linearly interpolated) value a given fraction through a sorted array.
 		/// </summary>
 		public static float ArrayQuantile(float[] array, float quantile)

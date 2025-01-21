@@ -6,12 +6,12 @@
 			Option@hidden_defaults:
 				Choice@hidden_defaults:
 					Settings:
-						TerrainFeatureSize: 20.0
-						ForestFeatureSize: 20.0
-						ResourceFeatureSize: 20.0
+						TerrainFeatureSize: 20480
+						ForestFeatureSize: 20480
+						ResourceFeatureSize: 20480
 						Water: 0.2
 						Mountains: 0.1
-						Forests: 0.025
+						Forests: 26
 						ForestCutout: 2
 						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
@@ -23,7 +23,7 @@
 						Roughness: 0.5
 						MinimumTerrainContourSpacing: 6
 						MinimumCliffLength: 10
-						ForestClumpiness: 0.5
+						ForestClumpiness: 1
 						DenyWalledAreas: True
 						EnforceSymmetry: 0
 						Roads: True
@@ -38,8 +38,8 @@
 						SpawnReservation: 20
 						SpawnResourceBias: 1.15
 						ResourcesPerPlayer: 50000
-						OreUniformity: 0.25
-						OreClumpiness: 0.25
+						OreUniformity: 256
+						OreClumpiness: 2
 						MaximumExpansionResourceSpawns: 5
 						MaximumResourceSpawnsPerExpansion: 2
 						MinimumExpansionSize: 2
@@ -98,7 +98,7 @@
 					Label: label-ra-map-generator-choice-terrain-type-gardens
 					Settings:
 						Water: 0.05
-						Forests: 0.3
+						Forests: 307
 						ForestCutout: 3
 						EnforceSymmetry: 2
 						RoadSpacing: 3
@@ -111,12 +111,12 @@
 					Label: label-ra-map-generator-choice-terrain-type-parks
 					Settings:
 						Water: 0.0
-						Forests: 0.1
+						Forests: 102
 				Choice@Woodlands:
 					Label: label-ra-map-generator-choice-terrain-type-woodlands
 					Settings:
 						Water: 0.0
-						Forests: 0.4
+						Forests: 410
 						ForestCutout: 3
 						EnforceSymmetry: 2
 						RoadSpacing: 3
@@ -125,7 +125,7 @@
 					Label: label-ra-map-generator-choice-terrain-type-overgrown
 					Settings:
 						Water: 0.0
-						Forests: 0.5
+						Forests: 512
 						EnforceSymmetry: 2
 						Mountains: 0.5
 						Roughness: 0.25
@@ -133,7 +133,7 @@
 					Label: label-ra-map-generator-choice-terrain-type-rocky
 					Settings:
 						Water: 0.0
-						Forests: 0.3
+						Forests: 307
 						ForestCutout: 3
 						EnforceSymmetry: 2
 						Mountains: 0.5
@@ -158,18 +158,18 @@
 					Label: label-ra-map-generator-choice-terrain-type-oceanic
 					Settings:
 						Water: 0.8
-						Forests: 0.0
+						Forests: 0
 				Choice@LargeIslands:
 					Label: label-ra-map-generator-choice-terrain-type-large-islands
 					Settings:
 						Water: 0.75
-						TerrainFeatureSize: 50.0
-						Forests: 0.0
+						TerrainFeatureSize: 51200
+						Forests: 0
 				Choice@Continents:
 					Label: label-ra-map-generator-choice-terrain-type-continents
 					Settings:
 						Water: 0.5
-						TerrainFeatureSize: 100.0
+						TerrainFeatureSize: 102400
 				Choice@Wetlands:
 					Label: label-ra-map-generator-choice-terrain-type-wetlands
 					Settings:
@@ -178,8 +178,8 @@
 					Label: label-ra-map-generator-choice-terrain-type-narrow-wetlands
 					Settings:
 						Water: 0.5
-						TerrainFeatureSize: 5.0
-						Forests: 0.0
+						TerrainFeatureSize: 5120
+						Forests: 0
 						SpawnBuildSize: 6
 			Option@Rotations:
 				Label: label-ra-map-generator-option-rotations
