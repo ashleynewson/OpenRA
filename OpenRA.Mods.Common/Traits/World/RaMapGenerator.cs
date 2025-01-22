@@ -80,9 +80,9 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int ResourceFeatureSize = default;
 			[FieldLoader.Require]
-			public readonly float Water = default;
+			public readonly int Water = default;
 			[FieldLoader.Require]
-			public readonly float Mountains = default;
+			public readonly int Mountains = default;
 			[FieldLoader.Require]
 			public readonly int Forests = default;
 			[FieldLoader.Require]
@@ -104,7 +104,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int RoughnessRadius = default;
 			[FieldLoader.Require]
-			public readonly float Roughness = default;
+			public readonly int Roughness = default;
 			[FieldLoader.Require]
 			public readonly int MinimumTerrainContourSpacing = default;
 			[FieldLoader.Require]
@@ -343,16 +343,16 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("ForestFeatureSize must be >= 1");
 				if (ResourceFeatureSize < 1)
 					throw new MapGenerationException("ResourceFeatureSize must be >= 1");
-				if (TerrainSmoothing < 1)
-					throw new MapGenerationException("TerrainSmoothing must be < 1");
+				if (TerrainSmoothing < 0)
+					throw new MapGenerationException("TerrainSmoothing must be >= 0");
 				if (SmoothingThreshold < 0.5f || SmoothingThreshold > 1.0f)
 					throw new MapGenerationException("SmoothingThreshold must be between 0.5 and 1.0 inclusive");
 				if (MinimumLandSeaThickness < 1)
 					throw new MapGenerationException("MinimumLandSeaThickness must be >= 1");
 				if (MinimumMountainThickness < 1)
 					throw new MapGenerationException("MinimumMountainThickness must be >= 1");
-				if (Water < 0.0f || Water > 1.0f)
-					throw new MapGenerationException("Water must be between 0.0 and 1.0 inclusive");
+				if (Water < 0 || Water > 1024)
+					throw new MapGenerationException("Water must be between 0 and 1024 inclusive");
 				if (Forests < 0 || Forests > 1024)
 					throw new MapGenerationException("Forest must be between 0 and 1024 inclusive");
 				if (ForestCutout < 0)
@@ -361,9 +361,9 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("TopologyAugmentationThreshold must be >= 0");
 				if (ForestClumpiness < 0)
 					throw new MapGenerationException("ForestClumpiness must be >= 0");
-				if (Mountains < 0.0f || Mountains > 1.0f)
-					throw new MapGenerationException("Mountains must be between 0.0 and 1.0 inclusive");
-				if (Roughness < 0.0f || Roughness > 1.0f)
+				if (Mountains < 0 || Mountains > 1024)
+					throw new MapGenerationException("Mountains must be between 0 and 1024 inclusive");
+				if (Roughness < 0 || Roughness > 1024)
 					throw new MapGenerationException("Roughness must be between 0.0 and 1.0");
 				if (RoughnessRadius < 1)
 					throw new MapGenerationException("RoughnessRadius must be >= 1");
@@ -469,7 +469,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void Generate(Map map, MiniYaml settings)
 		{
-			const float ExternalBias = 1000000.0f;
+			const int ExternalBias = 1024;
 
 			var size = map.MapSize;
 			var minSpan = Math.Min(size.X, size.Y);
@@ -595,18 +595,19 @@ namespace OpenRA.Mods.Common.Traits
 				param.Rotations,
 				param.Mirror,
 				param.TerrainFeatureSize,
-				NoiseUtils.PinkAmplitude).Map(v => (float)v);
+				NoiseUtils.PinkAmplitude);
+			MatrixUtils.CompressRangeInPlace(elevation, -1024, 1024);
 
 			if (param.TerrainSmoothing > 0)
 			{
 				var radius = param.TerrainSmoothing;
-				elevation = MatrixUtils.GaussianBlur(elevation, radius, radius);
+				elevation = MatrixUtils.BinomialBlur(elevation, radius);
 			}
 
 			MatrixUtils.CalibrateQuantileInPlace(
 				elevation,
-				0.0f,
-				param.Water);
+				0,
+				param.Water, 1024);
 
 			if (param.ExternalCircularBias != 0)
 				MatrixUtils.OverCircle(
@@ -712,17 +713,16 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			if (param.Mountains > 0.0f || param.ExternalCircularBias == 1)
+			if (param.Mountains > 0 || param.ExternalCircularBias == 1)
 			{
 				var roughnessMatrix = MatrixUtils.GridVariance(
 					elevation,
-					param.RoughnessRadius)
-						.Map(v => MathF.Sqrt(v));
+					param.RoughnessRadius);
 				MatrixUtils.CalibrateQuantileInPlace(
 					roughnessMatrix,
-					0.0f,
-					1.0f - param.Roughness);
-				var cliffMask = roughnessMatrix.Map(v => v >= 0.0f);
+					0,
+					1024 - param.Roughness, 1024);
+				var cliffMask = roughnessMatrix.Map(v => v >= 0);
 				var mountainElevation = elevation.Clone();
 				var cliffPlan = landPlan;
 				if (param.ExternalCircularBias > 0)
@@ -742,18 +742,18 @@ namespace OpenRA.Mods.Common.Traits
 					for (var n = 0; n < mountainElevation.Data.Length; n++)
 					{
 						if (roominess.Data[n] < param.MinimumTerrainContourSpacing)
-							mountainElevation.Data[n] = -1.0f;
+							mountainElevation.Data[n] = -1;
 						else
 							available++;
 
 						total++;
 					}
 
-					var availableFraction = (float)available / total;
+					var availableFraction = 1024 * available / total;
 					MatrixUtils.CalibrateQuantileInPlace(
 						mountainElevation,
-						0.0f,
-						1.0f - availableFraction * param.Mountains);
+						0,
+						1024 - availableFraction * param.Mountains / 1024, 1024);
 					cliffPlan = MatrixUtils.BooleanBlotch(
 						mountainElevation.Map(v => v >= 0),
 						param.TerrainSmoothing,
@@ -1660,8 +1660,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		static int ClumpinessAmplitude(int wavelength, int clumpiness)
 		{
-			// return 1 << (BitOperations.Log2((uint)wavelength / 1024) / clumpiness));
-			// return (int)MathF.Pow(wavelength, 0.5f / clumpiness);
 			var amplitude = wavelength;
 			for (var i = 0; i < clumpiness; i++)
 				amplitude = Exts.ISqrt(amplitude);

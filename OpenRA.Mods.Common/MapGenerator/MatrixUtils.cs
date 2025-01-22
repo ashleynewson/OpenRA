@@ -418,6 +418,32 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// <para>
+		/// Create a one-dimensional binomial kernel of size (2 * radius + 1, 1).
+		/// The total of all kernel cells is 2 ** (radius * 2).
+		/// </para>
+		/// <para>
+		/// This can be applied once, transposed, then applied again to perform a full binomial blur.
+		/// See <see cref="BinomialBlur"/>.
+		/// </para>
+		/// </summary>
+		public static Matrix<long> BinomialKernel1D(int radius)
+		{
+			var span = radius * 2 + 1;
+			var kernel = new Matrix<long>(new int2(span, 1));
+			var factorials = new long[span];
+			factorials[0] = 1;
+			for (var i = 1; i < span; i++)
+				factorials[i] = factorials[i - 1] * i;
+
+			var choose = span - 1;
+			for (var i = 0; i < span; i++)
+				kernel[i] = factorials[choose] / (factorials[i] * factorials[choose - i]);
+
+			return kernel;
+		}
+
+		/// <summary>
 		/// Apply an arithmetic convolution of a kernel over an input matrix.
 		/// </summary>
 		public static Matrix<float> KernelBlur(Matrix<float> input, Matrix<float> kernel, int2 kernelCenter)
@@ -446,6 +472,33 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Apply an arithmetic convolution of a kernel over an input matrix.
+		/// Cells outside the input matrix take the value of the nearest edge/corner cell.
+		/// </summary>
+		public static Matrix<long> KernelFilter(Matrix<long> input, Matrix<long> kernel, int2 kernelCenter)
+		{
+			var output = new Matrix<long>(input.Size);
+			for (var cy = 0; cy < input.Size.Y; cy++)
+				for (var cx = 0; cx < input.Size.X; cx++)
+				{
+					long total = 0;
+					var samples = 0;
+					for (var ky = 0; ky < kernel.Size.Y; ky++)
+						for (var kx = 0; kx < kernel.Size.X; kx++)
+						{
+							var x = cx + kx - kernelCenter.X;
+							var y = cy + ky - kernelCenter.Y;
+							total += input[input.ClampXY(new int2(x, y))] * kernel[kx, ky];
+							samples++;
+						}
+
+					output[cx, cy] = total;
+				}
+
+			return output;
+		}
+
+		/// <summary>
 		/// Apply a square gaussian blur to a matrix, returning a new matrix.
 		/// </summary>
 		public static Matrix<float> GaussianBlur(Matrix<float> input, int radius, float standardDeviation)
@@ -457,16 +510,34 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Apply a binomial filter-based blur to a matrix, returning a new matrix. The result is
+		/// somewhat similar to a gaussian blur.
+		/// </summary>
+		public static Matrix<int> BinomialBlur(Matrix<int> input, int radius)
+		{
+			var kernel = BinomialKernel1D(radius);
+			var downscale = 2 * radius;
+			var stage1 = KernelFilter(input.Map(v => (long)v), kernel, new int2(radius, 0));
+			for (var i = 0; i < stage1.Data.Length; i++)
+				stage1[i] >>= downscale;
+			var stage2 = KernelFilter(stage1, kernel.Transpose(), new int2(0, radius));
+			for (var i = 0; i < stage2.Data.Length; i++)
+				stage2[i] >>= downscale;
+
+			return stage2.Map(v => (int)v);
+		}
+
+		/// <summary>
 		/// Finds the local variance of points in a grid (using a square sample area).
 		/// Sample areas are centered on data point corners, so output is (size + 1) * (size + 1).
 		/// </summary>
-		public static Matrix<float> GridVariance(Matrix<float> input, int radius)
+		public static Matrix<int> GridVariance(Matrix<int> input, int radius)
 		{
-			var output = new Matrix<float>(input.Size + new int2(1, 1));
+			var output = new Matrix<int>(input.Size + new int2(1, 1));
 			for (var cy = 0; cy < output.Size.Y; cy++)
 				for (var cx = 0; cx < output.Size.X; cx++)
 				{
-					var total = 0.0f;
+					var total = 0;
 					var samples = 0;
 					for (var ry = -radius; ry < radius; ry++)
 						for (var rx = -radius; rx < radius; rx++)
@@ -480,7 +551,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						}
 
 					var mean = total / samples;
-					var sumOfSquares = 0.0f;
+					long sumOfSquares = 0;
 					for (var ry = -radius; ry < radius; ry++)
 						for (var rx = -radius; rx < radius; rx++)
 						{
@@ -488,10 +559,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 							var x = cx + rx;
 							if (!input.ContainsXY(x, y))
 								continue;
-							sumOfSquares += MathF.Pow(mean - input[x, y], 2);
+							long difference = mean - input[x, y];
+							sumOfSquares += difference * difference;
 						}
 
-					output[cx, cy] = sumOfSquares / samples;
+					output[cx, cy] = (int)(sumOfSquares / samples);
 				}
 
 			return output;
@@ -777,6 +849,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var sorted = (float[])matrix.Data.Clone();
 			Array.Sort(sorted);
 			var adjustment = target - ArrayQuantile(sorted, fraction);
+			for (var i = 0; i < matrix.Data.Length; i++)
+				matrix[i] += adjustment;
+		}
+
+		/// <summary>
+		/// Uniformally add to or subtract from all cells such that count out of every outOf cells,
+		/// are no greater than the given target value.
+		/// </summary>
+		public static void CalibrateQuantileInPlace(Matrix<int> matrix, int target, int count, int outOf)
+		{
+			var sorted = (int[])matrix.Data.Clone();
+			Array.Sort(sorted);
+			var adjustment = target - sorted[(sorted.Length - 1) * count / outOf];
 			for (var i = 0; i < matrix.Data.Length; i++)
 				matrix[i] += adjustment;
 		}
@@ -1539,6 +1624,21 @@ namespace OpenRA.Mods.Common.MapGenerator
 					if (thisRadiusSquared <= radiusSquared != outside)
 						action(new int2(x, y), thisRadiusSquared);
 				}
+		}
+
+		/// <summary>
+		/// Linearly scales values to within min and max inclusive. Returns the modified input.
+		/// </summary>
+		public static Matrix<int> CompressRangeInPlace(Matrix<int> matrix, int min, int max)
+		{
+			var range = (long)max - min;
+			long inputMin = matrix.Data.Min();
+			long inputMax = matrix.Data.Max();
+			var inputRange = inputMax - inputMin;
+			for (var i = 0; i < matrix.Data.Length; i++)
+				matrix[i] = (int)(min + (matrix[i] - inputMin) * range / inputRange);
+
+			return matrix;
 		}
 	}
 }

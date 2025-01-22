@@ -9,8 +9,8 @@
 						TerrainFeatureSize: 20480
 						ForestFeatureSize: 20480
 						ResourceFeatureSize: 20480
-						Water: 0.0
-						Mountains: 0.1
+						Water: 0
+						Mountains: 102
 						Forests: 26
 						ForestCutout: 2
 						MaximumCutoutSpacing: 12
@@ -20,7 +20,7 @@
 						MinimumMountainThickness: 5
 						MaximumAltitude: 8
 						RoughnessRadius: 5
-						Roughness: 0.5
+						Roughness: 512
 						MinimumTerrainContourSpacing: 6
 						MinimumCliffLength: 10
 						ForestClumpiness: 1
@@ -92,17 +92,17 @@
 					Label: label-cnc-map-generator-choice-terrain-type-lakes
 					Tileset: DESERT
 					Settings:
-						Water: 0.2
+						Water: 205
 				Choice@Puddles:
 					Label: label-cnc-map-generator-choice-terrain-type-puddles
 					Tileset: DESERT
 					Settings:
-						Water: 0.1
+						Water: 102
 				Choice@Gardens:
 					Label: label-cnc-map-generator-choice-terrain-type-gardens
 					Tileset: DESERT
 					Settings:
-						Water: 0.05
+						Water: 51
 						Forests: 307
 						ForestCutout: 3
 						EnforceSymmetry: 2
@@ -111,16 +111,16 @@
 				Choice@Plains:
 					Label: label-cnc-map-generator-choice-terrain-type-plains
 					Settings:
-						Water: 0.0
+						Water: 0
 				Choice@Parks:
 					Label: label-cnc-map-generator-choice-terrain-type-parks
 					Settings:
-						Water: 0.0
+						Water: 0
 						Forests: 102
 				Choice@Woodlands:
 					Label: label-cnc-map-generator-choice-terrain-type-woodlands
 					Settings:
-						Water: 0.0
+						Water: 0
 						Forests: 410
 						ForestCutout: 3
 						EnforceSymmetry: 2
@@ -129,36 +129,36 @@
 				Choice@Overgrown:
 					Label: label-cnc-map-generator-choice-terrain-type-overgrown
 					Settings:
-						Water: 0.0
+						Water: 0
 						Forests: 512
 						EnforceSymmetry: 2
-						Mountains: 0.5
-						Roughness: 0.25
+						Mountains: 512
+						Roughness: 256
 				Choice@Rocky:
 					Label: label-cnc-map-generator-choice-terrain-type-rocky
 					Settings:
-						Water: 0.0
+						Water: 0
 						Forests: 307
 						ForestCutout: 3
 						EnforceSymmetry: 2
-						Mountains: 0.5
-						Roughness: 0.25
+						Mountains: 512
+						Roughness: 256
 						RoadSpacing: 3
 						RoadShrink: 4
 				Choice@Mountains:
 					Label: label-cnc-map-generator-choice-terrain-type-mountains
 					Settings:
-						Water: 0.0
-						Mountains: 1.0
-						Roughness: 0.60
+						Water: 0
+						Mountains: 1024
+						Roughness: 614
 						MinimumTerrainContourSpacing: 5
 				Choice@MountainLakes:
 					Label: label-cnc-map-generator-choice-terrain-type-mountain-lakes
 					Tileset: DESERT
 					Settings:
-						Water: 0.2
-						Mountains: 1.0
-						Roughness: 0.85
+						Water: 205
+						Mountains: 1024
+						Roughness: 870
 						MinimumTerrainContourSpacing: 5
 			Option@Rotations:
 				Label: label-cnc-map-generator-option-rotations
