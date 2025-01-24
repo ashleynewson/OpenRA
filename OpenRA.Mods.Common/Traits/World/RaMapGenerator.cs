@@ -474,9 +474,9 @@ namespace OpenRA.Mods.Common.Traits
 			var size = map.MapSize;
 			var minSpan = Math.Min(size.X, size.Y);
 			var maxSpan = Math.Max(size.X, size.Y);
-			var mapCenter = (size.ToFloat2() - new float2(1.0f, 1.0f)) / 2.0f;
+			var mapCenterIn1024ths = size * 512;
 			var wMapCenter = CellLayerUtils.Center(map.Tiles);
-			var matrixMapCenter = (CellLayerUtils.CellBounds(map).Size.ToInt2().ToFloat2() - new float2(1.0f, 1.0f)) / 2.0f;
+			var matrixMapCenterIn1024ths = CellLayerUtils.CellBounds(map).Size.ToInt2() * 512;
 			var cellBounds = CellLayerUtils.CellBounds(map);
 			var minCSpan = Math.Min(cellBounds.Size.Width, cellBounds.Size.Height);
 			var gridType = map.Grid.Type;
@@ -612,8 +612,8 @@ namespace OpenRA.Mods.Common.Traits
 			if (param.ExternalCircularBias != 0)
 				MatrixUtils.OverCircle(
 					matrix: elevation,
-					center: mapCenter,
-					radius: externalCircleRadius,
+					centerIn1024ths: mapCenterIn1024ths,
+					radiusIn1024ths: externalCircleRadius * 1024,
 					outside: true,
 					action: (xy, _) => elevation[xy] = param.ExternalCircularBias * ExternalBias);
 
@@ -728,8 +728,8 @@ namespace OpenRA.Mods.Common.Traits
 				if (param.ExternalCircularBias > 0)
 					MatrixUtils.OverCircle(
 						matrix: cliffPlan,
-						center: matrixMapCenter,
-						radius: externalCircleRadius,
+						centerIn1024ths: matrixMapCenterIn1024ths,
+						radiusIn1024ths: externalCircleRadius * 1024,
 						outside: true,
 						action: (xy, _) => cliffPlan[xy] = false);
 
@@ -1081,8 +1081,8 @@ namespace OpenRA.Mods.Common.Traits
 				var kernel = new Matrix<bool>(param.RoadSpacing * 2 + 1, param.RoadSpacing * 2 + 1);
 				MatrixUtils.OverCircle(
 					matrix: kernel,
-					center: new float2(param.RoadSpacing, param.RoadSpacing),
-					radius: param.RoadSpacing,
+					centerIn1024ths: kernel.Size * 512,
+					radiusIn1024ths: param.RoadSpacing * 1024,
 					outside: false,
 					action: (xy, _) => kernel[xy] = true);
 				var dilated = MatrixUtils.KernelDilateOrErode(

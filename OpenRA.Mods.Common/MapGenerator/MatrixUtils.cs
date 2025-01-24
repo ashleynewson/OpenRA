@@ -1211,8 +1211,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 								if (diff[x, y])
 									OverCircle(
 										matrix: matrix,
-										center: new float2(x, y),
-										radius: minimumThickness * 2,
+										centerIn1024ths: new int2(x * 1024 + 512, y * 1024 + 512),
+										radiusIn1024ths: minimumThickness * 2048,
 										outside: false,
 										action: (xy, _) => matrix[xy] = bias);
 							}
@@ -1569,22 +1569,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		/// <summary>
 		/// <para>
-		/// Run an action over the inside or outside of a circle of given center and radius. The
-		/// action is called with the int2 position and the squared distance to the circle's
-		/// center. If outside is true, the action is run for cells outside of the circle instead
+		/// Run an action over the inside or outside of a circle of given center and radius,
+		/// measured in 1024ths of a cell. The action is called with the int2 cell position (NOT in
+		/// 1024ths), and the square of the distance in 1024th from the cell's center to the
+		/// circle's center. (Square root and divide by 1024 to get the distance in whole cells.)
+		/// (0, 0) is a corner of the matrix, and (512, 512) is the center of the first cell.
+		/// If outside is true, the action is run for cells outside of the circle instead
 		/// of the inside.
 		/// </para>
 		/// <para>
-		/// A matrix cell is inside the circle if its position is &lt;= radius from center.
+		/// A matrix cell is inside the circle if its center is &lt;= radius from center.
 		/// Coordinates outside of the Matrix are ignored.
 		/// </para>
 		/// </summary>
 		public static void OverCircle<T>(
 			Matrix<T> matrix,
-			float2 center,
-			float radius,
+			int2 centerIn1024ths,
+			int radiusIn1024ths,
 			bool outside,
-			Action<int2, float> action)
+			Action<int2, long> action)
 		{
 			var size = matrix.Size;
 			int minX;
@@ -1600,10 +1603,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 			else
 			{
-				minX = (int)MathF.Floor(center.X - radius);
-				minY = (int)MathF.Floor(center.Y - radius);
-				maxX = (int)MathF.Ceiling(center.X + radius);
-				maxY = (int)MathF.Ceiling(center.Y + radius);
+				minX = (centerIn1024ths.X - radiusIn1024ths) / 1024;
+				minY = (centerIn1024ths.Y - radiusIn1024ths) / 1024;
+				maxX = (centerIn1024ths.X + radiusIn1024ths + 1023) / 1024;
+				maxY = (centerIn1024ths.Y + radiusIn1024ths + 1023) / 1024;
 				if (minX < 0)
 					minX = 0;
 				if (minY < 0)
@@ -1614,13 +1617,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 					maxY = size.Y - 1;
 			}
 
-			var radiusSquared = radius * radius;
+			var radiusSquared = (long)radiusIn1024ths * radiusIn1024ths;
 			for (var y = minY; y <= maxY; y++)
 				for (var x = minX; x <= maxX; x++)
 				{
-					var rx = x - center.X;
-					var ry = y - center.Y;
-					var thisRadiusSquared = rx * rx + ry * ry;
+					var rx = x * 1024 + 512 - centerIn1024ths.X;
+					var ry = y * 1024 + 512 - centerIn1024ths.Y;
+					var thisRadiusSquared = (long)rx * rx + (long)ry * ry;
 					if (thisRadiusSquared <= radiusSquared != outside)
 						action(new int2(x, y), thisRadiusSquared);
 				}

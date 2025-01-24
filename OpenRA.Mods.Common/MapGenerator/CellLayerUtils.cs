@@ -218,6 +218,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			{
 				var mCenter = WPosToMPos(wCenter, gridType);
 
+				// Is this even correct?
 				var mRadiusU = wRadius / 1448 + 2;
 				var mRadiusV = wRadius / 724 + 1;
 
