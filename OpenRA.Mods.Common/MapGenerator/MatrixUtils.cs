@@ -156,22 +156,20 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		/// <summary>
 		/// <para>
-		/// Compute the in-game walking distances from a set of seeds.
+		/// Compute the in-game walking distances (in 1024ths) from a set of seeds.
 		/// </para>
 		/// <para>
 		/// The output matrix cells will contain either the distance (if reachable) or
-		/// PositiveInfinity.
+		/// int.MaxValue.
 		/// </para>
 		/// </summary>
-		public static Matrix<float> WalkingDistances(Matrix<bool> passable, IEnumerable<int2> seeds, float maxDistance)
+		public static Matrix<int> WalkingDistances(Matrix<bool> passable, IEnumerable<int2> seeds, int maxDistance)
 		{
-			const float SQRT2 = 1.4142135623730951f;
+			const int Diagonal = 1448;
+			const int Straight = 1024;
 
-			if (maxDistance == float.PositiveInfinity)
-				maxDistance = float.MaxValue;
-
-			var output = new Matrix<float>(passable.Size).Fill(float.PositiveInfinity);
-			var unprocessed = new PriorityArray<float>(passable.Size.X * passable.Size.Y, float.PositiveInfinity);
+			var output = new Matrix<int>(passable.Size).Fill(int.MaxValue);
+			var unprocessed = new PriorityArray<int>(passable.Size.X * passable.Size.Y, int.MaxValue);
 			foreach (var seed in seeds)
 				unprocessed[passable.Index(seed)] = 0;
 
@@ -186,7 +184,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				if (distance <= maxDistance && output.ContainsXY(xy))
 					output[xy] = distance;
-				unprocessed[i] = float.PositiveInfinity;
+				unprocessed[i] = int.MaxValue;
 
 				foreach (var (offset, direction) in Direction.Spread8D)
 				{
@@ -195,13 +193,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 						continue;
 					if (!passable[nextXY])
 						continue;
-					if (output[nextXY] != float.PositiveInfinity)
+					if (output[nextXY] != int.MaxValue)
 						continue;
-					float nextDistance;
+					int nextDistance;
 					if (Direction.IsDiagonal(direction))
-						nextDistance = distance + SQRT2;
+						nextDistance = distance + Diagonal;
 					else
-						nextDistance = distance + 1;
+						nextDistance = distance + Straight;
 
 					var nextI = passable.Index(nextXY);
 					if (nextDistance < unprocessed[nextI])

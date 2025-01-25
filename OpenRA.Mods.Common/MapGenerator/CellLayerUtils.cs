@@ -395,12 +395,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 			FromMatrix(output, roominess);
 		}
 
-		/// <summary>Wrapper around MatrixUtils.WalkingDistance in CPos space.</summary>
+		/// <summary>
+		/// Wrapper around MatrixUtils.WalkingDistance in CPos space.
+		/// Returns world distances (1024ths).
+		/// </summary>
 		public static void WalkingDistances(
-			CellLayer<float> distances,
+			CellLayer<int> distances,
 			CellLayer<bool> passable,
 			IEnumerable<CPos> seeds,
-			float maxDistance)
+			int maxDistance)
 		{
 			var passableMatrix = ToMatrix(passable, false);
 			var cellBounds = CellBounds(passable);
@@ -442,7 +445,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// Pick a random MPos position in a CellLayer where each cell is a
 		/// selection weight.
 		/// </summary>
-		public static MPos PickWeighted(CellLayer<float> weights, MersenneTwister random)
+		public static MPos PickWeighted(CellLayer<int> weights, MersenneTwister random)
 		{
 			var entries = Entries(weights);
 			var choice = random.PickWeighted(entries);

@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace OpenRA.Support
 {
@@ -35,7 +34,7 @@ namespace OpenRA.Support
 		}
 
 		/// <summary>
-		/// Produces an unsigned integer between -0x80000000 and 0x7fffffff inclusive.
+		/// Produces a random unsigned 32-bit integer.
 		/// </summary>
 		public uint NextUint()
 		{
@@ -54,7 +53,7 @@ namespace OpenRA.Support
 		}
 
 		/// <summary>
-		/// Produces an unsigned integer between -0x80000000 and 0x7fffffff inclusive.
+		/// Produces a random unsigned 64-bit integer.
 		/// </summary>
 		public ulong NextUlong()
 		{
@@ -116,30 +115,32 @@ namespace OpenRA.Support
 		}
 
 		/// <summary>
-		/// Pick a random an index from a list of weights.
+		/// Pick a random index from a list of weights.
 		/// </summary>
-		public int PickWeighted(IReadOnlyList<float> weights)
+		public int PickWeighted(IReadOnlyList<int> weights)
 		{
-			var total = weights.Sum();
-			var spin = NextFloatExclusive() * total;
+			ulong total = 0;
+			foreach (var weight in weights)
+			{
+				if (weight < 0)
+					throw new ArgumentException("Found a negative weight.");
+				total += (ulong)weight;
+			}
+
+			if (total == 0)
+				return Next(0, weights.Count);
+
+			var spin = NextUlong() % total;
 			int i;
-			float acc = 0;
+			ulong acc = 0;
 			for (i = 0; i < weights.Count; i++)
 			{
-				acc += weights[i];
+				acc += (ulong)weights[i];
 				if (spin < acc)
 					return i;
 			}
 
-			// This might be possible due to floating point precision loss
-			// (in rare cases). Or we might have been given rubbish
-			// weights. Return anything > 0.
-			for (i = 0; i < weights.Count; i++)
-				if (weights[i] > 0)
-					return i;
-
-			// All <= 0!
-			return Next(0, weights.Count);
+			throw new InvalidOperationException("unreachable");
 		}
 
 		/// <summary>

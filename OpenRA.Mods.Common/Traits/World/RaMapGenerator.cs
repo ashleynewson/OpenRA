@@ -164,7 +164,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int MaximumBuildings = default;
 			[FieldLoader.LoadUsing(nameof(BuildingWeightsLoader))]
-			public readonly IReadOnlyDictionary<string, float> BuildingWeights = default;
+			public readonly IReadOnlyDictionary<string, int> BuildingWeights = default;
 
 			[FieldLoader.Require]
 			public readonly ushort LandTile = default;
@@ -188,7 +188,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyDictionary<string, ResourceTypeInfo> ResourceSpawnSeeds;
 			[FieldLoader.LoadUsing(nameof(ResourceSpawnWeightsLoader))]
-			public readonly IReadOnlyDictionary<string, float> ResourceSpawnWeights = default;
+			public readonly IReadOnlyDictionary<string, int> ResourceSpawnWeights = default;
 
 			[FieldLoader.Ignore]
 			public readonly IReadOnlySet<byte> ClearTerrain;
@@ -311,22 +311,22 @@ namespace OpenRA.Mods.Common.Traits
 					throw new YamlException($"Invalid Mirror value `{my.NodeWithKey("Mirror").Value.Value}`");
 			}
 
-			static IReadOnlyDictionary<string, float> BuildingWeightsLoader(MiniYaml my)
+			static IReadOnlyDictionary<string, int> BuildingWeightsLoader(MiniYaml my)
 			{
 				return my.NodeWithKey("BuildingWeights").Value.ToDictionary(subMy =>
 					{
-						if (Exts.TryParseFloatOrPercentInvariant(subMy.Value, out var f))
+						if (Exts.TryParseInt32Invariant(subMy.Value, out var f))
 							return f;
 						else
 							throw new YamlException($"Invalid building weight `{subMy.Value}`");
 					});
 			}
 
-			static IReadOnlyDictionary<string, float> ResourceSpawnWeightsLoader(MiniYaml my)
+			static IReadOnlyDictionary<string, int> ResourceSpawnWeightsLoader(MiniYaml my)
 			{
 				return my.NodeWithKey("ResourceSpawnWeights").Value.ToDictionary(subMy =>
 					{
-						if (Exts.TryParseFloatOrPercentInvariant(subMy.Value, out var f))
+						if (Exts.TryParseInt32Invariant(subMy.Value, out var f))
 							return f;
 						else
 							throw new YamlException($"Invalid resource spawn weight `{subMy.Value}`");
@@ -422,11 +422,11 @@ namespace OpenRA.Mods.Common.Traits
 				if (OreClumpiness < 0)
 					throw new MapGenerationException("OreClumpiness must be >= 0");
 				foreach (var kv in BuildingWeights)
-					if (kv.Value < 0.0f)
-						throw new MapGenerationException("BuildingWeights.* must be >= 0.0");
+					if (kv.Value < 0)
+						throw new MapGenerationException("BuildingWeights.* must be >= 0");
 				foreach (var kv in ResourceSpawnWeights)
-					if (kv.Value < 0.0f)
-						throw new MapGenerationException("ResourceSpawnWeights.* must be >= 0.0");
+					if (kv.Value < 0)
+						throw new MapGenerationException("ResourceSpawnWeights.* must be >= 0");
 				foreach (var kv in ResourceSpawnWeights)
 					if (!ResourceSpawnSeeds.ContainsKey(kv.Key))
 						throw new MapGenerationException($"ResourceSpawnSeeds does not contain possible resource spawn `{kv.Key}`");
@@ -440,7 +440,7 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("Total number of players must not exceed 32");
 			}
 
-			public static (T[] Types, float[] Weights) SplitWeights<T>(IReadOnlyDictionary<T, float> typeWeights)
+			public static (T[] Types, int[] Weights) SplitWeights<T>(IReadOnlyDictionary<T, int> typeWeights)
 			{
 				var types = typeWeights
 					.Select(kv => kv.Key)
@@ -1242,18 +1242,18 @@ namespace OpenRA.Mods.Common.Traits
 						Location = chosenMPos.ToCPos(gridType),
 					};
 
-					var preferedRange = (param.SpawnBuildSize + param.SpawnRegionSize * 2) / 2;
-					var resourceSpawnPreferences = new CellLayer<float>(map);
+					var preferedRange = (param.SpawnBuildSize + param.SpawnRegionSize * 2) * 512;
+					var resourceSpawnPreferences = new CellLayer<int>(map);
 					CellLayerUtils.WalkingDistances(
 						resourceSpawnPreferences,
 						zoneable,
 						new[] { chosenMPos.ToCPos(gridType) },
-						param.SpawnRegionSize);
+						param.SpawnRegionSize * 1024);
 					foreach (var mpos in map.AllCells.MapCoords)
 					{
 						var v = resourceSpawnPreferences[mpos];
-						resourceSpawnPreferences[mpos] = MathF.Ceiling(
-							v > preferedRange ? 2 * preferedRange - v : v);
+						resourceSpawnPreferences[mpos] =
+							((v > preferedRange ? 2 * preferedRange - v : v) + 1023) / 1024;
 					}
 
 					var resourceSpawns = new List<ActorPlan>();
@@ -1263,7 +1263,7 @@ namespace OpenRA.Mods.Common.Traits
 							resourceSpawnPreferences,
 							playerRandom,
 							(a, b) => a.CompareTo(b));
-						if (value <= 1.0f)
+						if (value <= 1)
 							break;
 
 						var resourceSpawnType = resourceSpawnTypes[playerRandom.PickWeighted(resourceSpawnWeights)];
@@ -1278,7 +1278,7 @@ namespace OpenRA.Mods.Common.Traits
 							wCenter: resourceSpawnPlan.WPosLocation,
 							wRadius: 1024,
 							outside: false,
-							action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0.0f);
+							action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
 					}
 
 					var projectedSpawns = Symmetry.RotateAndMirrorActorPlan(spawn, param.Rotations, param.Mirror);
@@ -1327,20 +1327,23 @@ namespace OpenRA.Mods.Common.Traits
 						var resourceSpawnCount = Math.Min(resourceSpawnsRemaining, expansionRandom.Next(param.MaximumResourceSpawnsPerExpansion) + 1);
 						resourceSpawnsRemaining -= resourceSpawnCount;
 
-						if (radius1 < 1.0f)
+						if (radius1 < 1)
 							break;
 
 						var resourceSpawns = new List<ActorPlan>();
-						var resourceSpawnPreferences = new CellLayer<float>(map);
-						var wRadius1Sq = (long)radius1 * radius1 * 1024 * 1024;
+						var resourceSpawnPreferences = new CellLayer<int>(map);
+						var radius1Sq = radius1 * radius1;
 						CellLayerUtils.OverCircle(
 							cellLayer: resourceSpawnPreferences,
 							wCenter: CellLayerUtils.MPosToWPos(chosenMPos, gridType),
 							wRadius: radius2 * 1024,
 							outside: false,
-							action: (mpos, _, _, rSq) =>
+							action: (mpos, _, _, wrSq) =>
+							{
+								var rSq = (int)(wrSq / (1024 * 1024));
 								resourceSpawnPreferences[mpos] =
-									rSq >= wRadius1Sq ? rSq : 0.0f);
+									rSq >= radius1Sq ? rSq : 0;
+							});
 						for (var resourceSpawn = 0; resourceSpawn < resourceSpawnCount; resourceSpawn++)
 						{
 							var mpos = CellLayerUtils.PickWeighted(resourceSpawnPreferences, expansionRandom);
@@ -1356,7 +1359,7 @@ namespace OpenRA.Mods.Common.Traits
 								wCenter: resourceSpawnPlan.WPosLocation,
 								wRadius: 1024,
 								outside: false,
-								action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0.0f);
+								action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
 						}
 
 						var projectedResourceSpawns = Symmetry.RotateAndMirrorActorPlans(resourceSpawns, param.Rotations, param.Mirror);

@@ -250,7 +250,7 @@
 						SpawnResourceSpawns: 2
 						ResourcesPerPlayer: 25000
 						ResourceSpawnWeights:
-							mine: 1.0
+							mine: 1
 						MaximumExpansionResourceSpawns: 3
 						MaximumResourceSpawnsPerExpansion: 1
 				Choice@Medium:
@@ -259,8 +259,8 @@
 						SpawnResourceSpawns: 3
 						ResourcesPerPlayer: 50000
 						ResourceSpawnWeights:
-							mine: 0.95
-							gmine: 0.05
+							mine: 95
+							gmine: 5
 						MaximumExpansionResourceSpawns: 5
 						MaximumResourceSpawnsPerExpansion: 2
 				Choice@High:
@@ -269,8 +269,8 @@
 						SpawnResourceSpawns: 3
 						ResourcesPerPlayer: 75000
 						ResourceSpawnWeights:
-							mine: 0.9
-							gmine: 0.1
+							mine: 9
+							gmine: 1
 						MaximumExpansionResourceSpawns: 8
 						MaximumResourceSpawnsPerExpansion: 3
 				Choice@VeryHigh:
@@ -279,8 +279,8 @@
 						SpawnResourceSpawns: 4
 						ResourcesPerPlayer: 100000
 						ResourceSpawnWeights:
-							mine: 0.8
-							gmine: 0.2
+							mine: 8
+							gmine: 2
 						MaximumExpansionResourceSpawns: 10
 						MaximumResourceSpawnsPerExpansion: 3
 				Choice@Full:
