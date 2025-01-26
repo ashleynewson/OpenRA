@@ -142,7 +142,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int SpawnReservation = default;
 			[FieldLoader.Require]
-			public readonly float SpawnResourceBias = default;
+			public readonly int SpawnResourceBias = default;
 			[FieldLoader.Require]
 			public readonly int ResourcesPerPlayer = default;
 			[FieldLoader.Require]
@@ -1434,14 +1434,12 @@ namespace OpenRA.Mods.Common.Traits
 							0,
 							0, 1);
 						var max = pattern.Max();
+						var uniformity = param.OreUniformity * 1024 / FractionMax;
 						foreach (var mpos in map.AllCells.MapCoords)
-						{
-							pattern[mpos] = pattern[mpos] * FractionMax / max;
-							pattern[mpos] += param.OreUniformity;
-						}
+							pattern[mpos] = param.OreUniformity + 1024 * pattern[mpos] / max;
 					}
 
-					var strengths = new Dictionary<ResourceTypeInfo, CellLayer<float>>();
+					var strengths = new Dictionary<ResourceTypeInfo, CellLayer<int>>();
 					foreach (var actorPlan in actorPlans)
 					{
 						var type = actorPlan.Reference.Type;
@@ -1450,7 +1448,7 @@ namespace OpenRA.Mods.Common.Traits
 							var resource = param.ResourceSpawnSeeds[type];
 							if (!strengths.TryGetValue(resource, out var strength))
 							{
-								strength = new CellLayer<float>(map);
+								strength = new CellLayer<int>(map);
 								strengths.Add(resource, strength);
 							}
 
@@ -1461,11 +1459,11 @@ namespace OpenRA.Mods.Common.Traits
 								outside: false,
 								action: (mpos, _, _, rSq) =>
 									strength[mpos] +=
-										1024.0f / (1024.0f + MathF.Sqrt(rSq)));
+										(int)(1024 * 1024 / (1024 + Exts.ISqrt(rSq))));
 						}
 					}
 
-					var maxStrength = new CellLayer<float>(map);
+					var maxStrength = new CellLayer<int>(map);
 					var bestResource = new CellLayer<ResourceTypeInfo>(map);
 					bestResource.Clear(param.DefaultResource);
 					foreach (var resourceStrength in strengths)
@@ -1481,12 +1479,12 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					// Closer to +inf means "more preferable" for plan.
-					var plan = new CellLayer<float>(map);
+					var plan = new CellLayer<int>(map);
 					foreach (var mpos in map.AllCells.MapCoords)
 						if (playableArea[mpos] && param.AllowedTerrainResourceCombos.Contains((bestResource[mpos], map.GetTerrainIndex(mpos))))
-							plan[mpos] = pattern[mpos] * maxStrength[mpos];
+							plan[mpos] = pattern[mpos] * maxStrength[mpos] / 1024;
 						else
-							plan[mpos] = float.NegativeInfinity;
+							plan[mpos] = -int.MaxValue;
 
 					var wSpawnBuildSizeSq = (long)param.SpawnBuildSize * param.SpawnBuildSize * 1024 * 1024;
 					foreach (var actorPlan in actorPlans)
@@ -1497,7 +1495,7 @@ namespace OpenRA.Mods.Common.Traits
 								wRadius: param.SpawnRegionSize * 2 * 1024,
 								outside: false,
 								action: (mpos, _, _, rSq) =>
-									plan[mpos] *= 1.0f + param.SpawnResourceBias * wSpawnBuildSizeSq / rSq);
+									plan[mpos] += (int)(plan[mpos] * param.SpawnResourceBias * wSpawnBuildSizeSq / Math.Max(rSq, 1024 * 1024) / FractionMax));
 
 					foreach (var actorPlan in actorPlans)
 						if (actorPlan.Reference.Type == "mpspawn")
@@ -1506,32 +1504,32 @@ namespace OpenRA.Mods.Common.Traits
 								wCenter: actorPlan.WPosLocation,
 								wRadius: param.SpawnBuildSize * 1024,
 								outside: false,
-								action: (mpos, _, _, _) => plan[mpos] = float.NegativeInfinity);
+								action: (mpos, _, _, _) => plan[mpos] = -int.MaxValue);
 
 					foreach (var actorPlan in actorPlans)
 						foreach (var (cpos, _) in actorPlan.Footprint())
 							if (plan.Contains(cpos))
-								plan[cpos] = float.NegativeInfinity;
+								plan[cpos] = -int.MaxValue;
 
 					// Improve symmetry.
 					{
-						var newPlan = new CellLayer<float>(map);
+						var newPlan = new CellLayer<int>(map);
 						Symmetry.RotateAndMirrorOverCPos(
 							plan,
 							param.Rotations,
 							param.Mirror,
 							(sources, destination)
 								=> newPlan[destination] =
-									sources.Min(source => plan.TryGetValue(source, out var value) ? value : float.NegativeInfinity));
+									sources.Min(source => plan.TryGetValue(source, out var value) ? value : -int.MaxValue));
 						plan = newPlan;
 					}
 
 					var remaining = param.ResourcesPerPlayer * entityMultiplier;
 
 					// Closer to -inf means "more preferable" for priorities.
-					var priorities = new PriorityArray<float>(
+					var priorities = new PriorityArray<int>(
 						plan.Size.Width * plan.Size.Height,
-						float.PositiveInfinity);
+						int.MaxValue);
 					{
 						var i = 0;
 						foreach (var v in plan)
@@ -1589,7 +1587,7 @@ namespace OpenRA.Mods.Common.Traits
 					int AddResource(CPos cpos)
 					{
 						var mpos = cpos.ToMPos(gridType);
-						priorities[PriorityIndex(mpos)] = float.PositiveInfinity;
+						priorities[PriorityIndex(mpos)] = int.MaxValue;
 
 						// Generally shouldn't happen, but perhaps a rotation/mirror related inaccuracy.
 						if (map.Resources[mpos].Type != 0)
@@ -1607,7 +1605,7 @@ namespace OpenRA.Mods.Common.Traits
 					while (remaining > 0)
 					{
 						var n = priorities.GetMinIndex();
-						if (priorities[n] == float.PositiveInfinity)
+						if (priorities[n] == int.MaxValue)
 							break;
 
 						var chosenMPos = PriorityMPos(n);

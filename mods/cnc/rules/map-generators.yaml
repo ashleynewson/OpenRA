@@ -36,7 +36,7 @@
 						SpawnBuildSize: 8
 						SpawnResourceSpawns: 3
 						SpawnReservation: 20
-						SpawnResourceBias: 1.05
+						SpawnResourceBias: 1050
 						ResourcesPerPlayer: 50000
 						OreUniformity: 500
 						OreClumpiness: 1
