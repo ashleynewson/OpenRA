@@ -573,8 +573,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// if the neighborhood is significantly different based on a threshold.
 		/// </para>
 		/// <para>
-		/// For example, a threshold of 0.75 means any change requires a 75%
-		/// majority within the kernel.
+		/// The threshold / thresholdOutOf is the size of a majority needed to
+		/// change a value. For example, a threshold of 20 / 25 means, 80% of
+		/// cells must agree to change a cell's value.
 		/// </para>
 		/// <para>
 		/// The space outside of the matrix is treated as if the border was
@@ -592,20 +593,21 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// </para>
 		/// </summary>
 		public static (Matrix<bool> Output, int Changes) BooleanBlur(
-			Matrix<bool> input, int radius, float threshold)
+			Matrix<bool> input, int radius, int threshold, int thresholdOutOf)
 		{
-			if (threshold < 0.5f || threshold > 1.0f)
-				throw new ArgumentException("threshold must between 0.5 and 1.0 inclusive");
-
-			var output = new Matrix<bool>(input.Size);
-			var changes = 0;
-
 			// Sum radius-by-1 kernels first in O((size.X + radius) * size.Y) time using a diffing sliding
 			// window, then sum 1-by-radius kernels in O(size.X * (size.Y + radius)) time.
 			var hTrueCounts = new Matrix<int>(input.Size);
 			var kernelArea = (2 * radius + 1) * (2 * radius + 1);
-			var trueThreshold = (int)MathF.Ceiling(kernelArea * threshold);
+
+			if (threshold < 1 || thresholdOutOf < 1 || threshold * 2 < thresholdOutOf)
+				throw new ArgumentException("invalid threshold");
+
+			var trueThreshold = (kernelArea * threshold + thresholdOutOf - 1) / thresholdOutOf;
 			var falseThreshold = kernelArea - trueThreshold;
+
+			var output = new Matrix<bool>(input.Size);
+			var changes = 0;
 
 			for (var cy = 0; cy < input.Size.Y; cy++)
 			{
@@ -1159,14 +1161,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public static Matrix<bool> BooleanBlotch(
 			Matrix<bool> input,
 			int terrainSmoothing,
-			float smoothingThreshold,
+			int smoothingThreshold,
+			int smoothingThresholdOutOf,
 			int minimumThickness,
 			bool bias)
 		{
 			var maxSpan = Math.Max(input.Size.X, input.Size.Y);
 			var matrix = input;
 
-			(matrix, _) = BooleanBlur(matrix, terrainSmoothing, 0.5f);
+			(matrix, _) = BooleanBlur(matrix, terrainSmoothing, 1, 2);
 			for (var i1 = 0; i1 < /*max passes*/16; i1++)
 			{
 				for (var i2 = 0; i2 < maxSpan; i2++)
@@ -1175,7 +1178,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 					var changesAcc = 0;
 					for (var r = 1; r <= terrainSmoothing; r++)
 					{
-						(matrix, changes) = BooleanBlur(matrix, r, smoothingThreshold);
+						(matrix, changes) = BooleanBlur(matrix, r, smoothingThreshold, smoothingThresholdOutOf);
 						changesAcc += changes;
 					}
 

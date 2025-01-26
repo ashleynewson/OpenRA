@@ -96,7 +96,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int TerrainSmoothing = default;
 			[FieldLoader.Require]
-			public readonly float SmoothingThreshold = default;
+			public readonly int SmoothingThreshold = default;
 			[FieldLoader.Require]
 			public readonly int MinimumLandSeaThickness = default;
 			[FieldLoader.Require]
@@ -347,8 +347,8 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("ResourceFeatureSize must be >= 1");
 				if (TerrainSmoothing < 0)
 					throw new MapGenerationException("TerrainSmoothing must be >= 0");
-				if (SmoothingThreshold < 0.5f || SmoothingThreshold > 1.0f)
-					throw new MapGenerationException("SmoothingThreshold must be between 0.5 and 1.0 inclusive");
+				if (SmoothingThreshold < (FractionMax + 1) / 2 || SmoothingThreshold > FractionMax)
+					throw new MapGenerationException($"SmoothingThreshold must be between {(FractionMax + 1) / 2} and {FractionMax} inclusive");
 				if (MinimumLandSeaThickness < 1)
 					throw new MapGenerationException("MinimumLandSeaThickness must be >= 1");
 				if (MinimumMountainThickness < 1)
@@ -622,7 +622,7 @@ namespace OpenRA.Mods.Common.Traits
 			var landPlan = MatrixUtils.BooleanBlotch(
 				elevation.Map(v => v >= 0),
 				param.TerrainSmoothing,
-				param.SmoothingThreshold,
+				param.SmoothingThreshold, FractionMax,
 				param.MinimumLandSeaThickness,
 				/*bias=*/param.Water < 0.5);
 
@@ -759,7 +759,7 @@ namespace OpenRA.Mods.Common.Traits
 					cliffPlan = MatrixUtils.BooleanBlotch(
 						mountainElevation.Map(v => v >= 0),
 						param.TerrainSmoothing,
-						param.SmoothingThreshold,
+						param.SmoothingThreshold, FractionMax,
 						param.MinimumMountainThickness,
 						/*bias=*/false);
 					var unmaskedCliffs = MatrixUtils.BordersToPoints(cliffPlan);

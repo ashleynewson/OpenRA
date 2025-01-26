@@ -15,7 +15,7 @@
 						ForestCutout: 2
 						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
-						SmoothingThreshold: 0.833333
+						SmoothingThreshold: 833
 						MinimumLandSeaThickness: 5
 						MinimumMountainThickness: 5
 						MaximumAltitude: 8
