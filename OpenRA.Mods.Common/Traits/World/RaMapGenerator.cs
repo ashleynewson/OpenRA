@@ -58,6 +58,8 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class RaMapGenerator : IMapGenerator
 	{
+		const int FractionMax = 1000;
+
 		sealed class Parameters
 		{
 			[FieldLoader.Ignore]
@@ -351,20 +353,20 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("MinimumLandSeaThickness must be >= 1");
 				if (MinimumMountainThickness < 1)
 					throw new MapGenerationException("MinimumMountainThickness must be >= 1");
-				if (Water < 0 || Water > 1024)
-					throw new MapGenerationException("Water must be between 0 and 1024 inclusive");
-				if (Forests < 0 || Forests > 1024)
-					throw new MapGenerationException("Forest must be between 0 and 1024 inclusive");
+				if (Water < 0 || Water > FractionMax)
+					throw new MapGenerationException($"Water must be between 0 and {FractionMax} inclusive");
+				if (Forests < 0 || Forests > FractionMax)
+					throw new MapGenerationException($"Forest must be between 0 and {FractionMax} inclusive");
 				if (ForestCutout < 0)
 					throw new MapGenerationException("ForestCutout must be >= 0");
 				if (MaximumCutoutSpacing < 0)
 					throw new MapGenerationException("TopologyAugmentationThreshold must be >= 0");
 				if (ForestClumpiness < 0)
 					throw new MapGenerationException("ForestClumpiness must be >= 0");
-				if (Mountains < 0 || Mountains > 1024)
-					throw new MapGenerationException("Mountains must be between 0 and 1024 inclusive");
-				if (Roughness < 0 || Roughness > 1024)
-					throw new MapGenerationException("Roughness must be between 0.0 and 1.0");
+				if (Mountains < 0 || Mountains > FractionMax)
+					throw new MapGenerationException($"Mountains must be between 0 and {FractionMax} inclusive");
+				if (Roughness < 0 || Roughness > FractionMax)
+					throw new MapGenerationException("Roughness must be between 0 and {FractionMax}");
 				if (RoughnessRadius < 1)
 					throw new MapGenerationException("RoughnessRadius must be >= 1");
 				if (MaximumAltitude < 0)
@@ -607,7 +609,7 @@ namespace OpenRA.Mods.Common.Traits
 			MatrixUtils.CalibrateQuantileInPlace(
 				elevation,
 				0,
-				param.Water, 1024);
+				param.Water, FractionMax);
 
 			if (param.ExternalCircularBias != 0)
 				MatrixUtils.OverCircle(
@@ -721,7 +723,7 @@ namespace OpenRA.Mods.Common.Traits
 				MatrixUtils.CalibrateQuantileInPlace(
 					roughnessMatrix,
 					0,
-					1024 - param.Roughness, 1024);
+					FractionMax - param.Roughness, FractionMax);
 				var cliffMask = roughnessMatrix.Map(v => v >= 0);
 				var mountainElevation = elevation.Clone();
 				var cliffPlan = landPlan;
@@ -749,11 +751,11 @@ namespace OpenRA.Mods.Common.Traits
 						total++;
 					}
 
-					var availableFraction = 1024 * available / total;
+					var availableFraction = FractionMax * available / total;
 					MatrixUtils.CalibrateQuantileInPlace(
 						mountainElevation,
 						0,
-						1024 - availableFraction * param.Mountains / 1024, 1024);
+						FractionMax - availableFraction * param.Mountains / FractionMax, FractionMax);
 					cliffPlan = MatrixUtils.BooleanBlotch(
 						mountainElevation.Map(v => v >= 0),
 						param.TerrainSmoothing,
@@ -808,7 +810,7 @@ namespace OpenRA.Mods.Common.Traits
 				CellLayerUtils.CalibrateQuantileInPlace(
 					forestNoise,
 					0,
-					1024 - param.Forests, 1024);
+					FractionMax - param.Forests, FractionMax);
 
 				var forestPlan = new CellLayer<bool>(map);
 				foreach (var mpos in map.AllCells.MapCoords)
@@ -1434,7 +1436,7 @@ namespace OpenRA.Mods.Common.Traits
 						var max = pattern.Max();
 						foreach (var mpos in map.AllCells.MapCoords)
 						{
-							pattern[mpos] = pattern[mpos] * 1024 / max;
+							pattern[mpos] = pattern[mpos] * FractionMax / max;
 							pattern[mpos] += param.OreUniformity;
 						}
 					}

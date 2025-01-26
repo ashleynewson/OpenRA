@@ -9,9 +9,9 @@
 						TerrainFeatureSize: 20480
 						ForestFeatureSize: 20480
 						ResourceFeatureSize: 20480
-						Water: 205
-						Mountains: 102
-						Forests: 26
+						Water: 200
+						Mountains: 100
+						Forests: 25
 						ForestCutout: 2
 						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
@@ -20,7 +20,7 @@
 						MinimumMountainThickness: 5
 						MaximumAltitude: 8
 						RoughnessRadius: 5
-						Roughness: 512
+						Roughness: 500
 						MinimumTerrainContourSpacing: 6
 						MinimumCliffLength: 10
 						ForestClumpiness: 1
@@ -38,7 +38,7 @@
 						SpawnReservation: 20
 						SpawnResourceBias: 1.15
 						ResourcesPerPlayer: 50000
-						OreUniformity: 256
+						OreUniformity: 250
 						OreClumpiness: 2
 						MaximumExpansionResourceSpawns: 5
 						MaximumResourceSpawnsPerExpansion: 2
@@ -93,12 +93,12 @@
 				Choice@Puddles:
 					Label: label-ra-map-generator-choice-terrain-type-puddles
 					Settings:
-						Water: 102
+						Water: 100
 				Choice@Gardens:
 					Label: label-ra-map-generator-choice-terrain-type-gardens
 					Settings:
-						Water: 51
-						Forests: 307
+						Water: 50
+						Forests: 300
 						ForestCutout: 3
 						EnforceSymmetry: 2
 						RoadSpacing: 3
@@ -111,12 +111,12 @@
 					Label: label-ra-map-generator-choice-terrain-type-parks
 					Settings:
 						Water: 0
-						Forests: 102
+						Forests: 100
 				Choice@Woodlands:
 					Label: label-ra-map-generator-choice-terrain-type-woodlands
 					Settings:
 						Water: 0
-						Forests: 410
+						Forests: 400
 						ForestCutout: 3
 						EnforceSymmetry: 2
 						RoadSpacing: 3
@@ -125,59 +125,59 @@
 					Label: label-ra-map-generator-choice-terrain-type-overgrown
 					Settings:
 						Water: 0
-						Forests: 512
+						Forests: 500
 						EnforceSymmetry: 2
-						Mountains: 512
-						Roughness: 256
+						Mountains: 500
+						Roughness: 250
 				Choice@Rocky:
 					Label: label-ra-map-generator-choice-terrain-type-rocky
 					Settings:
 						Water: 0
-						Forests: 307
+						Forests: 300
 						ForestCutout: 3
 						EnforceSymmetry: 2
-						Mountains: 512
-						Roughness: 256
+						Mountains: 500
+						Roughness: 250
 						RoadSpacing: 3
 						RoadShrink: 4
 				Choice@Mountains:
 					Label: label-ra-map-generator-choice-terrain-type-mountains
 					Settings:
 						Water: 0
-						Mountains: 1024
-						Roughness: 614
+						Mountains: 1000
+						Roughness: 600
 						MinimumTerrainContourSpacing: 5
 				Choice@MountainLakes:
 					Label: label-ra-map-generator-choice-terrain-type-mountain-lakes
 					Settings:
-						Water: 205
-						Mountains: 1024
-						Roughness: 870
+						Water: 200
+						Mountains: 1000
+						Roughness: 850
 						MinimumTerrainContourSpacing: 5
 				Choice@Oceanic:
 					Label: label-ra-map-generator-choice-terrain-type-oceanic
 					Settings:
-						Water: 819
+						Water: 800
 						Forests: 0
 				Choice@LargeIslands:
 					Label: label-ra-map-generator-choice-terrain-type-large-islands
 					Settings:
-						Water: 768
+						Water: 750
 						TerrainFeatureSize: 51200
 						Forests: 0
 				Choice@Continents:
 					Label: label-ra-map-generator-choice-terrain-type-continents
 					Settings:
-						Water: 512
+						Water: 500
 						TerrainFeatureSize: 102400
 				Choice@Wetlands:
 					Label: label-ra-map-generator-choice-terrain-type-wetlands
 					Settings:
-						Water: 512
+						Water: 500
 				Choice@NarrowWetlands:
 					Label: label-ra-map-generator-choice-terrain-type-narrow-wetlands
 					Settings:
-						Water: 512
+						Water: 500
 						TerrainFeatureSize: 5120
 						Forests: 0
 						SpawnBuildSize: 6

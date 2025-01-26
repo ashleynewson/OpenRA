@@ -4283,10 +4283,10 @@ MultiBrushCollections:
 			Template: 104
 		MultiBrush@105:
 			Template: 105
-			Weight: 0.05
+			Weight: 50
 		MultiBrush@106:
 			Template: 106
-			Weight: 0.05
+			Weight: 50
 		MultiBrush@109:
 			Template: 109
 		MultiBrush@110:
