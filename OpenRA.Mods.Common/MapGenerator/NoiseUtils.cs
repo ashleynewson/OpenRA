@@ -18,6 +18,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 	public static class NoiseUtils
 	{
 		const int Scale = 1024;
+		const int ScaledSqrt2 = 1448;
 
 		/// <summary>Amplitude proportional to wavelength.</summary>
 		public static int PinkAmplitude(int wavelength) => wavelength;
@@ -127,7 +128,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				throw new ArgumentException("rotations must be >= 1");
 
 			// Need higher resolution due to cropping and rotation artifacts
-			var templateSpan = Math.Max(size.X, size.Y) * 3 + 2;
+			var templateSpan = Math.Max(size.X, size.Y) * 2 + 2;
 			var templateSize = new int2(templateSpan, templateSpan);
 			var scaledTemplateCenter = new int2(templateSpan - 1, templateSpan - 1) * Scale / 2;
 			var template = FractalNoise(random, templateSize, featureSize, ampFunc);
@@ -144,8 +145,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 					var scaledOutputXy = outputXy * Scale;
 					var scaledOutputXyFromCenter = scaledOutputXy - scaledOutputMid;
 
-					// Apply 2x scaling so that diagonal (sqrt2) samples don't alias.
-					var scaledTemplateXyFromCenter = scaledOutputXyFromCenter * 2;
+					// Apply sqrt2 scaling so that diagonal samples don't alias.
+					var scaledTemplateXyFromCenter = scaledOutputXyFromCenter * ScaledSqrt2 / Scale;
 					var scaledTemplateXy = scaledTemplateXyFromCenter + scaledTemplateCenter;
 
 					var projections = Symmetry.RotateAndMirrorPointAround(
