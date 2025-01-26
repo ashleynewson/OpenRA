@@ -59,6 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 	public sealed class RaMapGenerator : IMapGenerator
 	{
 		const int FractionMax = 1000;
+		const int EntityBonusMax = 1000000;
 
 		sealed class Parameters
 		{
@@ -126,9 +127,9 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly bool CreateEntities = default;
 			[FieldLoader.Require]
-			public readonly float AreaEntityBonus = default;
+			public readonly int AreaEntityBonus = default;
 			[FieldLoader.Require]
-			public readonly float PlayerCountEntityBonus = default;
+			public readonly int PlayerCountEntityBonus = default;
 			[FieldLoader.Require]
 			public readonly float CentralSpawnReservationFraction = default;
 			[FieldLoader.Require]
@@ -383,10 +384,10 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("Players must be >= 0");
 				if (CentralSpawnReservationFraction < 0.0f)
 					throw new MapGenerationException("CentralSpawnReservationFraction must be >= 0.0");
-				if (AreaEntityBonus < 0.0f)
-					throw new MapGenerationException("PlayableAreaDensityBonus must be >= 0.0");
-				if (PlayerCountEntityBonus < 0.0f)
-					throw new MapGenerationException("PlayerCountDensityBonus must be >= 0.0");
+				if (AreaEntityBonus < 0)
+					throw new MapGenerationException("PlayableAreaDensityBonus must be >= 0");
+				if (PlayerCountEntityBonus < 0)
+					throw new MapGenerationException("PlayerCountDensityBonus must be >= 0");
 				if (SpawnRegionSize < 1)
 					throw new MapGenerationException("SpawnRegionSize must be >= 1");
 				if (SpawnReservation < 1)
@@ -1211,8 +1212,8 @@ namespace OpenRA.Mods.Common.Traits
 
 				var zoneableArea = zoneable.Count(v => v);
 				var entityMultiplier =
-					zoneableArea * param.AreaEntityBonus +
-					param.TotalPlayers * param.PlayerCountEntityBonus;
+					(long)zoneableArea * param.AreaEntityBonus +
+					(long)param.TotalPlayers * param.PlayerCountEntityBonus;
 				var perSymmetryEntityMultiplier = entityMultiplier / param.SymmetryCount;
 
 				// Spawn generation
@@ -1306,7 +1307,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				// Expansions
 				{
-					var resourceSpawnsRemaining = (int)(param.MaximumExpansionResourceSpawns * perSymmetryEntityMultiplier);
+					var resourceSpawnsRemaining = (int)(param.MaximumExpansionResourceSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
 					while (resourceSpawnsRemaining > 0)
 					{
 						var roominess = new CellLayer<int>(map);
@@ -1381,8 +1382,8 @@ namespace OpenRA.Mods.Common.Traits
 					var targetBuildingCount =
 						(param.MaximumBuildings != 0)
 							? expansionRandom.Next(
-								(int)(param.MinimumBuildings * perSymmetryEntityMultiplier),
-								(int)(param.MaximumBuildings * perSymmetryEntityMultiplier) + 1)
+								(int)(param.MinimumBuildings * perSymmetryEntityMultiplier / EntityBonusMax),
+								(int)(param.MaximumBuildings * perSymmetryEntityMultiplier / EntityBonusMax) + 1)
 							: 0;
 					for (var i = 0; i < targetBuildingCount; i++)
 					{
@@ -1524,7 +1525,7 @@ namespace OpenRA.Mods.Common.Traits
 						plan = newPlan;
 					}
 
-					var remaining = param.ResourcesPerPlayer * entityMultiplier;
+					var remaining = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
 
 					// Closer to -inf means "more preferable" for priorities.
 					var priorities = new PriorityArray<int>(
