@@ -131,7 +131,7 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly int PlayerCountEntityBonus = default;
 			[FieldLoader.Require]
-			public readonly float CentralSpawnReservationFraction = default;
+			public readonly int CentralSpawnReservationFraction = default;
 			[FieldLoader.Require]
 			public readonly int ResourceSpawnReservation = default;
 			[FieldLoader.Require]
@@ -382,8 +382,8 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("RoadShrink must be >= 0");
 				if (Players < 0)
 					throw new MapGenerationException("Players must be >= 0");
-				if (CentralSpawnReservationFraction < 0.0f)
-					throw new MapGenerationException("CentralSpawnReservationFraction must be >= 0.0");
+				if (CentralSpawnReservationFraction < 0)
+					throw new MapGenerationException("CentralSpawnReservationFraction must be >= 0");
 				if (AreaEntityBonus < 0)
 					throw new MapGenerationException("PlayableAreaDensityBonus must be >= 0");
 				if (PlayerCountEntityBonus < 0)
@@ -1168,7 +1168,7 @@ namespace OpenRA.Mods.Common.Traits
 					(projections, cpos) =>
 						projectionSpacing[cpos] = Symmetry.ProjectionProximity(projections) / 2);
 
-				var spawnReservationRadius = minSpan * param.CentralSpawnReservationFraction;
+				var spawnReservationRadius = minSpan * param.CentralSpawnReservationFraction / FractionMax;
 				var spawnReservation = new CellLayer<bool>(map);
 				foreach (var mpos in map.AllCells.MapCoords)
 					spawnReservation[mpos] = Symmetry.IsCPosNearCenter(

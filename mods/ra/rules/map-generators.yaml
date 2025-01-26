@@ -30,7 +30,7 @@
 						RoadSpacing: 5
 						RoadShrink: 0
 						CreateEntities: True
-						CentralSpawnReservationFraction: 0.25
+						CentralSpawnReservationFraction: 250
 						ResourceSpawnReservation: 8
 						SpawnRegionSize: 12
 						SpawnBuildSize: 8
