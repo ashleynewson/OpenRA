@@ -346,8 +346,8 @@ namespace OpenRA.Mods.Common.Traits
 					throw new MapGenerationException("ForestFeatureSize must be >= 1");
 				if (ResourceFeatureSize < 1)
 					throw new MapGenerationException("ResourceFeatureSize must be >= 1");
-				if (TerrainSmoothing < 0)
-					throw new MapGenerationException("TerrainSmoothing must be >= 0");
+				if (TerrainSmoothing < 0 || TerrainSmoothing > MatrixUtils.MaxBinomialKernelRadius)
+					throw new MapGenerationException($"TerrainSmoothing must be between 0 and {MatrixUtils.MaxBinomialKernelRadius} inclusive");
 				if (SmoothingThreshold < (FractionMax + 1) / 2 || SmoothingThreshold > FractionMax)
 					throw new MapGenerationException($"SmoothingThreshold must be between {(FractionMax + 1) / 2} and {FractionMax} inclusive");
 				if (MinimumLandSeaThickness < 1)

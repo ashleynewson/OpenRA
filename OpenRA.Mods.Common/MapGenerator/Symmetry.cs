@@ -287,7 +287,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public static bool IsCPosNearCenter<T>(
 			CPos cpos,
 			CellLayer<T> cellLayer,
-			float reservationRadius,
+			int reservationRadius,
 			Mirror mirror)
 		{
 			CPos[] testPoints;
@@ -297,7 +297,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				testPoints = RotateAndMirrorCPos(cpos, cellLayer, 1, mirror);
 
 			var separation = (testPoints[1] - testPoints[0]).LengthSquared;
-			return separation <= reservationRadius * reservationRadius * 4.0f;
+			return separation <= reservationRadius * reservationRadius * 4;
 		}
 	}
 }

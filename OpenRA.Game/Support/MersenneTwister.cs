@@ -97,24 +97,6 @@ namespace OpenRA.Support
 		}
 
 		/// <summary>
-		/// Produces uniformally distributed random floats between 0 inclusive and 1 exclusive.
-		/// Note that whilst floats are 32-bit (23-bit mantissa), each output contains exactly 23 bits of entropy.
-		/// </summary>
-		public float NextFloatExclusive()
-		{
-			return (NextUint() & 0x7fffff) / (float)0x800000;
-		}
-
-		/// <summary>
-		/// Produces uniformally distributed random doubles between 0 inclusive and 1 exclusive.
-		/// Note that whilst doubles are 64-bit (52-bit mantissa), each output contains exactly 52 bits of entropy.
-		/// </summary>
-		public double NextDoubleExclusive()
-		{
-			return (NextUlong() & 0xfffffffffffffL) / (double)0x10000000000000L;
-		}
-
-		/// <summary>
 		/// Pick a random index from a list of weights.
 		/// </summary>
 		public int PickWeighted(IReadOnlyList<int> weights)

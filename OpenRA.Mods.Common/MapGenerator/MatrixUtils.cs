@@ -20,6 +20,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 {
 	public static class MatrixUtils
 	{
+		public const int MaxBinomialKernelRadius = 10;
+
 		/// <summary>
 		/// Debugging method that prints a matrix to stderr.
 		/// </summary>
@@ -388,45 +390,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		/// <summary>
 		/// <para>
-		/// Create a one-dimensional gaussian kernel.
-		/// </para>
-		/// <para>
-		/// This can be applied once, transposed, then applied again to perform a full gaussian blur.
-		/// See <see cref="GaussianBlur"/>.
-		/// </para>
-		/// </summary>
-		public static Matrix<float> GaussianKernel1D(int radius, float standardDeviation)
-		{
-			var span = radius * 2 + 1;
-			var kernel = new Matrix<float>(new int2(span, 1));
-			var dsd2 = 2 * standardDeviation * standardDeviation;
-			var total = 0.0f;
-			for (var x = -radius; x <= radius; x++)
-			{
-				var value = MathF.Exp(-x * x / dsd2);
-				kernel[x + radius] = value;
-				total += value;
-			}
-
-			// Instead of dividing by sqrt(PI * dsd2), divide by the total.
-			for (var i = 0; i < span; i++)
-				kernel[i] /= total;
-
-			return kernel;
-		}
-
-		/// <summary>
-		/// <para>
 		/// Create a one-dimensional binomial kernel of size (2 * radius + 1, 1).
 		/// The total of all kernel cells is 2 ** (radius * 2).
 		/// </para>
 		/// <para>
 		/// This can be applied once, transposed, then applied again to perform a full binomial blur.
-		/// See <see cref="BinomialBlur"/>.
+		/// See <see cref="BinomialBlur"/>. Maximum supported radius is MaxBinomialKernelRadius.
 		/// </para>
 		/// </summary>
-		public static Matrix<long> BinomialKernel1D(int radius)
+		static Matrix<long> BinomialKernel1D(int radius)
 		{
+			if (radius < 0 || radius > 10)
+				throw new ArgumentException($"Binomial kernel radius was not in supported range (0 to {MaxBinomialKernelRadius} inclusive).");
+
 			var span = radius * 2 + 1;
 			var kernel = new Matrix<long>(new int2(span, 1));
 			var factorials = new long[span];
@@ -434,39 +410,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 			for (var i = 1; i < span; i++)
 				factorials[i] = factorials[i - 1] * i;
 
-			var choose = span - 1;
-			for (var i = 0; i < span; i++)
-				kernel[i] = factorials[choose] / (factorials[i] * factorials[choose - i]);
+			var n = span - 1;
+			for (var k = 0; k < span; k++)
+				kernel[k] = factorials[n] / (factorials[k] * factorials[n - k]);
 
 			return kernel;
-		}
-
-		/// <summary>
-		/// Apply an arithmetic convolution of a kernel over an input matrix.
-		/// </summary>
-		public static Matrix<float> KernelBlur(Matrix<float> input, Matrix<float> kernel, int2 kernelCenter)
-		{
-			var output = new Matrix<float>(input.Size);
-			for (var cy = 0; cy < input.Size.Y; cy++)
-				for (var cx = 0; cx < input.Size.X; cx++)
-				{
-					var total = 0.0f;
-					var samples = 0;
-					for (var ky = 0; ky < kernel.Size.Y; ky++)
-						for (var kx = 0; kx < kernel.Size.X; kx++)
-						{
-							var x = cx + kx - kernelCenter.X;
-							var y = cy + ky - kernelCenter.Y;
-							if (!input.ContainsXY(x, y))
-								continue;
-							total += input[x, y] * kernel[kx, ky];
-							samples++;
-						}
-
-					output[cx, cy] = total / samples;
-				}
-
-			return output;
 		}
 
 		/// <summary>
@@ -497,19 +445,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Apply a square gaussian blur to a matrix, returning a new matrix.
-		/// </summary>
-		public static Matrix<float> GaussianBlur(Matrix<float> input, int radius, float standardDeviation)
-		{
-			var kernel = GaussianKernel1D(radius, standardDeviation);
-			var stage1 = KernelBlur(input, kernel, new int2(radius, 0));
-			var stage2 = KernelBlur(stage1, kernel.Transpose(), new int2(0, radius));
-			return stage2;
-		}
-
-		/// <summary>
 		/// Apply a binomial filter-based blur to a matrix, returning a new matrix. The result is
-		/// somewhat similar to a gaussian blur.
+		/// somewhat similar to a gaussian blur. Maximum supported radius is MaxBinomialKernelRadius.
 		/// </summary>
 		public static Matrix<int> BinomialBlur(Matrix<int> input, int radius)
 		{
@@ -714,49 +651,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return (output, changes);
 		}
 
-		/// <summary>Read a linearly interpolated value between the cells of a matrix.</summary>
-		public static float Interpolate(Matrix<float> matrix, float x, float y)
-		{
-			var xa = (int)MathF.Floor(x);
-			var xb = (int)MathF.Ceiling(x);
-			var ya = (int)MathF.Floor(y);
-			var yb = (int)MathF.Ceiling(y);
-
-			// "w" for "weight"
-			var xbw = x - xa;
-			var ybw = y - ya;
-			var xaw = 1.0f - xbw;
-			var yaw = 1.0f - ybw;
-
-			if (xa < 0)
-			{
-				xa = 0;
-				xb = 0;
-			}
-			else if (xb > matrix.Size.X - 1)
-			{
-				xa = matrix.Size.X - 1;
-				xb = matrix.Size.X - 1;
-			}
-
-			if (ya < 0)
-			{
-				ya = 0;
-				yb = 0;
-			}
-			else if (yb > matrix.Size.Y - 1)
-			{
-				ya = matrix.Size.Y - 1;
-				yb = matrix.Size.Y - 1;
-			}
-
-			var naa = matrix[xa, ya];
-			var nba = matrix[xb, ya];
-			var nab = matrix[xa, yb];
-			var nbb = matrix[xb, yb];
-			return (naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw;
-		}
-
 		/// <summary>
 		/// Read a linearly interpolated value between the cells of a matrix. xWeight and yWeight
 		/// must be between 0 and scale inclusive and define the interpolation position
@@ -814,43 +708,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 			long nab = matrix[xa, yb];
 			long nbb = matrix[xb, yb];
 			return (int)(((naa * xaw + nba * xbw) * yaw + (nab * xaw + nbb * xbw) * ybw) / scale / scale);
-		}
-
-		/// <summary>
-		/// Finds the (linearly interpolated) value a given fraction through a sorted array.
-		/// </summary>
-		public static float ArrayQuantile(float[] array, float quantile)
-		{
-			if (array.Length == 0)
-				throw new ArgumentException("Cannot get quantile of empty array");
-
-			var iFloat = quantile * (array.Length - 1);
-			if (iFloat < 0)
-				iFloat = 0;
-
-			if (iFloat > array.Length - 1)
-				iFloat = array.Length - 1;
-
-			var iLow = (int)iFloat;
-			if (iLow == iFloat)
-				return array[iLow];
-
-			var iHigh = iLow + 1;
-			var weight = iFloat - iLow;
-			return array[iLow] * (1 - weight) + array[iHigh] * weight;
-		}
-
-		/// <summary>
-		/// Uniformally add to or subtract from all matrix cells such that the given quantile,
-		/// fraction, has the given target value.
-		/// </summary>
-		public static void CalibrateQuantileInPlace(Matrix<float> matrix, float target, float fraction)
-		{
-			var sorted = (float[])matrix.Data.Clone();
-			Array.Sort(sorted);
-			var adjustment = target - ArrayQuantile(sorted, fraction);
-			for (var i = 0; i < matrix.Data.Length; i++)
-				matrix[i] += adjustment;
 		}
 
 		/// <summary>

@@ -256,19 +256,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Uniformally add to or subtract from all matrix cells such that the given quantile,
-		/// fraction, has the given target value.
-		/// </summary>
-		public static void CalibrateQuantileInPlace(CellLayer<float> cellLayer, float target, float fraction)
-		{
-			var sorted = Entries(cellLayer);
-			Array.Sort(sorted);
-			var adjustment = target - MatrixUtils.ArrayQuantile(sorted, fraction);
-			foreach (var mpos in cellLayer.CellRegion.MapCoords)
-				cellLayer[mpos] += adjustment;
-		}
-
-		/// <summary>
 		/// Uniformally add to or subtract from all cells such that count out of every outOf cells,
 		/// are no greater than the given target value.
 		/// </summary>
