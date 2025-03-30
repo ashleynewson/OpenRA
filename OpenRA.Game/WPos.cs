@@ -25,6 +25,20 @@ namespace OpenRA
 		public WPos(int x, int y, int z) { X = x; Y = y; Z = z; }
 		public WPos(WDist x, WDist y, WDist z) { X = x.Length; Y = y.Length; Z = z.Length; }
 
+		public static bool TryParse(string s, out WPos result)
+		{
+			if (WVec.TryParse(s, out var vec))
+			{
+				result = new WPos(vec.X, vec.Y, vec.Z);
+				return true;
+			}
+			else
+			{
+				result = default;
+				return false;
+			}
+		}
+
 		public static readonly WPos Zero = new(0, 0, 0);
 
 		public static explicit operator WVec(in WPos a) { return new WVec(a.X, a.Y, a.Z); }

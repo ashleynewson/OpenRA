@@ -61,29 +61,38 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// </summary>
 		public sealed class PermittedSegments
 		{
-			public readonly ITemplatedTerrainInfo TemplatedTerrainInfo;
+			public readonly IReadOnlyList<MultiBrush> MultiBrushes;
+			public readonly IImmutableDictionary<TemplateSegment, MultiBrush> SegmentsToBrushes;
 			public readonly ImmutableArray<TemplateSegment> Start;
 			public readonly ImmutableArray<TemplateSegment> Inner;
 			public readonly ImmutableArray<TemplateSegment> End;
 			public IEnumerable<TemplateSegment> All => Start.Union(Inner).Union(End);
 
 			public PermittedSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<TemplateSegment> start,
 				IEnumerable<TemplateSegment> inner,
 				IEnumerable<TemplateSegment> end)
 			{
-				TemplatedTerrainInfo = templatedTerrainInfo;
+				MultiBrushes = multiBrushes;
+				SegmentsToBrushes = ImmutableDictionary.CreateRange(
+					multiBrushes.SelectMany(
+						multiBrush => multiBrush.Segments.Select(
+							segment => new KeyValuePair<TemplateSegment, MultiBrush>(segment, multiBrush))));
 				Start = start.ToImmutableArray();
 				Inner = inner.ToImmutableArray();
 				End = end.ToImmutableArray();
 			}
 
 			public PermittedSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<TemplateSegment> all)
 			{
-				TemplatedTerrainInfo = templatedTerrainInfo;
+				MultiBrushes = multiBrushes;
+				SegmentsToBrushes = ImmutableDictionary.CreateRange(
+					multiBrushes.SelectMany(
+						multiBrush => multiBrush.Segments.Select(
+							segment => new KeyValuePair<TemplateSegment, MultiBrush>(segment, multiBrush))));
 				var array = all.ToImmutableArray();
 				Start = array;
 				Inner = array;
@@ -94,51 +103,51 @@ namespace OpenRA.Mods.Common.MapGenerator
 			/// Creates a PermittedSegments using only the given types.
 			/// </summary>
 			public static PermittedSegments FromType(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<string> types)
-				=> new(templatedTerrainInfo, FindSegments(templatedTerrainInfo, types));
+				=> new(multiBrushes, FindSegments(multiBrushes, types));
 
 			/// <summary>
 			/// Creates a PermittedSegments suitable for a path with given inner and terminal types
 			/// at the start and end.
 			/// </summary>
 			public static PermittedSegments FromInnerAndTerminalTypes(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<string> innerTypes,
 				IEnumerable<string> terminalTypes)
 			{
 				var innerTypesArray = innerTypes.ToImmutableArray();
 				var terminalTypesArray = terminalTypes.ToImmutableArray();
 				return new(
-					templatedTerrainInfo,
-					FindSegments(templatedTerrainInfo, terminalTypesArray, innerTypesArray, innerTypesArray),
-					FindSegments(templatedTerrainInfo, innerTypesArray),
-					FindSegments(templatedTerrainInfo, innerTypesArray, innerTypesArray, terminalTypesArray));
+					multiBrushes,
+					FindSegments(multiBrushes, terminalTypesArray, innerTypesArray, innerTypesArray),
+					FindSegments(multiBrushes, innerTypesArray),
+					FindSegments(multiBrushes, innerTypesArray, innerTypesArray, terminalTypesArray));
 			}
 
 			/// <summary>
 			/// Equivalent to FindSegments(templatedTerrainInfo, types, types, types).
 			/// </summary>
 			public static IEnumerable<TemplateSegment> FindSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<string> types)
 			{
 				var array = types.ToImmutableArray();
-				return FindSegments(templatedTerrainInfo, array, array, array);
+				return FindSegments(multiBrushes, array, array, array);
 			}
 
 			/// <summary>
 			/// Find templates that use some combination of the given start, inner, and end types.
 			/// </summary>
 			public static IEnumerable<TemplateSegment> FindSegments(
-				ITemplatedTerrainInfo templatedTerrainInfo,
+				IReadOnlyList<MultiBrush> multiBrushes,
 				IEnumerable<string> startTypes,
 				IEnumerable<string> innerTypes,
 				IEnumerable<string> endTypes)
 			{
 				var templateSegments = new List<TemplateSegment>();
-				foreach (var templateInfo in templatedTerrainInfo.Templates.Values.OrderBy(tti => tti.Id))
-					foreach (var segment in templateInfo.Segments)
+				foreach (var multiBrush in multiBrushes)
+					foreach (var segment in multiBrush.Segments)
 					{
 						if (startTypes.Any(segment.HasStartType) &&
 							innerTypes.Any(segment.HasInnerType) &&
@@ -148,32 +157,31 @@ namespace OpenRA.Mods.Common.MapGenerator
 						}
 					}
 
-				return templateSegments.ToArray();
+				return [.. templateSegments];
 			}
 
 			/// <summary>
-			/// Returns all possible templates that could be layed, ordered by template id.
+			/// Returns all possible templates that could be layed.
 			/// </summary>
-			public IEnumerable<TerrainTemplateInfo> PossibleTemplates()
+			public IEnumerable<MultiBrush> PossibleBrushes()
 			{
-				var templates = new List<TerrainTemplateInfo>();
-				var segments = Start.Union(Inner).Union(End).ToHashSet();
-				foreach (var template in TemplatedTerrainInfo.Templates.Values.OrderBy(tti => tti.Id))
-					if (template.Segments.Any(segments.Contains))
-						templates.Add(template);
-				return templates;
+				var multiBrushes = new List<MultiBrush>();
+				var segments = All.ToHashSet();
+				foreach (var multiBrush in multiBrushes)
+					if (multiBrush.Segments.Any(segments.Contains))
+						multiBrushes.Add(multiBrush);
+				return multiBrushes;
 			}
 
 			/// <summary>
-			/// Returns all possible tiles that could be layed, ordered by template id, tile index.
+			/// Returns all possible TerrainTiles that could be layed. May contain duplicates.
 			/// </summary>
 			public IEnumerable<TerrainTile> PossibleTiles()
 			{
 				var tiles = new List<TerrainTile>();
-				foreach (var template in PossibleTemplates())
-					for (var index = 0; index < template.TilesCount; index++)
-						if (template[index] != null)
-							tiles.Add(new TerrainTile(template.Id, (byte)index));
+				foreach (var multiBrush in PossibleBrushes())
+					foreach (var (_, tile) in multiBrush.Tiles)
+						tiles.Add(tile);
 				return tiles;
 			}
 		}
@@ -249,7 +257,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		sealed class TilingSegment
 		{
-			public readonly TerrainTemplateInfo TemplateInfo;
+			public readonly MultiBrush MultiBrush;
 			public readonly TemplateSegment TemplateSegment;
 			public readonly int StartTypeId;
 			public readonly int EndTypeId;
@@ -260,9 +268,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			public readonly int[] DirectionMasks;
 			public readonly int[] ReverseDirectionMasks;
 
-			public TilingSegment(TerrainTemplateInfo templateInfo, TemplateSegment templateSegment, int startId, int endId)
+			public TilingSegment(MultiBrush multiBrush, TemplateSegment templateSegment, int startId, int endId)
 			{
-				TemplateInfo = templateInfo;
+				MultiBrush = multiBrush;
 				TemplateSegment = templateSegment;
 				StartTypeId = startId;
 				EndTypeId = endId;
@@ -294,14 +302,16 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		/// <summary>
 		/// <para>
-		/// Attempt to tile the given path onto a map.
+		/// Attempt to tile the given path. producing a new MultiBrush if the path could be tiled,
+		/// or null if the path could not be tiled within constraints.
 		/// </para>
 		/// <para>
-		/// If the path could be tiled, returns the sequence of points actually traversed by the
-		/// chosen TemplateSegments. Returns null if the path could not be tiled within constraints.
+		/// The resulting MultiBrush is created from stitching MultiBrushes from the
+		/// PermittedSegments together, and will contain a single segment that represents the
+		/// stitched segments of the constituent MultiBrushes.
 		/// </para>
 		/// </summary>
-		public CPos[] Tile(MersenneTwister random)
+		public MultiBrush Tile(MersenneTwister random)
 		{
 			// This is essentially a Dijkstra's algorithm best-first search.
 			//
@@ -583,12 +593,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				foreach (var segment in orderedPermittedSegments)
 				{
-					var template = Segments.TemplatedTerrainInfo.SegmentsToTemplates[segment];
+					var multiBrush = Segments.SegmentsToBrushes[segment];
 					RegisterSegmentType(segment.Start);
 					RegisterSegmentType(segment.End);
 					var startTypeId = segmentTypeToId[segment.Start];
 					var endTypeId = segmentTypeToId[segment.End];
-					var tilePathSegment = new TilingSegment(template, segment, startTypeId, endTypeId);
+					var tilePathSegment = new TilingSegment(multiBrush, segment, startTypeId, endTypeId);
 					segmentsByStart[startTypeId].Add(tilePathSegment);
 					segmentsByEnd[endTypeId].Add(tilePathSegment);
 				}
@@ -748,10 +758,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			// Trace back and update tiles
-			var resultPoints = new List<CPos>
+			var resultPoints = new List<CVec>
 			{
 				new(pathEnd.X + minPoint.X, pathEnd.Y + minPoint.Y)
 			};
+
+			var compositeBrush = new MultiBrush();
 
 			(CVec From, int FromTypeId) TraceBackStep(CVec to, int toTypeId, int toCost)
 			{
@@ -781,12 +793,16 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Debug.Assert(candidates.Count >= 1, "TraceBack didn't find an original route");
 				var chosenSegment = candidates[random.Next(candidates.Count)];
 				var chosenFrom = to - chosenSegment.Moves;
-				PaintTemplate(Map, chosenFrom - chosenSegment.Offset + minPoint, chosenSegment.TemplateInfo);
+				compositeBrush.MergeFrom(
+					chosenSegment.MultiBrush,
+					chosenFrom - chosenSegment.Offset + minPoint - CPos.Zero,
+					Map.Grid.Type);
+				// PaintTemplate(Map, chosenFrom - chosenSegment.Offset + minPoint, chosenSegment.MultiBrush);
 
 				// Skip end point as it is recorded in the previous template.
 				for (var i = chosenSegment.RelativePoints.Length - 2; i >= 0; i--)
 				{
-					var point = chosenFrom + chosenSegment.RelativePoints[i] + minPoint;
+					var point = chosenFrom + chosenSegment.RelativePoints[i] + minPoint - CPos.Zero;
 					resultPoints.Add(point);
 				}
 
@@ -816,25 +832,33 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			// Traced back in reverse, so reverse the reversal.
 			resultPoints.Reverse();
-			return resultPoints.ToArray();
+			var compositeSegment = new TemplateSegment(
+				start.SegmentType,
+				"(Tiled Path)",
+				end.SegmentType,
+				[.. resultPoints]);
+
+			compositeBrush.WithSegment(compositeSegment);
+
+			return compositeBrush;
 		}
 
-		static void PaintTemplate(Map map, CPos at, TerrainTemplateInfo template)
-		{
-			if (template.PickAny)
-				throw new ArgumentException("PaintTemplate does not expect PickAny");
-			for (var y = 0; y < template.Size.Y; y++)
-				for (var x = 0; x < template.Size.X; x++)
-				{
-					var i = (byte)(y * template.Size.X + x);
-					if (template[i] == null)
-						continue;
-					var tile = new TerrainTile(template.Id, i);
-					var mpos = new CPos(at.X + x, at.Y + y).ToMPos(map);
-					if (map.Tiles.Contains(mpos))
-						map.Tiles[mpos] = tile;
-				}
-		}
+		// static void PaintTemplate(Map map, CPos at, TerrainTemplateInfo template)
+		// {
+		// 	if (template.PickAny)
+		// 		throw new ArgumentException("PaintTemplate does not expect PickAny");
+		// 	for (var y = 0; y < template.Size.Y; y++)
+		// 		for (var x = 0; x < template.Size.X; x++)
+		// 		{
+		// 			var i = (byte)(y * template.Size.X + x);
+		// 			if (template[i] == null)
+		// 				continue;
+		// 			var tile = new TerrainTile(template.Id, i);
+		// 			var mpos = new CPos(at.X + x, at.Y + y).ToMPos(map);
+		// 			if (map.Tiles.Contains(mpos))
+		// 				map.Tiles[mpos] = tile;
+		// 		}
+		// }
 
 		/// <summary>
 		/// <para>

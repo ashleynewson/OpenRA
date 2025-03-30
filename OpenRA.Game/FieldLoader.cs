@@ -184,15 +184,8 @@ namespace OpenRA
 
 		static object ParseWVec(string fieldName, Type fieldType, string value, MemberInfo field)
 		{
-			if (value != null)
-			{
-				var parts = value.Split(SplitComma);
-				if (parts.Length == 3
-					&& WDist.TryParse(parts[0], out var rx)
-					&& WDist.TryParse(parts[1], out var ry)
-					&& WDist.TryParse(parts[2], out var rz))
-					return new WVec(rx, ry, rz);
-			}
+			if (WVec.TryParse(value, out var res))
+				return res;
 
 			return InvalidValueAction(value, fieldType, fieldName);
 		}

@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
 namespace OpenRA.Mods.Common.Terrain
@@ -27,7 +28,15 @@ namespace OpenRA.Mods.Common.Terrain
 		/// Point sequence, where points are -X-Y corners of template tiles.
 		/// </summary>
 		[FieldLoader.Ignore]
-		public readonly CVec[] Points;
+		public readonly ImmutableArray<CVec> Points;
+
+		public TemplateSegment(string start, string inner, string end, ImmutableArray<CVec> points)
+		{
+			Start = start;
+			Inner = inner;
+			End = end;
+			Points = points;
+		}
 
 		public TemplateSegment(MiniYaml my)
 		{
@@ -39,9 +48,10 @@ namespace OpenRA.Mods.Common.Terrain
 					.Split(',', StringSplitOptions.RemoveEmptyEntries);
 				if (parts.Length % 2 != 0)
 					FieldLoader.InvalidValueAction(value, typeof(int2[]), "Points");
-				Points = new CVec[parts.Length / 2];
-				for (var i = 0; i < Points.Length; i++)
-					Points[i] = new CVec(Exts.ParseInt32Invariant(parts[2 * i]), Exts.ParseInt32Invariant(parts[2 * i + 1]));
+				var points = new CVec[parts.Length / 2];
+				for (var i = 0; i < points.Length; i++)
+					points[i] = new CVec(Exts.ParseInt32Invariant(parts[2 * i]), Exts.ParseInt32Invariant(parts[2 * i + 1]));
+				Points = [.. points];
 			}
 		}
 

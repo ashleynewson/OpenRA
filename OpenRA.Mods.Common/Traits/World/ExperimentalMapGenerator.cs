@@ -181,6 +181,8 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Require]
 			public readonly ushort WaterTile = default;
 			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<MultiBrush> SegmentedBrushes;
+			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> ForestObstacles;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> UnplayableObstacles;
@@ -235,6 +237,7 @@ namespace OpenRA.Mods.Common.Traits
 				FieldLoader.Load(this, my);
 				Map = map;
 				TemplatedTerrainInfo = Map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+				SegmentedBrushes = MultiBrush.LoadCollection(map, "Segmented");
 				ForestObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("ForestObstacles").Value.Value);
 				UnplayableObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("UnplayableObstacles").Value.Value);
 				CivilianBuildingsObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("CivilianBuildingsObstacles").Value.Value);
@@ -517,8 +520,7 @@ namespace OpenRA.Mods.Common.Traits
 			var tileset = param.TemplatedTerrainInfo;
 
 			var beachPermittedTemplates =
-				TilingPath.PermittedSegments.FromType(tileset, param.BeachSegmentTypes);
-			var beachTiles = beachPermittedTemplates.PossibleTiles().ToImmutableHashSet();
+				TilingPath.PermittedSegments.FromType(param.SegmentedBrushes, param.BeachSegmentTypes);
 
 			var replaceabilityMap = new Dictionary<TerrainTile, MultiBrush.Replaceability>();
 			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
@@ -648,6 +650,7 @@ namespace OpenRA.Mods.Common.Traits
 			var beaches = CellLayerUtils.FromMatrixPoints(
 				MatrixUtils.BordersToPoints(landPlan),
 				map.Tiles);
+			var beachesShape = new HashSet<CPos>();
 			if (beaches.Length > 0)
 			{
 				var tiledBeaches = new CPos[beaches.Length][];
@@ -663,9 +666,12 @@ namespace OpenRA.Mods.Common.Traits
 					beachPath
 						.ExtendEdge(4)
 						.OptimizeLoop();
-					tiledBeaches[i] =
-						beachPath.Tile(beachTilingRandom)
-							?? throw new MapGenerationException("Could not fit tiles for beach");
+					var brush = beachPath.Tile(beachTilingRandom)
+						?? throw new MapGenerationException("Could not fit tiles for beach");
+					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
+					tiledBeaches[i] = brush.Segments.First().Points.Select(vec => CPos.Zero + vec).ToArray();
+					foreach (var cvec in brush.Shape)
+						beachesShape.Add(CPos.Zero + cvec);
 				}
 
 				var beachChiralityMatrix = MatrixUtils.PointsChirality(
@@ -693,10 +699,10 @@ namespace OpenRA.Mods.Common.Traits
 
 			var nonLoopedCliffPermittedTemplates =
 				TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
-					tileset, param.CliffSegmentTypes, param.ClearSegmentTypes);
+					param.SegmentedBrushes, param.CliffSegmentTypes, param.ClearSegmentTypes);
 			var loopedCliffPermittedTemplates =
 				TilingPath.PermittedSegments.FromType(
-					tileset, param.CliffSegmentTypes);
+					param.SegmentedBrushes, param.CliffSegmentTypes);
 			if (param.ExternalCircularBias > 0)
 			{
 				var cliffRing = new CellLayer<bool>(map);
@@ -729,8 +735,9 @@ namespace OpenRA.Mods.Common.Traits
 					cliffPath
 						.ExtendEdge(4)
 						.OptimizeLoop();
-					if (cliffPath.Tile(cliffTilingRandom) == null)
-						throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
+					var brush = cliffPath.Tile(cliffTilingRandom)
+						?? throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
+					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
 				}
 			}
 
@@ -809,8 +816,9 @@ namespace OpenRA.Mods.Common.Traits
 						cliffPath
 							.ExtendEdge(4)
 							.OptimizeLoop();
-						if (cliffPath.Tile(cliffTilingRandom) == null)
-							throw new MapGenerationException("Could not fit tiles for cliffs");
+						var brush = cliffPath.Tile(cliffTilingRandom)
+							?? throw new MapGenerationException("Could not fit tiles for  cliffs");
+						brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
 					}
 				}
 			}
@@ -1057,8 +1065,8 @@ namespace OpenRA.Mods.Common.Traits
 						{
 							var mpos = cpos.ToMPos(gridType);
 							var propagate =
-								map.Tiles[mpos].Type == param.WaterTile ||
-								beachTiles.Contains(map.Tiles[mpos]);
+								beachesShape.Remove(cpos) ||
+								map.Tiles[mpos].Type == param.WaterTile;
 							map.Tiles[mpos] = PickTile(param.LandTile);
 							regionMask[mpos] = PlayableSpace.NullRegion;
 							return propagate ? false : null;
@@ -1141,10 +1149,10 @@ namespace OpenRA.Mods.Common.Traits
 
 				var nonLoopedRoadPermittedTemplates =
 					TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
-						tileset, param.RoadSegmentTypes, param.ClearSegmentTypes);
+						param.SegmentedBrushes, param.RoadSegmentTypes, param.ClearSegmentTypes);
 				var loopedRoadPermittedTemplates =
 					TilingPath.PermittedSegments.FromType(
-						tileset, param.RoadSegmentTypes);
+						param.SegmentedBrushes, param.RoadSegmentTypes);
 
 				foreach (var pointArray in pointArrays)
 				{
@@ -1187,8 +1195,9 @@ namespace OpenRA.Mods.Common.Traits
 					if (maxX - minX < 6 || maxY - minY < 6)
 						continue;
 
-					if (path.Tile(roadTilingRandom) == null)
-						throw new MapGenerationException("Could not fit tiles for roads");
+					var brush = path.Tile(roadTilingRandom)
+						?? throw new MapGenerationException("Could not fit tiles for roads");
+					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
 				}
 			}
 

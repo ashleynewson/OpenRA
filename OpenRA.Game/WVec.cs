@@ -26,6 +26,28 @@ namespace OpenRA
 		public WVec(int x, int y, int z) { X = x; Y = y; Z = z; }
 		public WVec(WDist x, WDist y, WDist z) { X = x.Length; Y = y.Length; Z = z.Length; }
 
+		public static bool TryParse(string s, out WVec result)
+		{
+			result = default;
+
+			if (s == null)
+				return false;
+
+			var parts = s.Split(',');
+			if (parts.Length == 3
+				&& WDist.TryParse(parts[0], out var rx)
+				&& WDist.TryParse(parts[1], out var ry)
+				&& WDist.TryParse(parts[2], out var rz))
+			{
+				result = new WVec(rx, ry, rz);
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+
 		public static readonly WVec Zero = new(0, 0, 0);
 
 		public static WVec operator +(in WVec a, in WVec b) { return new WVec(a.X + b.X, a.Y + b.Y, a.Z + b.Z); }

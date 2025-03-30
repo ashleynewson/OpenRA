@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -81,8 +82,8 @@ namespace OpenRA.Mods.Common.Terrain
 
 		[FieldLoader.Ignore]
 		public readonly IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates;
-		[FieldLoader.Ignore]
-		public readonly IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates;
+		// [FieldLoader.Ignore]
+		// public readonly IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates;
 		[FieldLoader.Ignore]
 		public readonly IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> MultiBrushCollections;
 
@@ -124,10 +125,26 @@ namespace OpenRA.Mods.Common.Terrain
 			Templates = yaml["Templates"].ToDictionary().Values
 				.Select(y => (TerrainTemplateInfo)new DefaultTerrainTemplateInfo(this, y)).ToDictionary(t => t.Id);
 
-			SegmentsToTemplates = ImmutableDictionary.CreateRange(
-				Templates.Values.SelectMany(
-					template => template.Segments.Select(
-						segment => new KeyValuePair<TemplateSegment, TerrainTemplateInfo>(segment, template))));
+			// SegmentsToTemplates = ImmutableDictionary.CreateRange(
+			// 	Templates.Values.SelectMany(
+			// 		template => template.Segments.Select(
+			// 			segment => new KeyValuePair<TemplateSegment, TerrainTemplateInfo>(segment, template))));
+
+
+			// Console.Out.WriteLine("\tSegmented:");
+			// foreach (var template in Templates.Values.OrderBy(template => template.Id))
+			// {
+
+			// 	if (template.Segments.Length > 0)
+			// 	{
+			// 		Console.Out.WriteLine($"\t\tMultiBrush@{template.Id}:");
+			// 		Console.Out.WriteLine($"\t\t\tTemplate: {template.Id}");
+			// 		for (var i = 0; i < template.Segments.Length; i++)
+			// 		{
+			// 			Console.Out.WriteLine($"\t\tMultiBrush@{template.Id}:");
+			// 		}
+			// 	}
+			// }
 
 			MultiBrushCollections =
 				yaml.TryGetValue("MultiBrushCollections", out var collectionDefinitions)
@@ -187,7 +204,7 @@ namespace OpenRA.Mods.Common.Terrain
 
 		string[] ITemplatedTerrainInfo.EditorTemplateOrder => EditorTemplateOrder;
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> ITemplatedTerrainInfo.Templates => Templates;
-		IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> ITemplatedTerrainInfo.SegmentsToTemplates => SegmentsToTemplates;
+		// IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> ITemplatedTerrainInfo.SegmentsToTemplates => SegmentsToTemplates;
 		IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> ITemplatedTerrainInfo.MultiBrushCollections => MultiBrushCollections;
 
 		void ITerrainInfoNotifyMapCreated.MapCreated(Map map)

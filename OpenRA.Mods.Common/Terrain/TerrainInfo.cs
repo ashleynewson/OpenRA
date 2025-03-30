@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.Terrain
 	{
 		string[] EditorTemplateOrder { get; }
 		IReadOnlyDictionary<ushort, TerrainTemplateInfo> Templates { get; }
-		IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates { get; }
+		// IReadOnlyDictionary<TemplateSegment, TerrainTemplateInfo> SegmentsToTemplates { get; }
 		IReadOnlyDictionary<string, IEnumerable<MultiBrushInfo>> MultiBrushCollections { get; }
 	}
 
@@ -37,7 +37,7 @@ namespace OpenRA.Mods.Common.Terrain
 
 		readonly TerrainTileInfo[] tileInfo;
 
-		public readonly TemplateSegment[] Segments;
+		// public readonly TemplateSegment[] Segments;
 
 		public TerrainTemplateInfo(ITerrainInfo terrainInfo, MiniYaml my)
 		{
@@ -79,18 +79,18 @@ namespace OpenRA.Mods.Common.Terrain
 				}
 			}
 
-			var segmentsNode = my.NodeWithKeyOrDefault("Segments");
-			if (segmentsNode != null)
-			{
-				Segments = new TemplateSegment[segmentsNode.Value.Nodes.Length];
-				var i = 0;
-				foreach (var segmentNode in segmentsNode.Value.Nodes)
-					Segments[i++] = new TemplateSegment(segmentNode.Value);
-			}
-			else
-			{
-				Segments = Array.Empty<TemplateSegment>();
-			}
+			// var segmentsNode = my.NodeWithKeyOrDefault("Segments");
+			// if (segmentsNode != null)
+			// {
+			// 	Segments = new TemplateSegment[segmentsNode.Value.Nodes.Length];
+			// 	var i = 0;
+			// 	foreach (var segmentNode in segmentsNode.Value.Nodes)
+			// 		Segments[i++] = new TemplateSegment(segmentNode.Value);
+			// }
+			// else
+			// {
+			// 	Segments = Array.Empty<TemplateSegment>();
+			// }
 		}
 
 		protected virtual TerrainTileInfo LoadTileInfo(ITerrainInfo terrainInfo, MiniYaml my)
