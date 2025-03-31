@@ -668,7 +668,7 @@ namespace OpenRA.Mods.Common.Traits
 						.OptimizeLoop();
 					var brush = beachPath.Tile(beachTilingRandom)
 						?? throw new MapGenerationException("Could not fit tiles for beach");
-					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
+					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile);
 					tiledBeaches[i] = brush.Segments.First().Points.Select(vec => CPos.Zero + vec).ToArray();
 					foreach (var cvec in brush.Shape)
 						beachesShape.Add(CPos.Zero + cvec);
@@ -682,7 +682,7 @@ namespace OpenRA.Mods.Common.Traits
 				foreach (var mpos in map.AllCells.MapCoords)
 				{
 					// `map.Tiles[mpos].Type == param.LandTile` avoids overwriting beach tiles.
-					if (beachChirality[mpos] < 0 && map.Tiles[mpos].Type == param.LandTile)
+					if (beachChirality[mpos] < 0 && !beachesShape.Contains(mpos.ToCPos(map)))
 						map.Tiles[mpos] = PickTile(param.WaterTile);
 				}
 			}
@@ -737,7 +737,7 @@ namespace OpenRA.Mods.Common.Traits
 						.OptimizeLoop();
 					var brush = cliffPath.Tile(cliffTilingRandom)
 						?? throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
-					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
+					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile);
 				}
 			}
 
@@ -818,7 +818,7 @@ namespace OpenRA.Mods.Common.Traits
 							.OptimizeLoop();
 						var brush = cliffPath.Tile(cliffTilingRandom)
 							?? throw new MapGenerationException("Could not fit tiles for  cliffs");
-						brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
+						brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile);
 					}
 				}
 			}
@@ -1197,7 +1197,7 @@ namespace OpenRA.Mods.Common.Traits
 
 					var brush = path.Tile(roadTilingRandom)
 						?? throw new MapGenerationException("Could not fit tiles for roads");
-					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Any);
+					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile);
 				}
 			}
 
