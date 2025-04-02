@@ -665,6 +665,7 @@ namespace OpenRA.Mods.Common.Traits
 						beachPermittedTemplates);
 					beachPath
 						.ExtendEdge(4)
+						.WithMaxEndDeviation(4)
 						.OptimizeLoop();
 					var brush = beachPath.Tile(beachTilingRandom)
 						?? throw new MapGenerationException("Could not fit tiles for beach");

@@ -220,6 +220,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// </summary>
 		public int MinSeparation;
 
+
+		/// <summary>
+		/// If the path cannot be tiled exactly, the resulting tiling is allowed to deviate from
+		/// target end point by this Chebychev distance. Ignored for loops.
+		/// </summary>
+		public int MaxEndDeviation;
+
 		/// <summary>
 		/// Stores start type and direction.
 		/// </summary>
@@ -250,6 +257,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			MaxDeviation = maxDeviation;
 			MaxSkip = 0;
 			MinSeparation = 0;
+			MaxEndDeviation = 0;
 			Start = new Terminal(startType, null);
 			End = new Terminal(endType, null);
 			Segments = permittedTemplates;
@@ -346,6 +354,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			//
 			// The search is conducted from the path start node until the best possible cost of
 			// the end node is confirmed. This also populates possible intermediate nodes' costs.
+			//
+			// If the original target end node is unreachable (at MaxCost), a nearby node may be
+			// selected as a fallback end point, provided the target path isn't a loop.
 			//
 			// Then, from the end node, it works backwards. It finds any (random) suitable template
 			// segment which connects back to a previous node where the difference in cost is
@@ -758,10 +769,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			// Trace back and update tiles
-			var resultPoints = new List<CVec>
-			{
-				new(pathEnd.X + minPoint.X, pathEnd.Y + minPoint.Y)
-			};
+			var resultPoints = new List<CVec>();
 
 			var compositeBrush = new MultiBrush();
 
@@ -810,11 +818,71 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			{
-				var to = pathEnd;
 				var toTypeId = pathEndTypeId;
+
+				if (costs[toTypeId][pathEnd.X, pathEnd.Y] == MaxCost)
+				{
+					// TODO: Make sure max end deviation doesn't get close to start.
+					if (MaxEndDeviation == 0 || isLoop)
+						return null;
+
+					const int Unmeasured = int.MaxValue;
+					const int Unreachable = int.MaxValue - 1;
+					var fallbackDistances =
+						new Matrix<int>(MaxEndDeviation * 2 + 1, MaxEndDeviation * 2 + 1)
+							.Fill(Unmeasured);
+
+					int? Filler(int2 xy, int distance)
+					{
+						if (fallbackDistances[xy] != Unmeasured)
+							return null;
+
+						var p = new int2(pathEnd.X - MaxEndDeviation, pathEnd.Y - MaxEndDeviation) + xy;
+
+						if (!deviations.ContainsXY(p.X, p.Y) || deviations[p.X, p.Y] == OverDeviation)
+						{
+							fallbackDistances[xy] = Unreachable;
+							return null;
+						}
+
+						fallbackDistances[xy] =
+							costs[toTypeId][p.X, p.Y] != MaxCost ? distance : Unreachable;
+						return distance + 1;
+					}
+
+					MatrixUtils.FloodFill(
+						fallbackDistances.Size,
+						[(new int2(MaxEndDeviation, MaxEndDeviation), 0)],
+						Filler,
+						Direction.Spread4);
+
+					var bestDistance = fallbackDistances.Data.Min();
+					if (bestDistance == int.MaxValue)
+						return null;
+
+					var fallbackCosts = new Matrix<int>(MaxEndDeviation * 2 + 1, MaxEndDeviation * 2 + 1);
+					for (var y = -MaxEndDeviation; y <= MaxEndDeviation; y++)
+						for (var x = -MaxEndDeviation; x <= MaxEndDeviation; x++)
+						{
+							var fallbackXy = new int2(x + MaxEndDeviation, y + MaxEndDeviation);
+							var p = new int2(x + pathEnd.X, y + pathEnd.Y);
+							fallbackCosts[fallbackXy] =
+								(fallbackDistances[fallbackXy] == bestDistance) ? costs[toTypeId][p] : MaxCost;
+						}
+
+					// Find lowest cost.
+					var (chosenXy, _) = MatrixUtils.FindRandomBest(
+						fallbackCosts,
+						random,
+						(a, b) => b.CompareTo(a));
+
+					pathEnd = new CVec(chosenXy.X - MaxEndDeviation, chosenXy.Y - MaxEndDeviation) + pathEnd;
+				}
+
+				var to = pathEnd;
 				var bestCost = costs[toTypeId][to.X, to.Y];
-				if (bestCost == MaxCost)
-					return null;
+
+				resultPoints.Add(new(to.X + minPoint.X, to.Y + minPoint.Y));
 
 				// For non-loops, this remained unset at MaxCost. For loops,
 				// this was the shared start and end point and got set to
@@ -1298,6 +1366,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			return true;
+		}
+
+		public TilingPath WithMaxEndDeviation(int maxEndDeviation)
+		{
+			MaxEndDeviation = maxEndDeviation;
+			return this;
 		}
 	}
 }
