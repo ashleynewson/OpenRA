@@ -584,12 +584,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var pathEnd = points[^1];
 			var orderedPermittedSegments = Segments.All.ToImmutableArray();
 			var permittedSegments = orderedPermittedSegments.ToImmutableHashSet();
+			var permittedStartSegments = Segments.Start.ToImmutableHashSet();
+			var permittedInnerSegments = Segments.Inner.ToImmutableHashSet();
+			var permittedEndSegments = Segments.End.ToImmutableHashSet();
 
 			const int MaxCost = int.MaxValue;
 			var segmentTypeToId = new Dictionary<string, int>();
-			var segmentsByStart = new List<List<TilingSegment>>();
-			var segmentsByEnd = new List<List<TilingSegment>>();
-			var costs = new List<Matrix<int>>();
+			var segmentsByStart = new List<List<(TilingSegment, bool, bool, bool)>>();
+			var segmentsByEnd = new List<List<(TilingSegment, bool, bool, bool)>>();
+			var innerCosts = new List<Matrix<int>>();
 			{
 				void RegisterSegmentType(string type)
 				{
@@ -597,9 +600,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 						return;
 					var newId = segmentTypeToId.Count;
 					segmentTypeToId.Add(type, newId);
-					segmentsByStart.Add(new List<TilingSegment>());
-					segmentsByEnd.Add(new List<TilingSegment>());
-					costs.Add(new Matrix<int>(size).Fill(MaxCost));
+					segmentsByStart.Add([]);
+					segmentsByEnd.Add([]);
+					innerCosts.Add(new Matrix<int>(size).Fill(MaxCost));
 				}
 
 				foreach (var segment in orderedPermittedSegments)
@@ -610,10 +613,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 					var startTypeId = segmentTypeToId[segment.Start];
 					var endTypeId = segmentTypeToId[segment.End];
 					var tilePathSegment = new TilingSegment(multiBrush, segment, startTypeId, endTypeId);
-					segmentsByStart[startTypeId].Add(tilePathSegment);
-					segmentsByEnd[endTypeId].Add(tilePathSegment);
+					var tuple = (
+						tilePathSegment,
+						permittedStartSegments.Contains(segment) && segment.Start == start.SegmentType,
+						permittedInnerSegments.Contains(segment),
+						permittedEndSegments.Contains(segment) && segment.End == end.SegmentType);
+					segmentsByStart[startTypeId].Add(tuple);
+					segmentsByEnd[endTypeId].Add(tuple);
 				}
 			}
+
+			// We store the final costs of valid end segments separately to inner costs.
+			//
+			// Note also that:
+			// - The start cost is always zero and only applies to a single node.
+			// - Permitted end and inner segments may be distinct, but the end terminal could exist
+			//   in the permitted inner segments and shouldn't be a valid intermediate cost.
+			// - Avoids confusing start, inner, and end costs when processing loops.
+			// - We may be interested in multiple end costs if MaxEndDeviation is non-zero.
+			var endCosts = new Matrix<int>(size).Fill(MaxCost);
 
 			var totalTypeIds = segmentTypeToId.Count;
 
@@ -640,34 +658,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// MaxScore means totally unacceptable.
 			int ScoreSegment(TilingSegment segment, CVec from)
 			{
-				if (from == pathStart)
-				{
-					if (segment.StartTypeId != pathStartTypeId)
-						return MaxCost;
-				}
-				else
-				{
-					if (!innerTypeIds.Contains(segment.StartTypeId))
-						return MaxCost;
-				}
-
 				var to = from + segment.Moves;
-				if (to == pathEnd)
-				{
-					if (segment.EndTypeId != pathEndTypeId)
-						return MaxCost;
-				}
-				else
-				{
-					if (!innerTypeIds.Contains(segment.EndTypeId))
-						return MaxCost;
 
-					if (isLoop && lowProgress[from.X, from.Y] > highProgress[to.X, to.Y] && highProgress[to.X, to.Y] != 0)
-					{
-						// We've missed the start/end of the loop and have potentially gone past it
-						// (as far as low and high progress are concerned).
-						return MaxCost;
-					}
+				if (isLoop && to != pathEnd && lowProgress[from.X, from.Y] > highProgress[to.X, to.Y] && highProgress[to.X, to.Y] != 0)
+				{
+					// We've missed the start/end of the loop and have potentially gone past it
+					// (as far as low and high progress are concerned).
+					return MaxCost;
 				}
 
 				var deviationAcc = 0;
@@ -721,10 +718,21 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return deviationAcc;
 			}
 
-			void UpdateFrom(CVec from, int fromTypeId, int fromCost)
+			void UpdateFrom(CVec from, int fromTypeId, int fromCost, bool isForStart)
 			{
-				foreach (var segment in segmentsByStart[fromTypeId])
+				foreach (var (segment, canStart, canInner, canEnd) in segmentsByStart[fromTypeId])
 				{
+					if (isForStart)
+					{
+						if (!canStart)
+							continue;
+					}
+					else
+					{
+						if (!(canEnd || canInner))
+							continue;
+					}
+
 					var to = from + segment.Moves;
 					if (to.X < 0 || to.X >= size.X || to.Y < 0 || to.Y >= size.Y)
 						continue;
@@ -742,30 +750,30 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					var toCost = fromCost + segmentCost;
 					var toTypeId = segment.EndTypeId;
-					if (toCost < costs[toTypeId][to.X, to.Y])
+
+					if ((canStart || canInner) && toCost < innerCosts[toTypeId][to.X, to.Y])
 					{
-						costs[toTypeId][to.X, to.Y] = toCost;
+						innerCosts[toTypeId][to.X, to.Y] = toCost;
 						SetPriorityAt(toTypeId, to, toCost);
 					}
+
+					if (canEnd && toCost < endCosts[to.X, to.Y])
+						endCosts[to.X, to.Y] = toCost;
 				}
 
 				SetPriorityAt(fromTypeId, from, MaxCost);
 			}
 
-			// costs[pathStartTypeId][pathStart.X, pathStart.Y] is preset to
-			// MaxCost, but we pass in a cost of 0 for the first iteration. We
-			// leave it like this in case this is a looped path with a shared
-			// start and end point. We set it to 0 later when tracing back.
-			UpdateFrom(pathStart, pathStartTypeId, 0);
+			UpdateFrom(pathStart, pathStartTypeId, 0, true);
 
 			while (true)
 			{
 				var (fromTypeId, from, priority) = GetNextPriority();
 
-				if (priority == MaxCost || from == pathEnd)
+				if (priority == MaxCost)
 					break;
 
-				UpdateFrom(from, fromTypeId, costs[fromTypeId][from.X, from.Y]);
+				UpdateFrom(from, fromTypeId, innerCosts[fromTypeId][from.X, from.Y], false);
 			}
 
 			// Trace back and update tiles
@@ -773,12 +781,29 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			var compositeBrush = new MultiBrush();
 
-			(CVec From, int FromTypeId) TraceBackStep(CVec to, int toTypeId, int toCost)
+			(CVec From, int FromTypeId) TraceBackStep(CVec to, int toTypeId, int toCost, bool isForEnd)
 			{
 				var candidates = new List<TilingSegment>();
-				foreach (var segment in segmentsByEnd[toTypeId])
+				foreach (var (segment, canStart, canInner, canEnd) in segmentsByEnd[toTypeId])
 				{
+					if (isForEnd)
+					{
+						if (!canEnd)
+							continue;
+					}
+					else
+					{
+						if (!(canStart || canInner))
+							continue;
+					}
+
 					var from = to - segment.Moves;
+					var mustStart =
+						from == pathStart && segment.StartTypeId == pathStartTypeId;
+
+					if (mustStart && !canStart)
+						continue;
+
 					if (from.X < 0 || from.X >= size.X || from.Y < 0 || from.Y >= size.Y)
 						continue;
 
@@ -794,7 +819,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 						continue;
 
 					var fromCost = toCost - segmentCost;
-					if (fromCost == costs[segment.StartTypeId][from.X, from.Y])
+					var requiredFromCost =
+						mustStart ? 0 : innerCosts[segment.StartTypeId][from.X, from.Y];
+					if (fromCost == requiredFromCost)
 						candidates.Add(segment);
 				}
 
@@ -820,21 +847,21 @@ namespace OpenRA.Mods.Common.MapGenerator
 			{
 				var toTypeId = pathEndTypeId;
 
-				if (costs[toTypeId][pathEnd.X, pathEnd.Y] == MaxCost)
+				if (endCosts[pathEnd.X, pathEnd.Y] == MaxCost)
 				{
 					// TODO: Make sure max end deviation doesn't get close to start.
 					if (MaxEndDeviation == 0 || isLoop)
 						return null;
 
-					const int Unmeasured = int.MaxValue;
+					const int Unassigned = int.MaxValue;
 					const int Unreachable = int.MaxValue - 1;
 					var fallbackDistances =
 						new Matrix<int>(MaxEndDeviation * 2 + 1, MaxEndDeviation * 2 + 1)
-							.Fill(Unmeasured);
+							.Fill(Unassigned);
 
-					int? Filler(int2 xy, int distance)
+					int? FallbacksFiller(int2 xy, int distance)
 					{
-						if (fallbackDistances[xy] != Unmeasured)
+						if (fallbackDistances[xy] != Unassigned)
 							return null;
 
 						var p = new int2(pathEnd.X - MaxEndDeviation, pathEnd.Y - MaxEndDeviation) + xy;
@@ -846,18 +873,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 						}
 
 						fallbackDistances[xy] =
-							costs[toTypeId][p.X, p.Y] != MaxCost ? distance : Unreachable;
+							endCosts[p.X, p.Y] != MaxCost ? distance : Unreachable;
 						return distance + 1;
 					}
 
 					MatrixUtils.FloodFill(
 						fallbackDistances.Size,
 						[(new int2(MaxEndDeviation, MaxEndDeviation), 0)],
-						Filler,
+						FallbacksFiller,
 						Direction.Spread4);
 
 					var bestDistance = fallbackDistances.Data.Min();
-					if (bestDistance == int.MaxValue)
+					if (bestDistance == Unassigned || bestDistance == Unreachable)
 						return null;
 
 					var fallbackCosts = new Matrix<int>(MaxEndDeviation * 2 + 1, MaxEndDeviation * 2 + 1);
@@ -867,7 +894,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 							var fallbackXy = new int2(x + MaxEndDeviation, y + MaxEndDeviation);
 							var p = new int2(x + pathEnd.X, y + pathEnd.Y);
 							fallbackCosts[fallbackXy] =
-								(fallbackDistances[fallbackXy] == bestDistance) ? costs[toTypeId][p] : MaxCost;
+								(fallbackDistances[fallbackXy] == bestDistance) ? endCosts[p] : MaxCost;
 						}
 
 					// Find lowest cost.
@@ -880,22 +907,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 				}
 
 				var to = pathEnd;
-				var bestCost = costs[toTypeId][to.X, to.Y];
+				var bestCost = endCosts[to.X, to.Y];
 
 				resultPoints.Add(new(to.X + minPoint.X, to.Y + minPoint.Y));
 
-				// For non-loops, this remained unset at MaxCost. For loops,
-				// this was the shared start and end point and got set to
-				// bestCost. We set it to 0 for traceback, but perform the
-				// first iteration using bestCost. (The opposite of how we
-				// traced forward.)
-				costs[pathStartTypeId][pathStart.X, pathStart.Y] = 0;
-
-				(to, toTypeId) = TraceBackStep(to, toTypeId, bestCost);
+				(to, toTypeId) = TraceBackStep(to, toTypeId, bestCost, true);
 
 				// No need to check direction. If that is an issue, I have bigger problems to worry about.
 				while (to != pathStart)
-					(to, toTypeId) = TraceBackStep(to, toTypeId, costs[toTypeId][to.X, to.Y]);
+					(to, toTypeId) = TraceBackStep(to, toTypeId, innerCosts[toTypeId][to.X, to.Y], false);
 			}
 
 			// Traced back in reverse, so reverse the reversal.
@@ -1368,9 +1388,17 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return true;
 		}
 
+		/// <summary>Set MaxEndDeviation.</summary>
 		public TilingPath WithMaxEndDeviation(int maxEndDeviation)
 		{
 			MaxEndDeviation = maxEndDeviation;
+			return this;
+		}
+
+		/// <summary>Set MaxEndDeviation equal to the current MaxDeviation.</summary>
+		public TilingPath AutoEndDeviation()
+		{
+			MaxEndDeviation = MaxDeviation;
 			return this;
 		}
 	}

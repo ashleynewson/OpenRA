@@ -23,6 +23,132 @@ namespace OpenRA.Mods.Common.MapGenerator
 	{
 		public const int MaxBinomialKernelRadius = 10;
 
+		public enum DumpAdjustment
+		{
+			/// <summary>Make no adjustment.</summary>
+			None,
+
+			/// <summary>Normalize the matrix amplitude to the color range.</summary>
+			Normalize,
+
+			/// <summary
+			/// Normalize the matrix amplitude, but uniformally extend away from zero by a small
+			/// amount to help identify the sign of martix values.
+			/// </summary>
+			Emphasize,
+		}
+
+		/// <summary>
+		/// <para>
+		/// Debugging method that prints a matrix to stderr using color only (not value listing).
+		/// </para>
+		/// <para>
+		/// Orange &lt; -255, -255 &lt;= Red &lt; 0, Black == 0, 0 &lt; Blue &lt;= 255,
+		/// 255 &lt; Cyan. Faint green is used for distance markings.
+		/// </para>
+		/// <para>
+		/// The matrix can optionally be preprocessed for easier visual interpretation using a
+		/// DumpAdjustment.
+		/// </para>
+		/// </summary>
+		public static void ColorDump2d(
+			string label,
+			Matrix<int> matrix,
+			DumpAdjustment adjustment = DumpAdjustment.None)
+		{
+			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
+
+			switch (adjustment)
+			{
+				case DumpAdjustment.Normalize:
+					matrix = NormalizeRangeInPlace(matrix.Clone(), 255);
+					break;
+				case DumpAdjustment.Emphasize:
+					matrix = NormalizeRangeInPlace(matrix.Clone(), 224)
+						.Map(v => v += Math.Sign(v) * 31);
+					break;
+				default:
+					break;
+			}
+
+			for (var y = 0; y < matrix.Size.Y; y++)
+			{
+				for (var x = 0; x < matrix.Size.X; x++)
+				{
+					var v = matrix[x, y];
+					int r = 0, g = 0, b = 0;
+
+					if (v < -255)
+					{
+						r = 255;
+						g = 192;
+					}
+					else if (v < 0)
+					{
+						r = -v;
+					}
+					else if (v == 0)
+					{
+					}
+					else if (v <= 255)
+					{
+						b = v;
+						g = v / 4;
+					}
+					else /* v >= 255 */
+					{
+						b = 255;
+						g = 192;
+					}
+
+					g += (((x & 4) != (y & 4)) ? 1 : 0) * (((x & 16) != (y & 16)) ? 48 : 32);
+
+					Console.Error.Write(string.Format(NumberFormatInfo.InvariantInfo, "\u001b[48;2;{0};{1};{2}m  ", r, g, b));
+				}
+
+				Console.Error.Write("\u001b[0m\n");
+			}
+
+			Console.Error.WriteLine("");
+			Console.Error.Flush();
+		}
+
+		public static void ColorDump2d(
+			string label,
+			Matrix<bool> matrix)
+		{
+			ColorDump2d(label, matrix.Map(v => v ? 255 : -255));
+		}
+
+		/// <summary>
+		/// Debugging method that prints a matrix of enum-like values to stderr, using 4-bit color.
+		/// </summary>
+		public static void EnumDump2d(string label, Matrix<int> matrix)
+		{
+			Console.Error.WriteLine($"{label}: {matrix.Size.X} by {matrix.Size.Y}, {matrix.Data.Min()} to {matrix.Data.Max()}");
+			for (var y = 0; y < matrix.Size.Y; y++)
+			{
+				for (var x = 0; x < matrix.Size.X; x++)
+				{
+					var v = matrix[x, y];
+					if (v < 0 || v >= 15)
+						v = 15;
+					var code = (v < 8 ? 40 : 92) + v;
+					Console.Error.Write(string.Format(NumberFormatInfo.InvariantInfo, "\u001b[{0}m .", code));
+				}
+
+				Console.Error.Write("\u001b[0m\n");
+			}
+
+			Console.Error.WriteLine("");
+			Console.Error.Flush();
+		}
+
+		public static void EnumDump2d<T>(string label, Matrix<T> matrix) where T : Enum
+		{
+			EnumDump2d(label, matrix.Map(v => Convert.ToInt32(v, NumberFormatInfo.InvariantInfo)));
+		}
+
 		/// <summary>
 		/// Debugging method that prints a matrix to stderr.
 		/// </summary>
@@ -94,6 +220,28 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			Console.Error.WriteLine("");
 			Console.Error.Flush();
+		}
+
+		/// <summary>
+		/// Plot a point sequence onto a matrix for debugging visualization. The matrix is fit to
+		/// the shape of the path. By default, each matrix cell represents the latest overlapping
+		/// indexed path point. Setting accumulate to true will instead make each cell a count of
+		/// the number of overlapping points.
+		/// </summary>
+		public static Matrix<int> TracePoints(IEnumerable<int2> points, bool accumulate = false)
+		{
+			var pointArray = points.ToArray();
+			var topLeft = new int2(pointArray.Min(p => p.X), pointArray.Min(p => p.Y));
+			var bottomRight = new int2(pointArray.Max(p => p.X), pointArray.Max(p => p.Y));
+			var size = bottomRight - topLeft + new int2(1, 1);
+			var matrix = new Matrix<int>(size).Fill(accumulate ? 0 : -1);
+			for (var i = 0; i < pointArray.Length; i++)
+				if (accumulate)
+					matrix[pointArray[i] - topLeft]++;
+				else
+					matrix[pointArray[i] - topLeft] = i;
+
+			return matrix;
 		}
 
 		/// <summary>
