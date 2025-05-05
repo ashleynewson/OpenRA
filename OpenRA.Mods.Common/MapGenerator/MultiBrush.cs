@@ -664,9 +664,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			var blitTiles =
-				Tiles.ToDictionary(
-					t => CPos.Zero + t.XY,
-					t => new BlitTile(t.Tile, default, null, map.Height[CPos.Zero + t.XY]));
+				Tiles
+					.Where(t => map.Tiles.Contains(CPos.Zero + t.XY))
+					.ToDictionary(
+						t => CPos.Zero + t.XY,
+						t => new BlitTile(t.Tile, default, null, map.Height[CPos.Zero + t.XY]));
 
 			return new EditorBlitSource(
 				cellRegion,

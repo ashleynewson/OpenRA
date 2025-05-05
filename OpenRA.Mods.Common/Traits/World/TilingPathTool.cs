@@ -17,6 +17,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Primitives;
+using OpenRA.Support;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -224,25 +225,33 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		public readonly World World;
-		public WorldRenderer WorldRenderer;
+		ITiledTerrainRenderer terrainRenderer = null;
 		public bool Enabled = true;
 		public bool PreviewEnabled = true;
 		public bool AutoLoopEnabled = true;
 		public PathPlan Plan = null;
+		public MultiBrush PreviewBrush = null;
+		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
+		readonly ITerrainInfo terrainInfo;
 
 		bool disposed;
 
 		public TilingPathTool(Actor self, TilingPathToolInfo info)
 		{
 			World = self.World;
-			Plan = new PathPlan(
-				Direction.R,
-				Direction.D,
-				[new(10, 10), new(20, 10), new(20, 20)]);
+			segmentedBrushes = MultiBrush.LoadCollection(World.Map, "Segmented");
+			// TODO: Better ModData sourcing?
+			terrainInfo = World.Map.Rules.TerrainInfo;
 		}
 
 		public void WorldLoaded(World w, WorldRenderer wr)
 		{
+			terrainRenderer = World.WorldActor.Trait<ITiledTerrainRenderer>();
+			// UpdatePlan(
+			// 	new PathPlan(
+			// 		Direction.R,
+			// 		Direction.D,
+			// 		[new(10, 10), new(20, 10), new(20, 20)]));
 		}
 
 		void INotifyActorDisposing.Disposing(Actor self)
@@ -255,50 +264,94 @@ namespace OpenRA.Mods.Common.Traits
 
 		IEnumerable<IRenderable> IRenderAnnotations.RenderAnnotations(Actor self, WorldRenderer wr)
 		{
-			if (!Enabled || Plan == null)
-				yield break;
-
-			var map = World.Map;
-
-			var points = Plan.Points();
-			for (var i = 1; i < points.Length; i++)
-			{
-				yield return new CircleAnnotationRenderable(
-					map.CenterOfCell(points[i]), new WDist(128), 1, Color.Red, false);
-				yield return new LineAnnotationRenderable(
-					map.CenterOfCell(points[i - 1]),
-					map.CenterOfCell(points[i]),
-					1,
-					Color.Red,
-					Color.Red);
-			}
-
-			for (var i = 1; i < Plan.Rallies.Length; i++)
-			{
-				yield return new CircleAnnotationRenderable(
-					map.CenterOfCell(Plan.Rallies[i]), new WDist(512), 2, Color.Cyan, false);
-				yield return new LineAnnotationRenderable(
-					map.CenterOfCell(Plan.Rallies[i - 1]),
-					map.CenterOfCell(Plan.Rallies[i]),
-					2,
-					Color.Cyan,
-					Color.Cyan);
-			}
-
-			if (Plan.AutoEnd != Direction.None)
-				yield return new CircleAnnotationRenderable(
-					map.CenterOfCell(Plan.Rallies[^1]) + Direction.ToWVec(Plan.AutoEnd) * 768, new WDist(256), 2, Color.Magenta, false);
-
-			if (Plan.AutoStart != Direction.None)
-				yield return new CircleAnnotationRenderable(
-					map.CenterOfCell(Plan.Rallies[0]) - Direction.ToWVec(Plan.AutoStart) * 768, new WDist(256), 2, Color.Magenta, true);
-
-			yield return new CircleAnnotationRenderable(
-				map.CenterOfCell(Plan.Rallies[0]), new WDist(512), 2, Color.Cyan, true);
-
 			yield break;
+			// if (!Enabled || Plan == null)
+			// 	yield break;
+
+			// var map = World.Map;
+
+			// if (terrainRenderer != null && PreviewBrush != null)
+			// {
+			// 	foreach (var (xy, tile) in PreviewBrush.Tiles)
+			// 	{
+			// 		var preview = terrainRenderer.RenderPreview(wr, tile, map.CenterOfCell(CPos.Zero + xy));
+			// 		foreach (var renderable in preview)
+			// 			yield return renderable;
+			// 	}
+			// }
+
+			// var points = Plan.Points();
+			// for (var i = 1; i < points.Length; i++)
+			// {
+			// 	yield return new CircleAnnotationRenderable(
+			// 		map.CenterOfCell(points[i]), new WDist(128), 1, Color.Red, false);
+			// 	yield return new LineAnnotationRenderable(
+			// 		map.CenterOfCell(points[i - 1]),
+			// 		map.CenterOfCell(points[i]),
+			// 		1,
+			// 		Color.Red,
+			// 		Color.Red);
+			// }
+
+			// for (var i = 1; i < Plan.Rallies.Length; i++)
+			// {
+			// 	yield return new CircleAnnotationRenderable(
+			// 		map.CenterOfCell(Plan.Rallies[i]), new WDist(512), 2, Color.Cyan, false);
+			// 	yield return new LineAnnotationRenderable(
+			// 		map.CenterOfCell(Plan.Rallies[i - 1]),
+			// 		map.CenterOfCell(Plan.Rallies[i]),
+			// 		2,
+			// 		Color.Cyan,
+			// 		Color.Cyan);
+			// }
+
+			// if (Plan.AutoEnd != Direction.None)
+			// 	yield return new CircleAnnotationRenderable(
+			// 		map.CenterOfCell(Plan.Rallies[^1]) + Direction.ToWVec(Plan.AutoEnd) * 768, new WDist(256), 2, Color.Magenta, false);
+
+			// if (Plan.AutoStart != Direction.None)
+			// 	yield return new CircleAnnotationRenderable(
+			// 		map.CenterOfCell(Plan.Rallies[0]) - Direction.ToWVec(Plan.AutoStart) * 768, new WDist(256), 2, Color.Magenta, true);
+
+			// yield return new CircleAnnotationRenderable(
+			// 	map.CenterOfCell(Plan.Rallies[0]), new WDist(512), 2, Color.Cyan, true);
+
+			// yield break;
 		}
 
 		bool IRenderAnnotations.SpatiallyPartitionable => false;
+
+		MultiBrush PlanToBrush(PathPlan plan)
+		{
+			if (plan == null || plan.Rallies.Length < 2)
+				return null;
+			
+			var points = plan.Points();
+			if (points == null)
+				return null;
+
+			var map = World.Map;
+			var permittedTemplates =
+				TilingPath.PermittedSegments.FromTypes(
+					segmentedBrushes, ["Clear"], ["Cliff"], ["Clear"]);
+
+			var tilingPath = new TilingPath(
+				map,
+				points,
+				5,
+				"Clear",
+				"Clear",
+				permittedTemplates);
+			tilingPath.Start.Direction = plan.AutoStart;
+			tilingPath.End.Direction = plan.AutoEnd;
+
+			return tilingPath.Tile(new MersenneTwister(0));
+		}
+
+		public void UpdatePlan(PathPlan plan)
+		{
+			Plan = plan;
+			PreviewBrush = PlanToBrush(plan);
+		}
 	}
 }

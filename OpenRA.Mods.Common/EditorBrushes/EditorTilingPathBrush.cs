@@ -12,10 +12,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
+using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Widgets
 {
@@ -26,6 +29,7 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly EditorActionManager editorActionManager;
 		readonly TilingPathTool tool;
 		readonly EditorViewportControllerWidget editorWidget;
+		readonly ITiledTerrainRenderer terrainRenderer;
 
 		PaintMarkerTileEditorAction action;
 		bool painting;
@@ -39,6 +43,7 @@ namespace OpenRA.Mods.Common.Widgets
 			world = wr.World;
 
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
+			terrainRenderer = world.WorldActor.Trait<ITiledTerrainRenderer>();
 			tool = world.WorldActor.Trait<TilingPathTool>();
 		}
 
@@ -163,8 +168,66 @@ namespace OpenRA.Mods.Common.Widgets
 		}
 
 		void IEditorBrush.TickRender(WorldRenderer wr, Actor self) { }
-		IEnumerable<IRenderable> IEditorBrush.RenderAboveShroud(Actor self, WorldRenderer wr) { yield break; }
-		IEnumerable<IRenderable> IEditorBrush.RenderAnnotations(Actor self, WorldRenderer wr) { yield break; }
+		IEnumerable<IRenderable> IEditorBrush.RenderAboveShroud(Actor self, WorldRenderer wr)
+		{
+			var map = world.Map;
+
+			if (terrainRenderer == null || tool.PreviewBrush == null)
+				yield break;
+
+			foreach (var (xy, tile) in tool.PreviewBrush.Tiles)
+			{
+				var preview = terrainRenderer.RenderPreview(wr, tile, map.CenterOfCell(CPos.Zero + xy));
+				foreach (var renderable in preview)
+					yield return renderable;
+			}
+		}
+
+		IEnumerable<IRenderable> IEditorBrush.RenderAnnotations(Actor self, WorldRenderer wr)
+		{
+			var map = world.Map;
+			var plan = tool.Plan;
+			if (plan == null)
+				yield break;
+
+			var mainColor = tool.PreviewBrush != null ? Color.Cyan : Color.Red;
+
+			var points = plan.Points();
+			for (var i = 1; i < points.Length; i++)
+			{
+				yield return new CircleAnnotationRenderable(
+					map.CenterOfCell(points[i]), new WDist(128), 1, Color.Yellow, false);
+				yield return new LineAnnotationRenderable(
+					map.CenterOfCell(points[i - 1]),
+					map.CenterOfCell(points[i]),
+					1,
+					Color.Yellow,
+					Color.Yellow);
+			}
+
+			for (var i = 1; i < plan.Rallies.Length; i++)
+			{
+				yield return new CircleAnnotationRenderable(
+					map.CenterOfCell(plan.Rallies[i]), new WDist(512), 2, mainColor, false);
+				yield return new LineAnnotationRenderable(
+					map.CenterOfCell(plan.Rallies[i - 1]),
+					map.CenterOfCell(plan.Rallies[i]),
+					2,
+					mainColor,
+					mainColor);
+			}
+
+			if (plan.AutoEnd != Direction.None)
+				yield return new CircleAnnotationRenderable(
+					map.CenterOfCell(plan.Rallies[^1]) + Direction.ToWVec(plan.AutoEnd) * 768, new WDist(256), 2, Color.Magenta, false);
+
+			if (plan.AutoStart != Direction.None)
+				yield return new CircleAnnotationRenderable(
+					map.CenterOfCell(plan.Rallies[0]) - Direction.ToWVec(plan.AutoStart) * 768, new WDist(256), 2, Color.Magenta, true);
+
+			yield return new CircleAnnotationRenderable(
+				map.CenterOfCell(plan.Rallies[0]), new WDist(512), 2, mainColor, true);
+		}
 
 		public void Tick() { }
 
@@ -216,12 +279,12 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public void Do()
 		{
-			tool.Plan = newPlan;
+			tool.UpdatePlan(newPlan);
 		}
 
 		public void Undo()
 		{
-			tool.Plan = oldPlan;
+			tool.UpdatePlan(oldPlan);
 		}
 	}
 
@@ -267,14 +330,14 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public void Do()
 		{
-			tool.Plan = null;
+			tool.UpdatePlan(null);
 			editorBlit.Commit();
 		}
 
 		public void Undo()
 		{
 			editorBlit.Revert();
-			tool.Plan = plan;
+			tool.UpdatePlan(plan);
 		}
 	}
 }
