@@ -1121,25 +1121,25 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-auto-loop
-		Button@REVERSE_BUTTON:
+		Button@REVERSE:
 			X: 5
 			Y: 215
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-reverse
-		Button@RESET_BUTTON:
+		Button@RESET:
 			X: 5
 			Y: 245
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-reset
-		Button@RANDOMIZE_BUTTON:
+		Button@RANDOMIZE:
 			X: 5
 			Y: 275
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-randomize
-		Button@PAINT_BUTTON:
+		Button@PAINT:
 			X: 5
 			Y: 305
 			Width: PARENT_WIDTH - 35

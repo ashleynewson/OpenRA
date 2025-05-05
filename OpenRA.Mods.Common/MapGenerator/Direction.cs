@@ -138,6 +138,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Convert a non-none direction to a WVec offset. Assumes that
+		/// WVec(1, 0, 0) corresponds to Direction.R.
+		/// </summary>
+		public static WVec ToWVec(int d)
+		{
+			if (d >= 0 && d < 8)
+				return new WVec(Spread8[d].X, Spread8[d].Y, 0);
+			else
+				throw new ArgumentException("bad direction");
+		}
+
+		/// <summary>
 		/// Convert an offset (of arbitrary non-zero magnitude) to a direction.
 		/// Supplying a zero-offset will throw.
 		/// </summary>

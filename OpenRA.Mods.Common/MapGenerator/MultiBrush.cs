@@ -14,7 +14,11 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
+using OpenRA.Graphics;
+using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.Terrain;
+using OpenRA.Mods.Common.Traits;
+using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapGenerator
@@ -628,6 +632,46 @@ namespace OpenRA.Mods.Common.MapGenerator
 						break;
 				}
 			}
+		}
+
+		public EditorBlitSource ToEditorBlitSource(World world, WorldRenderer worldRenderer)
+		{
+			var map = world.Map;
+
+			var players = world.Players.ToDictionary(
+				player => player.InternalName,
+				player => player.PlayerReference);
+
+			var topLeft = CPos.Zero + TopLeft;
+			var bottomRight = new CPos(
+				Shape.Max(cvec => cvec.X),
+				Shape.Max(cvec => cvec.Y));
+			var cellRegion = new CellRegion(map.Grid.Type, topLeft, bottomRight);
+
+			var actorPreviews = new Dictionary<string, EditorActorPreview>();
+			for (var i = 0; i < actorPlans.Count; i++)
+			{
+				var name = $"Actor{i}";
+				var actorReference = actorPlans[i].Reference.Clone();
+				var ownerInit = actorReference.Get<OwnerInit>();
+				if (players.TryGetValue(ownerInit.InternalName, out var owner))
+					throw new InvalidOperationException("MultiBrush actor has invalid (or no) owner.");
+				actorPreviews[name] = new EditorActorPreview(
+					worldRenderer,
+					name,
+					actorReference,
+					owner);
+			}
+
+			var blitTiles =
+				Tiles.ToDictionary(
+					t => CPos.Zero + t.XY,
+					t => new BlitTile(t.Tile, default, null, map.Height[CPos.Zero + t.XY]));
+
+			return new EditorBlitSource(
+				cellRegion,
+				actorPreviews,
+				blitTiles);
 		}
 	}
 }
