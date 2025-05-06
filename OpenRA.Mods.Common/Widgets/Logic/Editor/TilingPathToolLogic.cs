@@ -10,6 +10,9 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.ComponentModel;
+using System.Linq;
 using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.MapGenerator;
@@ -45,6 +48,40 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			this.modData = modData;
 			this.worldRenderer = worldRenderer;
 			segmentedBrushes = MultiBrush.LoadCollection(world.Map, "Segmented");
+
+			var segmentCategories = segmentedBrushes
+				.Where(b => b.Segment != null)
+				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
+				.Select(s => s.Split('.')[0])
+				.Distinct()
+				.Order()
+				.ToImmutableArray();
+
+			var innerContainer = widget.Get<ContainerWidget>("INNER_TYPE");
+			// var innerLabel = innerContainer.Get<DropDownButtonWidget>("DROPDOWN");
+			var innerDropDown = innerContainer.Get<DropDownButtonWidget>("DROPDOWN");
+			innerDropDown.GetText = () => tool.InnerCategory;
+			innerDropDown.OnMouseDown = _ =>
+			{
+				ScrollItemWidget SetupItem(string choice, ScrollItemWidget template)
+				{
+					bool IsSelected() => choice == tool.InnerCategory;
+					void OnClick()
+					{
+						// TODO: Add to undo/redo stack? Make automatic?
+						tool.InnerCategory = choice;
+						tool.UpdatePlan(tool.Plan);
+					};
+					var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
+
+					// TODO: Fluent
+					item.Get<LabelWidget>("LABEL").GetText = () => choice;
+
+					return item;
+				}
+
+				innerDropDown.ShowDropDown("LABEL_DROPDOWN_WITH_TOOLTIP_TEMPLATE", segmentCategories.Length * 30, segmentCategories, SetupItem);
+			};
 
 			var editCheckbox = widget.Get<CheckboxWidget>("EDIT");
 			editCheckbox.IsChecked = () => editorWidget.CurrentBrush is EditorTilingPathBrush;

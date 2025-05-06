@@ -233,6 +233,7 @@ namespace OpenRA.Mods.Common.Traits
 		public MultiBrush PreviewBrush = null;
 		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
 		readonly ITerrainInfo terrainInfo;
+		public string InnerCategory = "Cliff";
 
 		bool disposed;
 
@@ -333,7 +334,7 @@ namespace OpenRA.Mods.Common.Traits
 			var map = World.Map;
 			var permittedTemplates =
 				TilingPath.PermittedSegments.FromTypes(
-					segmentedBrushes, ["Clear"], ["Cliff"], ["Clear"]);
+					segmentedBrushes, ["Clear"], [InnerCategory], ["Clear"]);
 
 			var tilingPath = new TilingPath(
 				map,

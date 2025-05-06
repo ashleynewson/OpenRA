@@ -623,8 +623,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return (typeId, new CVec(xy % size.X, xy / size.X), priority);
 			}
 
-			var pathStartTypeId = segmentTypeToId[start.SegmentType];
-			var pathEndTypeId = segmentTypeToId[end.SegmentType];
+			if (!segmentTypeToId.TryGetValue(start.SegmentType, out var pathStartTypeId))
+				return null;
+			if (!segmentTypeToId.TryGetValue(end.SegmentType, out var pathEndTypeId))
+				return null;
 
 			// Lower (closer to zero) costs are better matches.
 			// MaxScore means totally unacceptable.
