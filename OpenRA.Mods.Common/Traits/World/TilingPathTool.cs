@@ -233,7 +233,9 @@ namespace OpenRA.Mods.Common.Traits
 		public MultiBrush PreviewBrush = null;
 		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
 		readonly ITerrainInfo terrainInfo;
+		public string StartCategory = "Clear";
 		public string InnerCategory = "Cliff";
+		public string EndCategory = "Clear";
 
 		bool disposed;
 
@@ -334,14 +336,14 @@ namespace OpenRA.Mods.Common.Traits
 			var map = World.Map;
 			var permittedTemplates =
 				TilingPath.PermittedSegments.FromTypes(
-					segmentedBrushes, ["Clear"], [InnerCategory], ["Clear"]);
+					segmentedBrushes, [StartCategory], [InnerCategory], [EndCategory]);
 
 			var tilingPath = new TilingPath(
 				map,
 				points,
 				5,
-				"Clear",
-				"Clear",
+				StartCategory, /* TODO: Should these be categories or directionless types? */
+				EndCategory,
 				permittedTemplates);
 			tilingPath.Start.Direction = plan.AutoStart;
 			tilingPath.End.Direction = plan.AutoEnd;
