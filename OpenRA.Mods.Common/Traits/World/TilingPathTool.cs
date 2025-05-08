@@ -14,9 +14,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.Graphics;
-using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.MapGenerator;
-using OpenRA.Primitives;
 using OpenRA.Support;
 using OpenRA.Traits;
 
@@ -59,7 +57,7 @@ namespace OpenRA.Mods.Common.Traits
 					else
 					{
 						if (Rallies.Length >= 2)
-							return Direction.FromCVecNonDiagonal(Rallies[1] - Rallies[0]);
+							return Direction.FromCVecRounding(Rallies[1] - Rallies[0]);
 						else
 							return Direction.None;
 					}
@@ -79,7 +77,7 @@ namespace OpenRA.Mods.Common.Traits
 					else
 					{
 						if (Rallies.Length >= 2)
-							return Direction.FromCVecNonDiagonal(Rallies[^1] - Rallies[^2]);
+							return Direction.FromCVecRounding(Rallies[^1] - Rallies[^2]);
 						else
 							return Direction.None;
 					}
@@ -194,6 +192,8 @@ namespace OpenRA.Mods.Common.Traits
 				var cpos = Rallies[0];
 				points.Add((cpos, 0));
 				var inertia = Direction.ToCVec(AutoStart);
+				if (inertia.X != 0 && inertia.Y != 0)
+					inertia = new CVec(inertia.X, 0);
 				
 				void AddPointsUpTo(CPos target, int i)
 				{
@@ -279,12 +279,12 @@ namespace OpenRA.Mods.Common.Traits
 		public bool PreviewEnabled = true;
 		public bool AutoLoopEnabled = true;
 		public PathPlan Plan = null;
-		public MultiBrush PreviewBrush = null;
+		public MultiBrush MultiBrush = null;
 		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
 		readonly ITerrainInfo terrainInfo;
-		public string StartCategory = "Clear";
+		public string StartType = "Clear";
 		public string InnerCategory = "Cliff";
-		public string EndCategory = "Clear";
+		public string EndType = "Clear";
 
 		bool disposed;
 
@@ -317,58 +317,6 @@ namespace OpenRA.Mods.Common.Traits
 		IEnumerable<IRenderable> IRenderAnnotations.RenderAnnotations(Actor self, WorldRenderer wr)
 		{
 			yield break;
-			// if (!Enabled || Plan == null)
-			// 	yield break;
-
-			// var map = World.Map;
-
-			// if (terrainRenderer != null && PreviewBrush != null)
-			// {
-			// 	foreach (var (xy, tile) in PreviewBrush.Tiles)
-			// 	{
-			// 		var preview = terrainRenderer.RenderPreview(wr, tile, map.CenterOfCell(CPos.Zero + xy));
-			// 		foreach (var renderable in preview)
-			// 			yield return renderable;
-			// 	}
-			// }
-
-			// var points = Plan.Points();
-			// for (var i = 1; i < points.Length; i++)
-			// {
-			// 	yield return new CircleAnnotationRenderable(
-			// 		map.CenterOfCell(points[i]), new WDist(128), 1, Color.Red, false);
-			// 	yield return new LineAnnotationRenderable(
-			// 		map.CenterOfCell(points[i - 1]),
-			// 		map.CenterOfCell(points[i]),
-			// 		1,
-			// 		Color.Red,
-			// 		Color.Red);
-			// }
-
-			// for (var i = 1; i < Plan.Rallies.Length; i++)
-			// {
-			// 	yield return new CircleAnnotationRenderable(
-			// 		map.CenterOfCell(Plan.Rallies[i]), new WDist(512), 2, Color.Cyan, false);
-			// 	yield return new LineAnnotationRenderable(
-			// 		map.CenterOfCell(Plan.Rallies[i - 1]),
-			// 		map.CenterOfCell(Plan.Rallies[i]),
-			// 		2,
-			// 		Color.Cyan,
-			// 		Color.Cyan);
-			// }
-
-			// if (Plan.AutoEnd != Direction.None)
-			// 	yield return new CircleAnnotationRenderable(
-			// 		map.CenterOfCell(Plan.Rallies[^1]) + Direction.ToWVec(Plan.AutoEnd) * 768, new WDist(256), 2, Color.Magenta, false);
-
-			// if (Plan.AutoStart != Direction.None)
-			// 	yield return new CircleAnnotationRenderable(
-			// 		map.CenterOfCell(Plan.Rallies[0]) - Direction.ToWVec(Plan.AutoStart) * 768, new WDist(256), 2, Color.Magenta, true);
-
-			// yield return new CircleAnnotationRenderable(
-			// 	map.CenterOfCell(Plan.Rallies[0]), new WDist(512), 2, Color.Cyan, true);
-
-			// yield break;
 		}
 
 		bool IRenderAnnotations.SpatiallyPartitionable => false;
@@ -385,14 +333,14 @@ namespace OpenRA.Mods.Common.Traits
 			var map = World.Map;
 			var permittedTemplates =
 				TilingPath.PermittedSegments.FromTypes(
-					segmentedBrushes, [StartCategory], [InnerCategory], [EndCategory]);
+					segmentedBrushes, [StartType], [InnerCategory], [EndType]);
 
 			var tilingPath = new TilingPath(
 				map,
 				points,
 				5,
-				StartCategory, /* TODO: Should these be categories or directionless types? */
-				EndCategory,
+				StartType, /* TODO: Should these be categories or directionless types? */
+				EndType,
 				permittedTemplates);
 			tilingPath.Start.Direction = plan.AutoStart;
 			tilingPath.End.Direction = plan.AutoEnd;
@@ -403,7 +351,7 @@ namespace OpenRA.Mods.Common.Traits
 		public void UpdatePlan(PathPlan plan)
 		{
 			Plan = plan;
-			PreviewBrush = PlanToBrush(plan);
+			MultiBrush = PlanToBrush(plan);
 		}
 	}
 }

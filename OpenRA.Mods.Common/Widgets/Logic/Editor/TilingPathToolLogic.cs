@@ -16,7 +16,6 @@ using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Support;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
@@ -56,7 +55,19 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				.Order()
 				.ToImmutableArray();
 
-			void SetupDropDown(string name, Func<string> read, Action<string> write)
+			var segmentTypes = segmentedBrushes
+				.Where(b => b.Segment != null)
+				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
+				.Select(s => string.Join(".", s.Split('.').SkipLast(1)))
+				.Distinct()
+				.Order()
+				.ToImmutableArray();
+
+			void SetupDropDown(
+				string name,
+				ImmutableArray<string> choices,
+				Func<string> read,
+				Action<string> write)
 			{
 				var dropDown = widget
 					.Get<ContainerWidget>(name)
@@ -81,13 +92,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						return item;
 					}
 
-					dropDown.ShowDropDown("LABEL_DROPDOWN_WITH_TOOLTIP_TEMPLATE", segmentCategories.Length * 30, segmentCategories, SetupItem);
+					dropDown.ShowDropDown("LABEL_DROPDOWN_WITH_TOOLTIP_TEMPLATE", choices.Length * 30, choices, SetupItem);
 				};
 			}
 
-			SetupDropDown("START_TYPE", () => tool.StartCategory, (v) => tool.StartCategory = v);
-			SetupDropDown("INNER_TYPE", () => tool.InnerCategory, (v) => tool.InnerCategory = v);
-			SetupDropDown("END_TYPE", () => tool.EndCategory, (v) => tool.EndCategory = v);
+			SetupDropDown("START_TYPE", segmentTypes, () => tool.StartType, (v) => tool.StartType = v);
+			SetupDropDown("INNER_TYPE", segmentCategories, () => tool.InnerCategory, (v) => tool.InnerCategory = v);
+			SetupDropDown("END_TYPE", segmentTypes, () => tool.EndType, (v) => tool.EndType = v);
 
 			var editCheckbox = widget.Get<CheckboxWidget>("EDIT");
 			editCheckbox.IsChecked = () => editorWidget.CurrentBrush is EditorTilingPathBrush;
@@ -132,36 +143,35 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void Paint()
 		{
-			var plan = tool.Plan;
-			if (plan == null)
+			if (tool.Plan == null || tool.MultiBrush == null)
 				return;
 			
-			var points = plan.Points();
-			if (points == null)
-				return;
+			// var points = plan.Points();
+			// if (points == null)
+			// 	return;
 
-			var map = world.Map;
-			var terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
-			var permittedTemplates =
-				TilingPath.PermittedSegments.FromTypes(
-					segmentedBrushes, ["Clear"], ["Cliff"], ["Clear"]);
+			// var map = world.Map;
+			// var terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
+			// var permittedTemplates =
+			// 	TilingPath.PermittedSegments.FromTypes(
+			// 		segmentedBrushes, ["Clear"], ["Cliff"], ["Clear"]);
 
-			var tilingPath = new TilingPath(
-				map,
-				points,
-				5,
-				"Clear",
-				"Clear",
-				permittedTemplates);
-			tilingPath.Start.Direction = plan.AutoStart;
-			tilingPath.End.Direction = plan.AutoEnd;
+			// var tilingPath = new TilingPath(
+			// 	map,
+			// 	points,
+			// 	5,
+			// 	"Clear",
+			// 	"Clear",
+			// 	permittedTemplates);
+			// tilingPath.Start.Direction = plan.AutoStart;
+			// tilingPath.End.Direction = plan.AutoEnd;
 
-			var brush = tilingPath.Tile(new MersenneTwister(0));
-			if (brush == null)
-				return;
+			// var multiBrush = tilingPath.Tile(new MersenneTwister(0));
+			// if (multiBrush == null)
+			// 	return;
 
 			editorActionManager.Add(
-				new PaintTilingPathEditorAction(tool, worldRenderer, brush));
+				new PaintTilingPathEditorAction(tool, worldRenderer));
 		}
 	}
 }

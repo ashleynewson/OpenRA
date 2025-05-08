@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.Graphics;
@@ -109,7 +108,7 @@ namespace OpenRA.Mods.Common.Widgets
 						var offset = plan.FirstPoint - to;
 						var direction =
 							offset != CVec.Zero
-								? Direction.FromCVecNonDiagonal(offset)
+								? Direction.FromCVecRounding(offset)
 								: Direction.None;
 						UpdatePlan(plan.WithStart(direction));
 					}
@@ -118,7 +117,7 @@ namespace OpenRA.Mods.Common.Widgets
 						var offset = to - plan.LastPoint;
 						var direction =
 							offset != CVec.Zero
-								? Direction.FromCVecNonDiagonal(offset)
+								? Direction.FromCVecRounding(offset)
 								: Direction.None;
 						UpdatePlan(plan.WithEnd(direction));
 					}
@@ -181,10 +180,10 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			var map = world.Map;
 
-			if (terrainRenderer == null || tool.PreviewBrush == null)
+			if (terrainRenderer == null || tool.MultiBrush == null)
 				yield break;
 
-			foreach (var (xy, tile) in tool.PreviewBrush.Tiles)
+			foreach (var (xy, tile) in tool.MultiBrush.Tiles)
 			{
 				var preview = terrainRenderer.RenderPreview(wr, tile, map.CenterOfCell(CPos.Zero + xy));
 				foreach (var renderable in preview)
@@ -199,7 +198,7 @@ namespace OpenRA.Mods.Common.Widgets
 			if (plan == null)
 				yield break;
 
-			var mainColor = tool.PreviewBrush != null ? Color.Cyan : Color.Red;
+			var mainColor = tool.MultiBrush != null ? Color.Cyan : Color.Red;
 
 			var points = plan.Points();
 			for (var i = 1; i < points.Length; i++)
@@ -318,8 +317,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public PaintTilingPathEditorAction(
 			TilingPathTool tool,
-			WorldRenderer worldRenderer,
-			MultiBrush brush)
+			WorldRenderer worldRenderer)
 		{
 			this.tool = tool;
 			plan = tool.Plan;
@@ -328,12 +326,13 @@ namespace OpenRA.Mods.Common.Widgets
 			var world = tool.World;
 			var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			if (editorActorLayer == null)
-				throw new ArgumentException("World has no EditorActorLayer");				var blitSource = brush.ToEditorBlitSource(world, worldRenderer);
+				throw new ArgumentException("World has no EditorActorLayer");
 
+			var blitSource = tool.MultiBrush.ToEditorBlitSource(world, worldRenderer);
 			editorBlit = new EditorBlit(
 				MapBlitFilters.Terrain | MapBlitFilters.Actors,
 				null,
-				CPos.Zero + brush.TopLeft,
+				CPos.Zero + tool.MultiBrush.TopLeft,
 				world.Map,
 				blitSource,
 				editorActorLayer,
