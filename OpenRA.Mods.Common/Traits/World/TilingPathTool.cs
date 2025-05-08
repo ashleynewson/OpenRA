@@ -47,51 +47,84 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			public readonly int Start;
 			public readonly int End;
+			public readonly bool Loop;
 			public readonly ImmutableArray<CPos> Rallies;
-
-			public int AutoStart => 
-				Start != Direction.None
-					? Start
-					: Rallies.Length >= 2
-						? Direction.FromCVecNonDiagonal(Rallies[1] - Rallies[0])
-						: Direction.None;
-			public int AutoEnd => 
-				End != Direction.None
-					? End
-					: Rallies.Length >= 2
-						? Direction.FromCVecNonDiagonal(Rallies[^1] - Rallies[^2])
-						: Direction.None;
+			public int AutoStart
+			{
+				get {
+					if (Start != Direction.None)
+					{
+						return Start;
+					}
+					else
+					{
+						if (Rallies.Length >= 2)
+							return Direction.FromCVecNonDiagonal(Rallies[1] - Rallies[0]);
+						else
+							return Direction.None;
+					}
+				}
+			}
+			public int AutoEnd
+			{
+				get {
+					if (End != Direction.None)
+					{
+						return End;
+					}
+					else if (Loop)
+					{
+						return AutoStart;
+					}
+					else
+					{
+						if (Rallies.Length >= 2)
+							return Direction.FromCVecNonDiagonal(Rallies[^1] - Rallies[^2]);
+						else
+							return Direction.None;
+					}
+				}
+			}
+			public CPos FirstPoint => Rallies[0];
+			public CPos LastPoint => Loop ? Rallies[0] : Rallies[^1];
 
 			public PathPlan(CPos first)
 			{
 				Start = Direction.None;
 				End = Direction.None;
+				Loop = false;
 				Rallies = [first];
 			}
 
-			public PathPlan(int start, int end, ImmutableArray<CPos> rallies)
+			public PathPlan(int start, int end, bool loop, ImmutableArray<CPos> rallies)
 			{
 				if (rallies == null || rallies.Length == 0)
 					throw new ArgumentException("rallies must have at least one point");
 
 				Start = start;
 				End = end;
+				Loop = loop && rallies.Length >= 3;
 				Rallies = rallies;
 			}
 
 			public PathPlan WithStart(int start)
 			{
-				return new PathPlan(start, End, Rallies);
+				return new PathPlan(start, End, Loop, Rallies);
 			}
 
 			public PathPlan WithEnd(int end)
 			{
-				return new PathPlan(Start, end, Rallies);
+				return new PathPlan(Start, end, Loop, Rallies);
+			}
+
+			public PathPlan WithLoop(bool loop)
+			{
+				return new PathPlan(Start, End, loop, Rallies);
 			}
 
 			public PathPlan WithRallyAppended(CPos cpos)
 			{
-				return new PathPlan(Start, Direction.None, [..Rallies, cpos]);
+				return new PathPlan(Start, Direction.None, Loop, [..Rallies, cpos]);
 			}
 
 			public PathPlan WithRallyRemoved(int index)
@@ -102,31 +135,40 @@ namespace OpenRA.Mods.Common.Traits
 				return new PathPlan(
 					index != 0 ? Start : Direction.None,
 					index != (Rallies.Length - 1) ? End : Direction.None,
+					Loop,
 					[..Rallies[..index], ..Rallies[(index + 1)..]]);
 			}
 
 			public PathPlan WithRallyReplaced(int index, CPos cpos)
 			{
-				return new PathPlan(Start, End, [..Rallies[..index], cpos, ..Rallies[(index + 1)..]]);
+				return new PathPlan(Start, End, Loop, [..Rallies[..index], cpos, ..Rallies[(index + 1)..]]);
 			}
 
 			public PathPlan WithRallyInserted(int index, CPos cpos)
 			{
-				return new PathPlan(Start, End, [..Rallies[..index], cpos, ..Rallies[index..]]);
+				return new PathPlan(Start, End, Loop, [..Rallies[..index], cpos, ..Rallies[index..]]);
 			}
 
 			public PathPlan Moved(CVec offset)
 			{
 				var rallies = Rallies.Select(r => r + offset).ToImmutableArray();
-				return new PathPlan(Start, End, rallies);
+				return new PathPlan(Start, End, Loop, rallies);
 			}
 
 			public PathPlan Reversed()
 			{
-				return new PathPlan(
-					Direction.Reverse(End),
-					Direction.Reverse(Start),
-					Rallies.Reverse().ToImmutableArray());
+				if (Loop)
+					return new PathPlan(
+						Direction.Reverse(End),
+						Direction.Reverse(Start),
+						Loop,
+						Rallies.Skip(1).Append(Rallies[0]).Reverse().ToImmutableArray());
+				else
+					return new PathPlan(
+						Direction.Reverse(End),
+						Direction.Reverse(Start),
+						Loop,
+						Rallies.Reverse().ToImmutableArray());
 			}
 
 			/// <summary>
@@ -140,7 +182,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			/// <summary>
 			/// Convert the rally points into a sequence of unit-space CPos points and their
-			/// associated later rally index. Returns null in some failure cases.
+			/// associated later rally index. For loops, the last rally index is the number of the
+			/// rallies.
 			/// </summary>
 			public (CPos CPos, int RallyIndex)[] PointsWithRallyIndex()
 			{
@@ -151,11 +194,11 @@ namespace OpenRA.Mods.Common.Traits
 				var cpos = Rallies[0];
 				points.Add((cpos, 0));
 				var inertia = Direction.ToCVec(AutoStart);
-				for (var i = 1; i < Rallies.Length; i++)
+				
+				void AddPointsUpTo(CPos target, int i)
 				{
-					var target = Rallies[i];
 					if (cpos == target)
-						return null;
+						throw new InvalidOperationException("there are duplicate rally points");
 
 					var offset = target - cpos;
 					var xStep = Math.Sign(offset.X);
@@ -219,6 +262,12 @@ namespace OpenRA.Mods.Common.Traits
 						}
 					}
 				}
+
+				for (var i = 1; i < Rallies.Length; i++)
+					AddPointsUpTo(Rallies[i], i);
+
+				if (Loop)
+					AddPointsUpTo(Rallies[0], Rallies.Length);
 
 				return points.ToArray();
 			}

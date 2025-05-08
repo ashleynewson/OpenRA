@@ -85,13 +85,15 @@ namespace OpenRA.Mods.Common.Widgets
 						points
 							.Where(p => p.CPos == cpos)
 							.Select(p => p.RallyIndex)
-							.LastOrDefault(0);
+							.FirstOrDefault(0);
+					// if (isRally && rallyIndex == plan.Rallies.Length)
+					// 	rallyIndex = 0;
 					var isStartDirector =
 						plan.AutoStart != Direction.None
-							&& cpos == plan.Rallies[0] - Direction.ToCVec(plan.AutoStart);
+							&& cpos == plan.FirstPoint - Direction.ToCVec(plan.AutoStart);
 					var isEndDirector =
 						plan.AutoEnd != Direction.None
-							&& cpos == plan.Rallies[^1] + Direction.ToCVec(plan.AutoEnd);
+							&& cpos == plan.LastPoint + Direction.ToCVec(plan.AutoEnd);
 					return (isInside, isRally, rallyIndex, isStartDirector, isEndDirector);
 
 				}
@@ -104,7 +106,7 @@ namespace OpenRA.Mods.Common.Widgets
 				{
 					if (fromIsStartDirector)
 					{
-						var offset = plan.Rallies[0] - to;
+						var offset = plan.FirstPoint - to;
 						var direction =
 							offset != CVec.Zero
 								? Direction.FromCVecNonDiagonal(offset)
@@ -113,7 +115,7 @@ namespace OpenRA.Mods.Common.Widgets
 					}
 					else if (fromIsEndDirector)
 					{
-						var offset = to - plan.Rallies[^1];
+						var offset = to - plan.LastPoint;
 						var direction =
 							offset != CVec.Zero
 								? Direction.FromCVecNonDiagonal(offset)
@@ -144,7 +146,14 @@ namespace OpenRA.Mods.Common.Widgets
 					{
 						if (toIsRally)
 						{
-							UpdatePlan(plan.WithRallyRemoved(toRallyIndex));
+							if (toRallyIndex == 0)
+							{
+								UpdatePlan(plan.WithLoop(!plan.Loop));
+							}
+							else
+							{
+								UpdatePlan(plan.WithRallyRemoved(toRallyIndex));
+							}
 						}
 						else
 						{
@@ -208,25 +217,33 @@ namespace OpenRA.Mods.Common.Widgets
 			for (var i = 1; i < plan.Rallies.Length; i++)
 			{
 				yield return new CircleAnnotationRenderable(
-					map.CenterOfCell(plan.Rallies[i]), new WDist(512), 2, mainColor, false);
+					map.CenterOfCell(plan.Rallies[i]), new WDist(512), 1, mainColor, false);
 				yield return new LineAnnotationRenderable(
 					map.CenterOfCell(plan.Rallies[i - 1]),
 					map.CenterOfCell(plan.Rallies[i]),
-					2,
+					1,
 					mainColor,
 					mainColor);
 			}
 
 			if (plan.AutoEnd != Direction.None)
 				yield return new CircleAnnotationRenderable(
-					map.CenterOfCell(plan.Rallies[^1]) + Direction.ToWVec(plan.AutoEnd) * 768, new WDist(256), 2, Color.Magenta, false);
+					map.CenterOfCell(plan.LastPoint) + Direction.ToWVec(plan.AutoEnd) * 768,
+					new WDist(256),
+					2,
+					plan.End != Direction.None ? Color.Magenta : Color.Gray,
+					false);
 
 			if (plan.AutoStart != Direction.None)
 				yield return new CircleAnnotationRenderable(
-					map.CenterOfCell(plan.Rallies[0]) - Direction.ToWVec(plan.AutoStart) * 768, new WDist(256), 2, Color.Magenta, true);
+					map.CenterOfCell(plan.FirstPoint) - Direction.ToWVec(plan.AutoStart) * 768,
+					new WDist(256),
+					2,
+					plan.Start != Direction.None ? Color.Magenta : Color.Gray,
+					true);
 
 			yield return new CircleAnnotationRenderable(
-				map.CenterOfCell(plan.Rallies[0]), new WDist(512), 2, mainColor, true);
+				map.CenterOfCell(plan.Rallies[0]), new WDist(512), 1, mainColor, true);
 		}
 
 		public void Tick() { }

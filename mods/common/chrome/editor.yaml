@@ -1061,9 +1061,15 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 	ScrollbarWidth: 0
 	Logic: TilingPathToolLogic
 	Children:
-		Container@START_TYPE:
+		Checkbox@EDIT:
 			X: 5
 			Y: 5
+			Width: PARENT_WIDTH - 35
+			Height: 25
+			Text: tiling-path-edit
+		Container@START_TYPE:
+			X: 5
+			Y: 35
 			Width: PARENT_WIDTH - 35
 			Height: 50
 			Children:
@@ -1079,7 +1085,7 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 					Height: 25
 		Container@INNER_TYPE:
 			X: 5
-			Y: 55
+			Y: 85
 			Width: PARENT_WIDTH - 35
 			Height: 50
 			Children:
@@ -1095,7 +1101,7 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 					Height: 25
 		Container@END_TYPE:
 			X: 5
-			Y: 105
+			Y: 135
 			Width: PARENT_WIDTH - 35
 			Height: 50
 			Children:
@@ -1109,45 +1115,27 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 					Y: 20
 					Width: PARENT_WIDTH
 					Height: 25
-		Checkbox@EDIT:
-			X: 5
-			Y: 155
-			Width: PARENT_WIDTH - 35
-			Height: 25
-			Text: tiling-path-edit
-		Checkbox@AUTO_LOOP:
-			X: 5
-			Y: 185
-			Width: PARENT_WIDTH - 35
-			Height: 25
-			Text: tiling-path-auto-loop
 		Button@REVERSE:
 			X: 5
-			Y: 215
+			Y: 185
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-reverse
 		Button@RESET:
 			X: 5
-			Y: 245
+			Y: 215
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-reset
 		Button@RANDOMIZE:
 			X: 5
-			Y: 275
+			Y: 245
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-randomize
 		Button@PAINT:
 			X: 5
-			Y: 305
+			Y: 275
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-paint
-		Checkbox@PREVIEW:
-			X: 5
-			Y: 335
-			Width: PARENT_WIDTH - 35
-			Height: 25
-			Text: tiling-path-preview
