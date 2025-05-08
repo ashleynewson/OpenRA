@@ -275,16 +275,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		public readonly World World;
 		ITiledTerrainRenderer terrainRenderer = null;
-		public bool Enabled = true;
-		public bool PreviewEnabled = true;
-		public bool AutoLoopEnabled = true;
 		public PathPlan Plan = null;
 		public MultiBrush MultiBrush = null;
 		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
-		readonly ITerrainInfo terrainInfo;
 		public string StartType = "Clear";
 		public string InnerCategory = "Cliff";
 		public string EndType = "Clear";
+		public bool ClosedLoops = true;
 
 		bool disposed;
 
@@ -292,18 +289,11 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			World = self.World;
 			segmentedBrushes = MultiBrush.LoadCollection(World.Map, "Segmented");
-			// TODO: Better ModData sourcing?
-			terrainInfo = World.Map.Rules.TerrainInfo;
 		}
 
 		public void WorldLoaded(World w, WorldRenderer wr)
 		{
 			terrainRenderer = World.WorldActor.Trait<ITiledTerrainRenderer>();
-			// UpdatePlan(
-			// 	new PathPlan(
-			// 		Direction.R,
-			// 		Direction.D,
-			// 		[new(10, 10), new(20, 10), new(20, 20)]));
 		}
 
 		void INotifyActorDisposing.Disposing(Actor self)
@@ -330,17 +320,25 @@ namespace OpenRA.Mods.Common.Traits
 			if (points == null)
 				return null;
 
+			var startCategory = StartType;
+			var endCategory = EndType;
+			if (ClosedLoops && plan.Loop)
+			{
+				startCategory = InnerCategory;
+				endCategory = InnerCategory;
+			}
+
 			var map = World.Map;
 			var permittedTemplates =
 				TilingPath.PermittedSegments.FromTypes(
-					segmentedBrushes, [StartType], [InnerCategory], [EndType]);
+					segmentedBrushes, [startCategory], [InnerCategory], [endCategory]);
 
 			var tilingPath = new TilingPath(
 				map,
 				points,
 				5,
-				StartType, /* TODO: Should these be categories or directionless types? */
-				EndType,
+				startCategory, /* TODO: Should these be categories or directionless types or directions or nothing at all? */
+				endCategory,
 				permittedTemplates);
 			tilingPath.Start.Direction = plan.AutoStart;
 			tilingPath.End.Direction = plan.AutoEnd;

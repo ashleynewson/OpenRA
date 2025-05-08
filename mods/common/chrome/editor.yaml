@@ -1115,27 +1115,33 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 					Y: 20
 					Width: PARENT_WIDTH
 					Height: 25
-		Button@REVERSE:
+		Checkbox@CLOSED_LOOPS:
 			X: 5
 			Y: 185
+			Width: PARENT_WIDTH - 35
+			Height: 25
+			Text: tiling-path-closed-loops
+		Button@REVERSE:
+			X: 5
+			Y: 215
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-reverse
 		Button@RESET:
 			X: 5
-			Y: 215
+			Y: 245
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-reset
 		Button@RANDOMIZE:
 			X: 5
-			Y: 245
+			Y: 275
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-randomize
 		Button@PAINT:
 			X: 5
-			Y: 275
+			Y: 305
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: tiling-path-paint

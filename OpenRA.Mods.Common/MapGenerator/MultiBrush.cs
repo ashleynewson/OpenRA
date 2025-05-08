@@ -240,8 +240,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>Total area covered by the MultiBrush.</summary>
 		public int Area => GetShape().Length;
 
-		/// <summary>The CVec of the top-left most cell covered by the MultiBrush.</summary>
-		public CVec TopLeft => GetShape()[0];
+		/// <summary>
+		/// The CVec of the first cell covered by the MultiBrush. This is the left-most cell in the
+		/// top-row. Note that this does not necessarily correspond to the top-left corner of the
+		/// rectangular bounds of the multibrush.
+		/// </summary>
+		public CVec FirstCell => GetShape()[0];
 
 		public Replaceability Contract()
 		{
@@ -622,7 +626,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				foreach (var mpos in mposes)
 				{
 					var brush = brushes[random.PickWeighted(brushWeights)];
-					var paintAt = mpos.ToCPos(map) - brush.TopLeft;
+					var paintAt = mpos.ToCPos(map) - brush.FirstCell;
 					var contract = ReserveShape(paintAt, brush.Shape, brush.Contract());
 					if (contract != Replaceability.None)
 						brush.Paint(map, actorPlans, paintAt, contract);
@@ -642,7 +646,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 				player => player.InternalName,
 				player => player.PlayerReference);
 
-			var topLeft = CPos.Zero + TopLeft;
+			var topLeft = new CPos(
+				Shape.Min(cvec => cvec.X),
+				Shape.Min(cvec => cvec.Y));
 			var bottomRight = new CPos(
 				Shape.Max(cvec => cvec.X),
 				Shape.Max(cvec => cvec.Y));

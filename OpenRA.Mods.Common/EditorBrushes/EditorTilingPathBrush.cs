@@ -332,7 +332,7 @@ namespace OpenRA.Mods.Common.Widgets
 			editorBlit = new EditorBlit(
 				MapBlitFilters.Terrain | MapBlitFilters.Actors,
 				null,
-				CPos.Zero + tool.MultiBrush.TopLeft,
+				blitSource.CellRegion.TopLeft,
 				world.Map,
 				blitSource,
 				editorActorLayer,

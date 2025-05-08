@@ -108,6 +108,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						? null
 						: new EditorTilingPathBrush(editorWidget, worldRenderer));
 
+			var closedLoopsCheckbox = widget.Get<CheckboxWidget>("CLOSED_LOOPS");
+			closedLoopsCheckbox.IsChecked = () => tool.ClosedLoops;
+			closedLoopsCheckbox.OnClick = () =>
+			{
+				tool.ClosedLoops = !tool.ClosedLoops;
+				tool.UpdatePlan(tool.Plan);
+			};
+
 			var resetButton = widget.Get<ButtonWidget>("RESET");
 			resetButton.OnClick = () => Reset();
 
