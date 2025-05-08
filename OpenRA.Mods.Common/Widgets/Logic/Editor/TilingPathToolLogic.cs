@@ -47,22 +47,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			this.worldRenderer = worldRenderer;
 			segmentedBrushes = MultiBrush.LoadCollection(world.Map, "Segmented");
 
-			var segmentCategories = segmentedBrushes
-				.Where(b => b.Segment != null)
-				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
-				.Select(s => s.Split('.')[0])
-				.Distinct()
-				.Order()
-				.ToImmutableArray();
-
-			var segmentTypes = segmentedBrushes
-				.Where(b => b.Segment != null)
-				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
-				.Select(s => string.Join(".", s.Split('.').SkipLast(1)))
-				.Distinct()
-				.Order()
-				.ToImmutableArray();
-
 			void SetupDropDown(
 				string name,
 				ImmutableArray<string> choices,
@@ -96,9 +80,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				};
 			}
 
-			SetupDropDown("START_TYPE", segmentTypes, () => tool.StartType, (v) => tool.StartType = v);
-			SetupDropDown("INNER_TYPE", segmentCategories, () => tool.InnerCategory, (v) => tool.InnerCategory = v);
-			SetupDropDown("END_TYPE", segmentTypes, () => tool.EndType, (v) => tool.EndType = v);
+			SetupDropDown("START_TYPE", tool.segmentTypes, () => tool.StartType, (v) => tool.StartType = v);
+			SetupDropDown("INNER_TYPE", tool.segmentCategories, () => tool.InnerCategory, (v) => tool.InnerCategory = v);
+			SetupDropDown("END_TYPE", tool.segmentTypes, () => tool.EndType, (v) => tool.EndType = v);
 
 			var editCheckbox = widget.Get<CheckboxWidget>("EDIT");
 			editCheckbox.IsChecked = () => editorWidget.CurrentBrush is EditorTilingPathBrush;

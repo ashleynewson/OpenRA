@@ -278,6 +278,8 @@ namespace OpenRA.Mods.Common.Traits
 		public PathPlan Plan = null;
 		public MultiBrush MultiBrush = null;
 		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
+		public readonly ImmutableArray<string> segmentCategories;
+		public readonly ImmutableArray<string> segmentTypes;
 		public string StartType = "Clear";
 		public string InnerCategory = "Cliff";
 		public string EndType = "Clear";
@@ -289,6 +291,22 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			World = self.World;
 			segmentedBrushes = MultiBrush.LoadCollection(World.Map, "Segmented");
+
+			segmentCategories = segmentedBrushes
+				.Where(b => b.Segment != null)
+				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
+				.Select(s => s.Split('.')[0])
+				.Distinct()
+				.Order()
+				.ToImmutableArray();
+
+			segmentTypes = segmentedBrushes
+				.Where(b => b.Segment != null)
+				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
+				.Select(s => string.Join(".", s.Split('.').SkipLast(1)))
+				.Distinct()
+				.Order()
+				.ToImmutableArray();
 		}
 
 		public void WorldLoaded(World w, WorldRenderer wr)
@@ -320,30 +338,41 @@ namespace OpenRA.Mods.Common.Traits
 			if (points == null)
 				return null;
 
-			var startCategory = StartType;
-			var endCategory = EndType;
+			(string Start, string End)[] terminalTypes = [(StartType, EndType)];
 			if (ClosedLoops && plan.Loop)
 			{
-				startCategory = InnerCategory;
-				endCategory = InnerCategory;
+				terminalTypes = segmentTypes
+					.Where(t => t.Split('.')[0] == InnerCategory)
+					.Select(t => (t, t))
+					.ToArray();
 			}
 
 			var map = World.Map;
 			var permittedTemplates =
 				TilingPath.PermittedSegments.FromTypes(
-					segmentedBrushes, [startCategory], [InnerCategory], [endCategory]);
+					segmentedBrushes,
+					terminalTypes.Select(t => t.Start),
+					[InnerCategory],
+					terminalTypes.Select(t => t.End));
 
-			var tilingPath = new TilingPath(
-				map,
-				points,
-				5,
-				startCategory, /* TODO: Should these be categories or directionless types or directions or nothing at all? */
-				endCategory,
-				permittedTemplates);
-			tilingPath.Start.Direction = plan.AutoStart;
-			tilingPath.End.Direction = plan.AutoEnd;
+			MultiBrush result = null;
+			foreach (var (startType, endType) in terminalTypes)
+			{
+				TilingPath tilingPath = new TilingPath(
+					map,
+					points,
+					5,
+					startType,
+					endType,
+					permittedTemplates);
+				tilingPath.Start.Direction = plan.AutoStart;
+				tilingPath.End.Direction = plan.AutoEnd;
+				result = tilingPath.Tile(new MersenneTwister(0));
+				if (result != null)
+					break;
+			}
 
-			return tilingPath.Tile(new MersenneTwister(0));
+			return result;
 		}
 
 		public void UpdatePlan(PathPlan plan)
