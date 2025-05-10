@@ -301,4 +301,5 @@ EditorWorld:
 	BuildableTerrainOverlay:
 		AllowedTerrainTypes: Clear, Road
 	MarkerLayerOverlay:
+	TilingPathTool:
 	Inherits@MapGenerators: ^MapGenerators

@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
 
 namespace OpenRA.Mods.Common.EditorBrushes
@@ -174,6 +175,62 @@ namespace OpenRA.Mods.Common.EditorBrushes
 
 						editorActorLayer.Add(copy);
 					}
+				}
+			}
+		}
+
+		public static IEnumerable<IRenderable> PreviewBlitSource(
+			EditorBlitSource source,
+			MapBlitFilters filters,
+			CVec offset,
+			WorldRenderer wr)
+		{
+			var world = wr.World;
+			var map = world.Map;
+
+			var terrainRenderer = world.WorldActor.Trait<ITiledTerrainRenderer>();
+			var resourceRenderers = world.WorldActor.TraitsImplementing<IResourceRenderer>().ToArray();
+
+			var wOffset = map.CenterOfCell(CPos.Zero + offset) - map.CenterOfCell(CPos.Zero);
+
+			if (filters.HasFlag(MapBlitFilters.Terrain))
+			{
+				foreach (var (cpos, tile) in source.Tiles)
+				{
+					var preview =
+						terrainRenderer.RenderPreview(
+							wr,
+							tile.TerrainTile,
+							map.CenterOfCell(cpos + offset));
+					foreach (var renderable in preview)
+						yield return renderable;
+				}
+			}
+
+			if (filters.HasFlag(MapBlitFilters.Resources))
+			{
+				foreach (var (cpos, tile) in source.Tiles)
+				{
+					if (tile.ResourceLayerContents == null || tile.ResourceLayerContents.Value.Type == null)
+						continue;
+
+					var preview = resourceRenderers
+						.SelectMany(r => r.RenderPreview(
+							wr,
+							tile.ResourceLayerContents.Value.Type,
+							map.CenterOfCell(cpos + offset)));
+					foreach (var renderable in preview)
+						yield return renderable;
+				}
+			}
+
+			if (filters.HasFlag(MapBlitFilters.Actors))
+			{
+				foreach (var (_, editorActorPreview) in source.Actors)
+				{
+					var preview = editorActorPreview.RenderWithOffset(wOffset);
+					foreach (var renderable in preview)
+						yield return renderable;
 				}
 			}
 		}

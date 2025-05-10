@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Traits;
@@ -105,6 +104,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var reverseButton = widget.Get<ButtonWidget>("REVERSE");
 			reverseButton.OnClick = () => Reverse();
+
+			var randomizeButton = widget.Get<ButtonWidget>("RANDOMIZE");
+			randomizeButton.OnClick = () =>
+			{
+				tool.RandomSeed = Environment.TickCount;
+				tool.UpdatePlan(tool.Plan);
+			};
 
 			var paintButton = widget.Get<ButtonWidget>("PAINT");
 			paintButton.OnClick = () => Paint();

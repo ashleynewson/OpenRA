@@ -637,9 +637,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
-		public EditorBlitSource ToEditorBlitSource(World world, WorldRenderer worldRenderer)
+		public EditorBlitSource ToEditorBlitSource(
+			WorldRenderer worldRenderer,
+			PlayerReference defaultActorOwner = null)
 		{
+			var world = worldRenderer.World;
 			var map = world.Map;
+
+			if (defaultActorOwner == null)
+			{
+				var editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
+				if (editorActorLayer != null)
+					defaultActorOwner = editorActorLayer.Players.Players.Values.First();
+			}
 
 			var players = world.Players.ToDictionary(
 				player => player.InternalName,
@@ -659,8 +669,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 				var name = $"Actor{i}";
 				var actorReference = actorPlans[i].Reference.Clone();
 				var ownerInit = actorReference.Get<OwnerInit>();
-				if (players.TryGetValue(ownerInit.InternalName, out var owner))
-					throw new InvalidOperationException("MultiBrush actor has invalid (or no) owner.");
+				if (!players.TryGetValue(ownerInit.InternalName, out var owner))
+					owner = defaultActorOwner;
+
+				if (owner == null)
+					throw new InvalidOperationException("MultiBrush actor has invalid (or no) owner and no default available.");
+
 				actorPreviews[name] = new EditorActorPreview(
 					worldRenderer,
 					name,
@@ -671,6 +685,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var blitTiles =
 				Tiles
 					.Where(t => map.Tiles.Contains(CPos.Zero + t.XY))
+					.DistinctBy(t => t.XY)
 					.ToDictionary(
 						t => CPos.Zero + t.XY,
 						t => new BlitTile(t.Tile, default, null, map.Height[CPos.Zero + t.XY]));

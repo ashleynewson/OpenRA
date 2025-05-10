@@ -180,15 +180,19 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			var map = world.Map;
 
-			if (terrainRenderer == null || tool.MultiBrush == null)
+			if (tool.MultiBrush == null)
 				yield break;
 
-			foreach (var (xy, tile) in tool.MultiBrush.Tiles)
-			{
-				var preview = terrainRenderer.RenderPreview(wr, tile, map.CenterOfCell(CPos.Zero + xy));
-				foreach (var renderable in preview)
-					yield return renderable;
-			}
+			if (tool.CachedEditorBlitSource == null)
+				tool.CachedEditorBlitSource = tool.MultiBrush.ToEditorBlitSource(worldRenderer);
+
+			var preview = EditorBlit.PreviewBlitSource(
+				tool.CachedEditorBlitSource.Value,
+				MapBlitFilters.Terrain | MapBlitFilters.Actors,
+				CVec.Zero,
+				wr);
+			foreach (var renderable in preview)
+				yield return renderable;
 		}
 
 		IEnumerable<IRenderable> IEditorBrush.RenderAnnotations(Actor self, WorldRenderer wr)
@@ -328,7 +332,8 @@ namespace OpenRA.Mods.Common.Widgets
 			if (editorActorLayer == null)
 				throw new ArgumentException("World has no EditorActorLayer");
 
-			var blitSource = tool.MultiBrush.ToEditorBlitSource(world, worldRenderer);
+			var blitSource = tool.MultiBrush.ToEditorBlitSource(worldRenderer);
+
 			editorBlit = new EditorBlit(
 				MapBlitFilters.Terrain | MapBlitFilters.Actors,
 				null,

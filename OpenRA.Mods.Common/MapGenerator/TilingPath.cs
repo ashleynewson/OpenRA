@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			/// <summary>
-			/// Creates a PermittedSegments using only the given types.
+			/// Creates a PermittedSegments using only the given types or categories.
 			/// </summary>
 			public static PermittedSegments FromType(
 				IReadOnlyList<MultiBrush> multiBrushes,
@@ -94,7 +94,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			/// <summary>
 			/// Creates a PermittedSegments suitable for a path with given inner and terminal types
-			/// at the start and end.
+			/// or categories at the start and end.
 			/// </summary>
 			public static PermittedSegments FromInnerAndTerminalTypes(
 				IReadOnlyList<MultiBrush> multiBrushes,
@@ -111,7 +111,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			/// <summary>
 			/// Creates a PermittedSegments suitable for a path with given inner and terminal types
-			/// at the start and end.
+			/// or categories at the start and end.
 			/// </summary>
 			public static PermittedSegments FromTypes(
 				IReadOnlyList<MultiBrush> multiBrushes,
@@ -140,7 +140,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			/// <summary>
-			/// Filter MultiBrushes to segments that use the given start, inner, and end types.
+			/// Filter MultiBrushes to segments that use the given start, inner, and end types or
+			/// categories.
 			/// </summary>
 			public static IEnumerable<MultiBrush> FindSegments(
 				IReadOnlyList<MultiBrush> multiBrushes,

@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Support;
 using OpenRA.Traits;
@@ -277,6 +278,7 @@ namespace OpenRA.Mods.Common.Traits
 		ITiledTerrainRenderer terrainRenderer = null;
 		public PathPlan Plan = null;
 		public MultiBrush MultiBrush = null;
+		public EditorBlitSource? CachedEditorBlitSource = null;
 		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
 		public readonly ImmutableArray<string> segmentCategories;
 		public readonly ImmutableArray<string> segmentTypes;
@@ -284,6 +286,7 @@ namespace OpenRA.Mods.Common.Traits
 		public string InnerCategory = "Cliff";
 		public string EndType = "Clear";
 		public bool ClosedLoops = true;
+		public int RandomSeed = 0;
 
 		bool disposed;
 
@@ -367,7 +370,7 @@ namespace OpenRA.Mods.Common.Traits
 					permittedTemplates);
 				tilingPath.Start.Direction = plan.AutoStart;
 				tilingPath.End.Direction = plan.AutoEnd;
-				result = tilingPath.Tile(new MersenneTwister(0));
+				result = tilingPath.Tile(new MersenneTwister(RandomSeed));
 				if (result != null)
 					break;
 			}
@@ -379,6 +382,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			Plan = plan;
 			MultiBrush = PlanToBrush(plan);
+			CachedEditorBlitSource = null;
 		}
 	}
 }

@@ -855,6 +855,7 @@ Background@MARKER_TOOL_PANEL:
 	Width: PARENT_WIDTH - 20
 	Height: WINDOW_HEIGHT - 490
 	Background: scrollpanel-bg
+	Visible: false
 	Logic: MapMarkerTilesLogic
 	Children:
 		ScrollPanel@TILE_COLOR_PANEL:
@@ -1051,33 +1052,32 @@ ScrollPanel@MAP_GENERATOR_TOOL_PANEL:
 							Height: 25
 							PanelRoot: EDITOR_WORLD_ROOT
 
-ScrollPanel@TILING_PATH_TOOL_PANEL:
-	X: 9
+Background@TILING_PATH_TOOL_PANEL:
+	X: 10
 	Y: 35
-	Width: 290
+	Width: PARENT_WIDTH - 20
 	Height: WINDOW_HEIGHT - 490
+	Background: scrollpanel-bg
 	Visible: false
-	ScrollBar: Hidden
-	ScrollbarWidth: 0
 	Logic: TilingPathToolLogic
 	Children:
 		Checkbox@EDIT:
 			X: 5
 			Y: 5
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 25
-			Text: tiling-path-edit
+			Text: checkbox-tiling-path-edit
 		Container@START_TYPE:
 			X: 5
 			Y: 35
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 50
 			Children:
 				LabelForInput@LABEL:
 					Y: 0
 					Width: PARENT_WIDTH
 					Height: 20
-					Text: tiling-path-type.start
+					Text: label-tiling-path-type-start
 					For: DROPDOWN
 				DropDownButton@DROPDOWN:
 					Y: 20
@@ -1086,14 +1086,14 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 		Container@INNER_TYPE:
 			X: 5
 			Y: 85
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 50
 			Children:
 				LabelForInput@LABEL:
 					Y: 0
 					Width: PARENT_WIDTH
 					Height: 20
-					Text: tiling-path-type.start
+					Text: label-tiling-path-type-inner
 					For: DROPDOWN
 				DropDownButton@DROPDOWN:
 					Y: 20
@@ -1102,14 +1102,14 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 		Container@END_TYPE:
 			X: 5
 			Y: 135
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 50
 			Children:
 				LabelForInput@LABEL:
 					Y: 0
 					Width: PARENT_WIDTH
 					Height: 20
-					Text: tiling-path-type.start
+					Text: label-tiling-path-type-end
 					For: DROPDOWN
 				DropDownButton@DROPDOWN:
 					Y: 20
@@ -1118,30 +1118,30 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 		Checkbox@CLOSED_LOOPS:
 			X: 5
 			Y: 185
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 25
-			Text: tiling-path-closed-loops
+			Text: checkbox-tiling-path-closed-loops
 		Button@REVERSE:
 			X: 5
 			Y: 215
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 25
-			Text: tiling-path-reverse
+			Text: button-tiling-path-reverse
 		Button@RESET:
 			X: 5
 			Y: 245
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 25
-			Text: tiling-path-reset
+			Text: button-tiling-path-reset
 		Button@RANDOMIZE:
 			X: 5
 			Y: 275
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 25
-			Text: tiling-path-randomize
+			Text: button-tiling-path-randomize
 		Button@PAINT:
 			X: 5
 			Y: 305
-			Width: PARENT_WIDTH - 35
+			Width: PARENT_WIDTH - 10
 			Height: 25
-			Text: tiling-path-paint
+			Text: button-tiling-path-paint
