@@ -23,27 +23,19 @@ namespace OpenRA.Mods.Common.Widgets
 {
 	public sealed class EditorTilingPathBrush : IEditorBrush
 	{
-		readonly WorldRenderer worldRenderer;
-		readonly World world;
-		readonly EditorActionManager editorActionManager;
 		readonly TilingPathTool tool;
-		readonly EditorViewportControllerWidget editorWidget;
-		readonly ITiledTerrainRenderer terrainRenderer;
-
-		PaintMarkerTileEditorAction action;
-		bool painting;
+		readonly World world;
+		readonly WorldRenderer worldRenderer;
+		readonly EditorActionManager editorActionManager;
 
 		MouseInput? startingMouseInput = null;
 
-		public EditorTilingPathBrush(EditorViewportControllerWidget editorWidget, WorldRenderer wr)
+		public EditorTilingPathBrush(TilingPathTool tool)
 		{
-			this.editorWidget = editorWidget;
-			worldRenderer = wr;
-			world = wr.World;
-
+			this.tool = tool;
+			world = tool.World;
+			worldRenderer = tool.WorldRenderer;
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
-			terrainRenderer = world.WorldActor.Trait<ITiledTerrainRenderer>();
-			tool = world.WorldActor.Trait<TilingPathTool>();
 		}
 
 		public bool HandleMouseInput(MouseInput mouseInput)
@@ -59,9 +51,11 @@ namespace OpenRA.Mods.Common.Widgets
 			else if (mouseInput.Event == MouseInputEvent.Up && startingMouseInput != null)
 			{
 				var from = worldRenderer.Viewport.ViewToWorld(
-					((MouseInput)startingMouseInput).Location);
+					startingMouseInput.Value.Location);
 				var to = worldRenderer.Viewport.ViewToWorld(
 					mouseInput.Location);
+
+				startingMouseInput = null;
 
 				var isDrag = to != from;
 				var plan = tool.Plan;
@@ -75,7 +69,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 				var points = plan.PointsWithRallyIndex();
 
-				(bool IsInside, bool IsRally, int RallyIndex, bool isStartDirector, bool isEndDirector)
+				(bool IsInside, bool IsRally, int RallyIndex, bool IsStartDirector, bool IsEndDirector)
 				AssessCPos(CPos cpos)
 				{
 					var isInside = points.Select(p => p.CPos).Contains(cpos);
@@ -85,8 +79,6 @@ namespace OpenRA.Mods.Common.Widgets
 							.Where(p => p.CPos == cpos)
 							.Select(p => p.RallyIndex)
 							.FirstOrDefault(0);
-					// if (isRally && rallyIndex == plan.Rallies.Length)
-					// 	rallyIndex = 0;
 					var isStartDirector =
 						plan.AutoStart != Direction.None
 							&& cpos == plan.FirstPoint - Direction.ToCVec(plan.AutoStart);
@@ -94,8 +86,8 @@ namespace OpenRA.Mods.Common.Widgets
 						plan.AutoEnd != Direction.None
 							&& cpos == plan.LastPoint + Direction.ToCVec(plan.AutoEnd);
 					return (isInside, isRally, rallyIndex, isStartDirector, isEndDirector);
-
 				}
+
 				var (fromIsInside, fromIsRally, fromRallyIndex, fromIsStartDirector, fromIsEndDirector) =
 					AssessCPos(from);
 				var (toIsInside, toIsRally, toRallyIndex, toIsStartDirector, toIsEndDirector) =
@@ -129,14 +121,11 @@ namespace OpenRA.Mods.Common.Widgets
 							{
 								UpdatePlan(plan.WithRallyReplaced(fromRallyIndex, to));
 							}
-							// Not allowed to drag rallies onto each other.
 						}
 						else
 						{
 							UpdatePlan(plan.Moved(to - from));
 						}
-						// Find start director
-						// Find end director
 					}
 				}
 				else
@@ -161,12 +150,10 @@ namespace OpenRA.Mods.Common.Widgets
 					}
 					else
 					{
-						// Find existing rally (ignore)
-						// Find existing link
-						// Outside, so add new rally.
 						UpdatePlan(plan.WithRallyAppended(to));
 					}
 				}
+
 				return true;
 			}
 			else
@@ -178,16 +165,11 @@ namespace OpenRA.Mods.Common.Widgets
 		void IEditorBrush.TickRender(WorldRenderer wr, Actor self) { }
 		IEnumerable<IRenderable> IEditorBrush.RenderAboveShroud(Actor self, WorldRenderer wr)
 		{
-			var map = world.Map;
-
-			if (tool.MultiBrush == null)
+			if (tool.EditorBlitSource == null)
 				yield break;
 
-			if (tool.CachedEditorBlitSource == null)
-				tool.CachedEditorBlitSource = tool.MultiBrush.ToEditorBlitSource(worldRenderer);
-
 			var preview = EditorBlit.PreviewBlitSource(
-				tool.CachedEditorBlitSource.Value,
+				tool.EditorBlitSource.Value,
 				MapBlitFilters.Terrain | MapBlitFilters.Actors,
 				CVec.Zero,
 				wr);
@@ -202,7 +184,7 @@ namespace OpenRA.Mods.Common.Widgets
 			if (plan == null)
 				yield break;
 
-			var mainColor = tool.MultiBrush != null ? Color.Cyan : Color.Red;
+			var mainColor = tool.EditorBlitSource != null ? Color.Cyan : Color.Red;
 
 			var points = plan.Points();
 			for (var i = 1; i < points.Length; i++)
@@ -299,12 +281,12 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public void Do()
 		{
-			tool.UpdatePlan(newPlan);
+			tool.SetPlan(newPlan);
 		}
 
 		public void Undo()
 		{
-			tool.UpdatePlan(oldPlan);
+			tool.SetPlan(oldPlan);
 		}
 	}
 
@@ -319,9 +301,7 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly TilingPathTool.PathPlan plan;
 		readonly EditorBlit editorBlit;
 
-		public PaintTilingPathEditorAction(
-			TilingPathTool tool,
-			WorldRenderer worldRenderer)
+		public PaintTilingPathEditorAction(TilingPathTool tool)
 		{
 			this.tool = tool;
 			plan = tool.Plan;
@@ -332,7 +312,7 @@ namespace OpenRA.Mods.Common.Widgets
 			if (editorActorLayer == null)
 				throw new ArgumentException("World has no EditorActorLayer");
 
-			var blitSource = tool.MultiBrush.ToEditorBlitSource(worldRenderer);
+			var blitSource = tool.EditorBlitSource.Value;
 
 			editorBlit = new EditorBlit(
 				MapBlitFilters.Terrain | MapBlitFilters.Actors,
@@ -351,14 +331,14 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public void Do()
 		{
-			tool.UpdatePlan(null);
+			tool.SetPlan(null);
 			editorBlit.Commit();
 		}
 
 		public void Undo()
 		{
 			editorBlit.Revert();
-			tool.UpdatePlan(plan);
+			tool.SetPlan(plan);
 		}
 	}
 }

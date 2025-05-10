@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using OpenRA.Graphics;
-using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Widgets;
 
@@ -24,9 +23,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly TilingPathTool tool;
 		readonly EditorViewportControllerWidget editorWidget;
 		readonly EditorActionManager editorActionManager;
-		readonly World world;
-		readonly ModData modData;
-		readonly WorldRenderer worldRenderer;
 
 		[ObjectCreator.UseCtor]
 		public TilingPathToolLogic(
@@ -40,9 +36,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
 
 			editorWidget = widget.Parent.Parent.Parent.Parent.Get<EditorViewportControllerWidget>("MAP_EDITOR");
-			this.world = world;
-			this.modData = modData;
-			this.worldRenderer = worldRenderer;
 
 			var editCheckbox = widget.Get<CheckboxWidget>("EDIT");
 			editCheckbox.Disabled = !tool.Available;
@@ -54,7 +47,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				editorWidget.SetBrush(
 					editCheckbox.IsChecked()
 						? null
-						: new EditorTilingPathBrush(editorWidget, worldRenderer));
+						: new EditorTilingPathBrush(tool));
 
 			void SetupDropDown(
 				string name,
@@ -71,11 +64,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					ScrollItemWidget SetupItem(string choice, ScrollItemWidget template)
 					{
 						bool IsSelected() => choice == read();
-						void OnClick()
-						{
-							write(choice);
-							tool.UpdatePlan(tool.Plan);
-						};
+						void OnClick() => write(choice);
 						var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
 						item.Get<LabelWidget>("LABEL").GetText = () => choice;
 						return item;
@@ -85,73 +74,49 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				};
 			}
 
-			SetupDropDown("START_TYPE", tool.StartTypes, () => tool.StartType, (v) => tool.StartType = v);
-			SetupDropDown("INNER_TYPE", tool.InnerTypes, () => tool.InnerType, (v) => tool.InnerType = v);
-			SetupDropDown("END_TYPE", tool.EndTypes, () => tool.EndType, (v) => tool.EndType = v);
+			SetupDropDown("START_TYPE", tool.StartTypes, () => tool.StartType, tool.SetStartType);
+			SetupDropDown("INNER_TYPE", tool.InnerTypes, () => tool.InnerType, tool.SetInnerType);
+			SetupDropDown("END_TYPE", tool.EndTypes, () => tool.EndType, tool.SetEndType);
 
 			var deviationSlider = widget.Get<ContainerWidget>("DEVIATION").Get<SliderWidget>("SLIDER");
 			deviationSlider.GetValue = () => tool.MaxDeviation;
-			deviationSlider.OnChange += (value) =>
-			{
-				tool.MaxDeviation = (int)value;
-				tool.UpdatePlan(tool.Plan);
-			};
+			deviationSlider.OnChange += (value) => tool.SetMaxDeviation((int)value);
 
 			var closedLoopsCheckbox = widget.Get<CheckboxWidget>("CLOSED_LOOPS");
 			closedLoopsCheckbox.IsChecked = () => tool.ClosedLoops;
-			closedLoopsCheckbox.OnClick = () =>
-			{
-				tool.ClosedLoops = !tool.ClosedLoops;
-				tool.UpdatePlan(tool.Plan);
-			};
+			closedLoopsCheckbox.OnClick = () => tool.SetClosedLoops(!tool.ClosedLoops);
 
 			var resetButton = widget.Get<ButtonWidget>("RESET");
-			resetButton.OnClick = () => Reset();
-
-			var reverseButton = widget.Get<ButtonWidget>("REVERSE");
-			reverseButton.OnClick = () => Reverse();
-
-			var randomizeButton = widget.Get<ButtonWidget>("RANDOMIZE");
-			randomizeButton.OnClick = () =>
+			resetButton.OnClick = () =>
 			{
-				tool.RandomSeed = Environment.TickCount;
-				tool.UpdatePlan(tool.Plan);
+				if (tool.Plan == null)
+					return;
+
+				editorActionManager.Add(
+					new UpdateTilingPathPlanEditorAction(tool, null));
 			};
 
+			var reverseButton = widget.Get<ButtonWidget>("REVERSE");
+			reverseButton.OnClick = () =>
+			{
+				if (tool.Plan == null)
+					return;
+
+				editorActionManager.Add(
+					new UpdateTilingPathPlanEditorAction(tool, tool.Plan.Reversed()));
+			};
+
+			var randomizeButton = widget.Get<ButtonWidget>("RANDOMIZE");
+			randomizeButton.OnClick = () => tool.SetRandomSeed(Environment.TickCount);
+
 			var paintButton = widget.Get<ButtonWidget>("PAINT");
-			paintButton.OnClick = () => Paint();
-		}
+			paintButton.OnClick = () =>
+			{
+				if (tool.EditorBlitSource == null)
+					return;
 
-		protected override void Dispose(bool disposing)
-		{
-			base.Dispose(disposing);
-		}
-
-		void Reset()
-		{
-			if (tool.Plan == null)
-				return;
-
-			editorActionManager.Add(
-				new UpdateTilingPathPlanEditorAction(tool, null));
-		}
-
-		void Reverse()
-		{
-			if (tool.Plan == null)
-				return;
-
-			editorActionManager.Add(
-				new UpdateTilingPathPlanEditorAction(tool, tool.Plan.Reversed()));
-		}
-
-		void Paint()
-		{
-			if (tool.Plan == null || tool.MultiBrush == null)
-				return;
-
-			editorActionManager.Add(
-				new PaintTilingPathEditorAction(tool, worldRenderer));
+				editorActionManager.Add(new PaintTilingPathEditorAction(tool));
+			};
 		}
 	}
 }

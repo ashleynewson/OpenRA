@@ -58,7 +58,8 @@ namespace OpenRA.Mods.Common.Traits
 			public readonly ImmutableArray<CPos> Rallies;
 			public int AutoStart
 			{
-				get {
+				get
+				{
 					if (Start != Direction.None)
 					{
 						return Start;
@@ -72,9 +73,11 @@ namespace OpenRA.Mods.Common.Traits
 					}
 				}
 			}
+
 			public int AutoEnd
 			{
-				get {
+				get
+				{
 					if (End != Direction.None)
 					{
 						return End;
@@ -92,6 +95,7 @@ namespace OpenRA.Mods.Common.Traits
 					}
 				}
 			}
+
 			public CPos FirstPoint => Rallies[0];
 			public CPos LastPoint => Loop ? Rallies[0] : Rallies[^1];
 
@@ -131,7 +135,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			public PathPlan WithRallyAppended(CPos cpos)
 			{
-				return new PathPlan(Start, Direction.None, Loop, [..Rallies, cpos]);
+				return new PathPlan(Start, Direction.None, Loop, [.. Rallies, cpos]);
 			}
 
 			public PathPlan WithRallyRemoved(int index)
@@ -141,19 +145,19 @@ namespace OpenRA.Mods.Common.Traits
 
 				return new PathPlan(
 					index != 0 ? Start : Direction.None,
-					index != (Rallies.Length - 1) ? End : Direction.None,
+					index != Rallies.Length - 1 ? End : Direction.None,
 					Loop,
-					[..Rallies[..index], ..Rallies[(index + 1)..]]);
+					[.. Rallies[..index], .. Rallies[(index + 1)..]]);
 			}
 
 			public PathPlan WithRallyReplaced(int index, CPos cpos)
 			{
-				return new PathPlan(Start, End, Loop, [..Rallies[..index], cpos, ..Rallies[(index + 1)..]]);
+				return new PathPlan(Start, End, Loop, [.. Rallies[..index], cpos, .. Rallies[(index + 1)..]]);
 			}
 
 			public PathPlan WithRallyInserted(int index, CPos cpos)
 			{
-				return new PathPlan(Start, End, Loop, [..Rallies[..index], cpos, ..Rallies[index..]]);
+				return new PathPlan(Start, End, Loop, [.. Rallies[..index], cpos, .. Rallies[index..]]);
 			}
 
 			public PathPlan Moved(CVec offset)
@@ -203,7 +207,7 @@ namespace OpenRA.Mods.Common.Traits
 				var inertia = Direction.ToCVec(AutoStart);
 				if (inertia.X != 0 && inertia.Y != 0)
 					inertia = new CVec(inertia.X, 0);
-				
+
 				void AddPointsUpTo(CPos target, int i)
 				{
 					if (cpos == target)
@@ -212,7 +216,7 @@ namespace OpenRA.Mods.Common.Traits
 					var offset = target - cpos;
 					var xStep = Math.Sign(offset.X);
 					var yStep = Math.Sign(offset.Y);
-					// (xStep and yStep cannot both be 0.)
+
 					var axisAligned = xStep == 0 || yStep == 0;
 
 					if (axisAligned)
@@ -228,6 +232,7 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						var xUnderModulo = Math.Abs(offset.Y);
 						var yUnderModulo = Math.Abs(offset.X);
+
 						// Technically, these range from 0 inclusive to modulo inclusive!
 						var xModulo = xUnderModulo * 2;
 						var yModulo = yUnderModulo * 2;
@@ -256,16 +261,17 @@ namespace OpenRA.Mods.Common.Traits
 								yUnderModulo = yModulo;
 								inertia = new CVec(0, yStep);
 							}
-							else if (inertia.X != 0) // equal
+							else if (inertia.X != 0)
 							{
 								xUnderModulo = xModulo;
 								yUnderModulo = 0;
 							}
-							else // equal, inertia.Y != 0
+							else
 							{
 								yUnderModulo = yModulo;
 								xUnderModulo = 0;
 							}
+
 							cpos += inertia;
 							points.Add((cpos, i));
 						}
@@ -282,22 +288,21 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		public readonly World World;
 		public readonly bool Available;
-		ITiledTerrainRenderer terrainRenderer = null;
-		public PathPlan Plan = null;
-		public MultiBrush MultiBrush = null;
-		public EditorBlitSource? CachedEditorBlitSource = null;
+		public readonly World World;
+		public WorldRenderer WorldRenderer = null;
 		readonly ImmutableArray<MultiBrush> segmentedBrushes;
 		public readonly ImmutableArray<string> StartTypes;
 		public readonly ImmutableArray<string> InnerTypes;
 		public readonly ImmutableArray<string> EndTypes;
-		public string StartType;
-		public string InnerType;
-		public string EndType;
-		public bool ClosedLoops = true;
-		public int RandomSeed = 0;
-		public int MaxDeviation = 5;
+		public PathPlan Plan { get; private set; } = null;
+		public string StartType { get; private set; } = null;
+		public string InnerType { get; private set; } = null;
+		public string EndType { get; private set; } = null;
+		public bool ClosedLoops { get; private set; } = true;
+		public int RandomSeed { get; private set; } = 0;
+		public int MaxDeviation { get; private set; } = 5;
+		public EditorBlitSource? EditorBlitSource { get; private set; } = null;
 
 		bool disposed;
 
@@ -349,7 +354,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void WorldLoaded(World w, WorldRenderer wr)
 		{
-			terrainRenderer = World.WorldActor.Trait<ITiledTerrainRenderer>();
+			WorldRenderer = wr;
 		}
 
 		void INotifyActorDisposing.Disposing(Actor self)
@@ -367,11 +372,14 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool IRenderAnnotations.SpatiallyPartitionable => false;
 
-		MultiBrush PlanToBrush(PathPlan plan)
+		EditorBlitSource? TilePlan(PathPlan plan)
 		{
+			if (WorldRenderer == null)
+				return null;
+
 			if (plan == null || plan.Rallies.Length < 2)
 				return null;
-			
+
 			var points = plan.Points();
 			if (points == null)
 				return null;
@@ -394,10 +402,9 @@ namespace OpenRA.Mods.Common.Traits
 					[InnerType],
 					terminalTypes.Select(t => t.End));
 
-			MultiBrush result = null;
 			foreach (var (startType, endType) in terminalTypes)
 			{
-				TilingPath tilingPath = new TilingPath(
+				var tilingPath = new TilingPath(
 					map,
 					points,
 					MaxDeviation,
@@ -406,19 +413,59 @@ namespace OpenRA.Mods.Common.Traits
 					permittedTemplates);
 				tilingPath.Start.Direction = plan.AutoStart;
 				tilingPath.End.Direction = plan.AutoEnd;
-				result = tilingPath.Tile(new MersenneTwister(RandomSeed));
+				var result = tilingPath.Tile(new MersenneTwister(RandomSeed));
 				if (result != null)
-					break;
+					return result.ToEditorBlitSource(WorldRenderer);
 			}
 
-			return result;
+			return null;
 		}
 
-		public void UpdatePlan(PathPlan plan)
+		public void Update()
 		{
-			Plan = plan;
-			MultiBrush = PlanToBrush(plan);
-			CachedEditorBlitSource = null;
+			EditorBlitSource = TilePlan(Plan);
+		}
+
+		public void SetPlan(PathPlan value)
+		{
+			Plan = value;
+			Update();
+		}
+
+		public void SetStartType(string value)
+		{
+			StartType = value;
+			Update();
+		}
+
+		public void SetInnerType(string value)
+		{
+			InnerType = value;
+			Update();
+		}
+
+		public void SetEndType(string value)
+		{
+			EndType = value;
+			Update();
+		}
+
+		public void SetClosedLoops(bool value)
+		{
+			ClosedLoops = value;
+			Update();
+		}
+
+		public void SetRandomSeed(int value)
+		{
+			RandomSeed = value;
+			Update();
+		}
+
+		public void SetMaxDeviation(int value)
+		{
+			MaxDeviation = value;
+			Update();
 		}
 	}
 }
