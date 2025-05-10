@@ -27,7 +27,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly World world;
 		readonly ModData modData;
 		readonly WorldRenderer worldRenderer;
-		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
 
 		[ObjectCreator.UseCtor]
 		public TilingPathToolLogic(
@@ -44,9 +43,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			this.world = world;
 			this.modData = modData;
 			this.worldRenderer = worldRenderer;
-			segmentedBrushes = MultiBrush.LoadCollection(world.Map, "Segmented");
 
 			var editCheckbox = widget.Get<CheckboxWidget>("EDIT");
+			editCheckbox.Disabled = !tool.Available;
+			if (!tool.Available)
+				return;
+
 			editCheckbox.IsChecked = () => editorWidget.CurrentBrush is EditorTilingPathBrush;
 			editCheckbox.OnClick = () =>
 				editorWidget.SetBrush(
@@ -71,15 +73,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						bool IsSelected() => choice == read();
 						void OnClick()
 						{
-							// TODO: Add to undo/redo stack? Make automatic?
 							write(choice);
 							tool.UpdatePlan(tool.Plan);
 						};
 						var item = ScrollItemWidget.Setup(template, IsSelected, OnClick);
-
-						// TODO: Fluent
 						item.Get<LabelWidget>("LABEL").GetText = () => choice;
-
 						return item;
 					}
 
@@ -88,13 +86,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 
 			SetupDropDown("START_TYPE", tool.StartTypes, () => tool.StartType, (v) => tool.StartType = v);
-			SetupDropDown("INNER_TYPE", tool.InnerTypes, () => tool.InnerCategory, (v) => tool.InnerCategory = v);
+			SetupDropDown("INNER_TYPE", tool.InnerTypes, () => tool.InnerType, (v) => tool.InnerType = v);
 			SetupDropDown("END_TYPE", tool.EndTypes, () => tool.EndType, (v) => tool.EndType = v);
 
 			var deviationSlider = widget.Get<ContainerWidget>("DEVIATION").Get<SliderWidget>("SLIDER");
-			deviationSlider.MinimumValue = 0;
-			deviationSlider.MaximumValue = 10;
-			deviationSlider.Ticks = 11;
 			deviationSlider.GetValue = () => tool.MaxDeviation;
 			deviationSlider.OnChange += (value) =>
 			{
@@ -154,30 +149,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			if (tool.Plan == null || tool.MultiBrush == null)
 				return;
-			
-			// var points = plan.Points();
-			// if (points == null)
-			// 	return;
-
-			// var map = world.Map;
-			// var terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
-			// var permittedTemplates =
-			// 	TilingPath.PermittedSegments.FromTypes(
-			// 		segmentedBrushes, ["Clear"], ["Cliff"], ["Clear"]);
-
-			// var tilingPath = new TilingPath(
-			// 	map,
-			// 	points,
-			// 	5,
-			// 	"Clear",
-			// 	"Clear",
-			// 	permittedTemplates);
-			// tilingPath.Start.Direction = plan.AutoStart;
-			// tilingPath.End.Direction = plan.AutoEnd;
-
-			// var multiBrush = tilingPath.Tile(new MersenneTwister(0));
-			// if (multiBrush == null)
-			// 	return;
 
 			editorActionManager.Add(
 				new PaintTilingPathEditorAction(tool, worldRenderer));

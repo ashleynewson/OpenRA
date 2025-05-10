@@ -1157,6 +1157,9 @@ Background@TILING_PATH_TOOL_PANEL:
 					Y: 20
 					Width: PARENT_WIDTH
 					Height: 25
+					MinimumValue: 0
+					MaximumValue: 10
+					Ticks: 11
 		Checkbox@CLOSED_LOOPS:
 			X: 5
 			Y: 235

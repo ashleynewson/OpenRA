@@ -16,6 +16,7 @@ using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.EditorBrushes;
 using OpenRA.Mods.Common.MapGenerator;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Support;
 using OpenRA.Traits;
 
@@ -30,6 +31,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("The widget tree to open when the tool is selected.")]
 		public readonly string PanelWidget = "TILING_PATH_TOOL_PANEL";
+
+		[Desc("The preferred defaults for the start type.")]
+		public readonly string[] DefaultStart = [];
+		[Desc("The preferred defaults for the inner type.")]
+		public readonly string[] DefaultInner = [];
+		[Desc("The preferred defaults for the end type.")]
+		public readonly string[] DefaultEnd = [];
 
 		public override object Create(ActorInitializer init)
 		{
@@ -275,17 +283,18 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		public readonly World World;
+		public readonly bool Available;
 		ITiledTerrainRenderer terrainRenderer = null;
 		public PathPlan Plan = null;
 		public MultiBrush MultiBrush = null;
 		public EditorBlitSource? CachedEditorBlitSource = null;
-		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
+		readonly ImmutableArray<MultiBrush> segmentedBrushes;
 		public readonly ImmutableArray<string> StartTypes;
 		public readonly ImmutableArray<string> InnerTypes;
 		public readonly ImmutableArray<string> EndTypes;
-		public string StartType = "Clear";
-		public string InnerCategory = "Cliff";
-		public string EndType = "Clear";
+		public string StartType;
+		public string InnerType;
+		public string EndType;
 		public bool ClosedLoops = true;
 		public int RandomSeed = 0;
 		public int MaxDeviation = 5;
@@ -295,7 +304,19 @@ namespace OpenRA.Mods.Common.Traits
 		public TilingPathTool(Actor self, TilingPathToolInfo info)
 		{
 			World = self.World;
-			segmentedBrushes = MultiBrush.LoadCollection(World.Map, "Segmented");
+
+			var templatedTerrainInfo = World.Map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			segmentedBrushes =
+				templatedTerrainInfo.MultiBrushCollections.Keys
+					.Order()
+					.SelectMany(name => MultiBrush.LoadCollection(World.Map, name))
+					.Where(multiBrush => multiBrush.Segment != null)
+					.ToImmutableArray();
+
+			Available = segmentedBrushes.Length > 0;
+
+			if (!Available)
+				return;
 
 			StartTypes = segmentedBrushes
 				.Where(b => b.Segment != null)
@@ -317,6 +338,13 @@ namespace OpenRA.Mods.Common.Traits
 				.Distinct()
 				.Order()
 				.ToImmutableArray();
+
+			StartType = info.DefaultStart
+				.FirstOrDefault(StartTypes.Contains, StartTypes[0]);
+			InnerType = info.DefaultInner
+				.FirstOrDefault(InnerTypes.Contains, InnerTypes[0]);
+			EndType = info.DefaultEnd
+				.FirstOrDefault(EndTypes.Contains, EndTypes[0]);
 		}
 
 		public void WorldLoaded(World w, WorldRenderer wr)
@@ -353,7 +381,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				terminalTypes = StartTypes.Concat(EndTypes)
 					.Distinct()
-					.Where(t => t.Split('.')[0] == InnerCategory)
+					.Where(t => t.Split('.')[0] == InnerType)
 					.Select(t => (t, t))
 					.ToArray();
 			}
@@ -363,7 +391,7 @@ namespace OpenRA.Mods.Common.Traits
 				TilingPath.PermittedSegments.FromTypes(
 					segmentedBrushes,
 					terminalTypes.Select(t => t.Start),
-					[InnerCategory],
+					[InnerType],
 					terminalTypes.Select(t => t.End));
 
 			MultiBrush result = null;
