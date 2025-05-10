@@ -46,6 +46,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			this.worldRenderer = worldRenderer;
 			segmentedBrushes = MultiBrush.LoadCollection(world.Map, "Segmented");
 
+			var editCheckbox = widget.Get<CheckboxWidget>("EDIT");
+			editCheckbox.IsChecked = () => editorWidget.CurrentBrush is EditorTilingPathBrush;
+			editCheckbox.OnClick = () =>
+				editorWidget.SetBrush(
+					editCheckbox.IsChecked()
+						? null
+						: new EditorTilingPathBrush(editorWidget, worldRenderer));
+
 			void SetupDropDown(
 				string name,
 				ImmutableArray<string> choices,
@@ -79,17 +87,20 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				};
 			}
 
-			SetupDropDown("START_TYPE", tool.segmentTypes, () => tool.StartType, (v) => tool.StartType = v);
-			SetupDropDown("INNER_TYPE", tool.segmentCategories, () => tool.InnerCategory, (v) => tool.InnerCategory = v);
-			SetupDropDown("END_TYPE", tool.segmentTypes, () => tool.EndType, (v) => tool.EndType = v);
+			SetupDropDown("START_TYPE", tool.StartTypes, () => tool.StartType, (v) => tool.StartType = v);
+			SetupDropDown("INNER_TYPE", tool.InnerTypes, () => tool.InnerCategory, (v) => tool.InnerCategory = v);
+			SetupDropDown("END_TYPE", tool.EndTypes, () => tool.EndType, (v) => tool.EndType = v);
 
-			var editCheckbox = widget.Get<CheckboxWidget>("EDIT");
-			editCheckbox.IsChecked = () => editorWidget.CurrentBrush is EditorTilingPathBrush;
-			editCheckbox.OnClick = () =>
-				editorWidget.SetBrush(
-					editCheckbox.IsChecked()
-						? null
-						: new EditorTilingPathBrush(editorWidget, worldRenderer));
+			var deviationSlider = widget.Get<ContainerWidget>("DEVIATION").Get<SliderWidget>("SLIDER");
+			deviationSlider.MinimumValue = 0;
+			deviationSlider.MaximumValue = 10;
+			deviationSlider.Ticks = 11;
+			deviationSlider.GetValue = () => tool.MaxDeviation;
+			deviationSlider.OnChange += (value) =>
+			{
+				tool.MaxDeviation = (int)value;
+				tool.UpdatePlan(tool.Plan);
+			};
 
 			var closedLoopsCheckbox = widget.Get<CheckboxWidget>("CLOSED_LOOPS");
 			closedLoopsCheckbox.IsChecked = () => tool.ClosedLoops;

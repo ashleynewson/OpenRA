@@ -1115,33 +1115,49 @@ Background@TILING_PATH_TOOL_PANEL:
 					Y: 20
 					Width: PARENT_WIDTH
 					Height: 25
-		Checkbox@CLOSED_LOOPS:
+		Container@DEVIATION:
 			X: 5
 			Y: 185
+			Width: PARENT_WIDTH - 10
+			Height: 50
+			Children:
+				LabelForInput@LABEL:
+					Y: 0
+					Width: PARENT_WIDTH
+					Height: 20
+					Text: label-tiling-path-deviation
+					For: SLIDER
+				Slider@SLIDER:
+					Y: 20
+					Width: PARENT_WIDTH
+					Height: 25
+		Checkbox@CLOSED_LOOPS:
+			X: 5
+			Y: 235
 			Width: PARENT_WIDTH - 10
 			Height: 25
 			Text: checkbox-tiling-path-closed-loops
 		Button@REVERSE:
 			X: 5
-			Y: 215
+			Y: 265
 			Width: PARENT_WIDTH - 10
 			Height: 25
 			Text: button-tiling-path-reverse
 		Button@RESET:
 			X: 5
-			Y: 245
+			Y: 295
 			Width: PARENT_WIDTH - 10
 			Height: 25
 			Text: button-tiling-path-reset
 		Button@RANDOMIZE:
 			X: 5
-			Y: 275
+			Y: 325
 			Width: PARENT_WIDTH - 10
 			Height: 25
 			Text: button-tiling-path-randomize
 		Button@PAINT:
 			X: 5
-			Y: 305
+			Y: 355
 			Width: PARENT_WIDTH - 10
 			Height: 25
 			Text: button-tiling-path-paint

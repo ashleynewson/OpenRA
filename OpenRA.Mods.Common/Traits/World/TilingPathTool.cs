@@ -280,13 +280,15 @@ namespace OpenRA.Mods.Common.Traits
 		public MultiBrush MultiBrush = null;
 		public EditorBlitSource? CachedEditorBlitSource = null;
 		readonly IReadOnlyList<MultiBrush> segmentedBrushes;
-		public readonly ImmutableArray<string> segmentCategories;
-		public readonly ImmutableArray<string> segmentTypes;
+		public readonly ImmutableArray<string> StartTypes;
+		public readonly ImmutableArray<string> InnerTypes;
+		public readonly ImmutableArray<string> EndTypes;
 		public string StartType = "Clear";
 		public string InnerCategory = "Cliff";
 		public string EndType = "Clear";
 		public bool ClosedLoops = true;
 		public int RandomSeed = 0;
+		public int MaxDeviation = 5;
 
 		bool disposed;
 
@@ -295,18 +297,23 @@ namespace OpenRA.Mods.Common.Traits
 			World = self.World;
 			segmentedBrushes = MultiBrush.LoadCollection(World.Map, "Segmented");
 
-			segmentCategories = segmentedBrushes
+			StartTypes = segmentedBrushes
 				.Where(b => b.Segment != null)
-				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
-				.Select(s => s.Split('.')[0])
+				.Select(b => string.Join(".", b.Segment.Start.Split('.').SkipLast(1)))
 				.Distinct()
 				.Order()
 				.ToImmutableArray();
 
-			segmentTypes = segmentedBrushes
+			InnerTypes = segmentedBrushes
 				.Where(b => b.Segment != null)
-				.SelectMany<MultiBrush, string>(b => [b.Segment.Start, b.Segment.Inner, b.Segment.End])
-				.Select(s => string.Join(".", s.Split('.').SkipLast(1)))
+				.Select(b => b.Segment.Inner.Split('.')[0])
+				.Distinct()
+				.Order()
+				.ToImmutableArray();
+
+			EndTypes = segmentedBrushes
+				.Where(b => b.Segment != null)
+				.Select(b => string.Join(".", b.Segment.End.Split('.').SkipLast(1)))
 				.Distinct()
 				.Order()
 				.ToImmutableArray();
@@ -344,7 +351,8 @@ namespace OpenRA.Mods.Common.Traits
 			(string Start, string End)[] terminalTypes = [(StartType, EndType)];
 			if (ClosedLoops && plan.Loop)
 			{
-				terminalTypes = segmentTypes
+				terminalTypes = StartTypes.Concat(EndTypes)
+					.Distinct()
 					.Where(t => t.Split('.')[0] == InnerCategory)
 					.Select(t => (t, t))
 					.ToArray();
@@ -364,7 +372,7 @@ namespace OpenRA.Mods.Common.Traits
 				TilingPath tilingPath = new TilingPath(
 					map,
 					points,
-					5,
+					MaxDeviation,
 					startType,
 					endType,
 					permittedTemplates);
