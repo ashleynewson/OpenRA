@@ -3182,6 +3182,259 @@ Templates:
 
 MultiBrushCollections:
 	Segmented:
+		MultiBrush@73:
+			Template: 73
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.R
+				Points: 0,1, 1,1
+		MultiBrush@73reverse:
+			Template: 73
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.L
+				Points: 1,0, 0,0
+		MultiBrush@74:
+			Template: 74
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.D
+				Points: 0,0, 0,1
+		MultiBrush@74reverse:
+			Template: 74
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.U
+				Points: 1,1, 1,0
+		MultiBrush@296:
+			Template: 296
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.R
+				Points: 0,2, 1,2, 2,2
+		MultiBrush@296reverse:
+			Template: 296
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@297:
+			Template: 297
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.R
+				Points: 0,2, 1,2
+		MultiBrush@297reverse:
+			Template: 297
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.L
+				Points: 1,1, 0,1
+		MultiBrush@298:
+			Template: 298
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@298reverse:
+			Template: 298
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.U
+				Points: 2,2, 2,1, 2,0
+		MultiBrush@299:
+			Template: 299
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.D
+				Points: 1,0, 1,1
+		MultiBrush@299reverse:
+			Template: 299
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.U
+				Points: 2,1, 2,0
+		MultiBrush@60:
+			Template: 60
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.R
+				Points: 0,2, 1,2, 2,2, 3,2, 4,2
+		MultiBrush@60reverse:
+			Template: 60
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.L
+				Points: 4,1, 3,1, 2,1, 1,1, 0,1
+		MultiBrush@61:
+			Template: 61
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.R
+				Points: 0,2, 1,2, 2,2, 3,2, 4,2
+		MultiBrush@61reverse:
+			Template: 61
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.L
+				Points: 4,1, 3,1, 2,1, 1,1, 0,1
+		MultiBrush@62:
+			Template: 62
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.R
+				Points: 0,4, 1,4, 2,4, 3,4, 3,3, 4,3, 4,2, 5,2, 6,2
+		MultiBrush@62reverse:
+			Template: 62
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.L
+				Points: 6,1, 5,1, 4,1, 3,1, 2,1, 2,2, 1,2, 1,3, 0,3
+		MultiBrush@63:
+			Template: 63
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.R
+				Points: 0,2, 1,2, 1,3, 2,3, 3,3, 3,4, 4,4, 5,4, 5,5, 6,5
+		MultiBrush@63reverse:
+			Template: 63
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.L
+				Points: 6,4, 6,3, 5,3, 5,2, 4,2, 4,1, 3,1, 2,1, 1,1, 0,1
+		MultiBrush@64:
+			Template: 64
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.D
+				Points: 1,0, 1,1, 1,2, 1,3, 1,4
+		MultiBrush@64reverse:
+			Template: 64
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.U
+				Points: 2,4, 2,3, 2,2, 2,1, 2,0
+		MultiBrush@65:
+			Template: 65
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.D
+				Points: 2,0, 2,1, 2,2, 2,3, 2,4
+		MultiBrush@65reverse:
+			Template: 65
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.U
+				Points: 3,4, 3,3, 3,2, 3,1, 3,0
+		MultiBrush@66:
+			Template: 66
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.D
+				Points: 4,0, 4,1, 3,1, 3,2, 2,2, 2,3, 2,4, 2,5, 2,6, 1,6, 1,7, 1,8
+		MultiBrush@66reverse:
+			Template: 66
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.U
+				Points: 2,8, 2,7, 2,6, 3,6, 3,5, 3,4, 3,3, 4,3, 4,2, 5,2, 5,1, 5,0
+		MultiBrush@67:
+			Template: 67
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.D
+				Points: 1,0, 1,1, 2,1, 2,2, 2,3, 2,4, 2,5, 3,5, 3,6, 3,7, 4,7, 4,8
+		MultiBrush@67reverse:
+			Template: 67
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.U
+				Points: 5,8, 5,7, 5,6, 4,6, 4,5, 4,4, 3,4, 3,3, 3,2, 3,1, 2,1, 2,0
+		MultiBrush@69:
+			Template: 69
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.R
+				Points: 2,3, 2,2, 3,2
+		MultiBrush@69reverse:
+			Template: 69
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.D
+				Points: 3,1, 2,1, 1,1, 1,2, 1,3
+		MultiBrush@70:
+			Template: 70
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.D
+				Points: 0,2, 1,2, 1,3
+		MultiBrush@70reverse:
+			Template: 70
+			Segment:
+				Start: River.U
+				Inner: River
+				End: River.L
+				Points: 2,3, 2,2, 2,1, 1,1, 0,1
+		MultiBrush@71:
+			Template: 71
+			Segment:
+				Start: River.L
+				Inner: River
+				End: River.U
+				Points: 3,1, 2,1, 2,0
+		MultiBrush@71reverse:
+			Template: 71
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.R
+				Points: 1,0, 1,1, 1,2, 2,2, 3,2
+		MultiBrush@72:
+			Template: 72
+			Segment:
+				Start: River.D
+				Inner: River
+				End: River.L
+				Points: 1,0, 1,1, 0,1
+		MultiBrush@72reverse:
+			Template: 72
+			Segment:
+				Start: River.R
+				Inner: River
+				End: River.U
+				Points: 0,2, 1,2, 2,2, 2,1, 2,0
+
 		MultiBrush@180:
 			Template: 180
 			Segment:
