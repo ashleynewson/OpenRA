@@ -3868,6 +3868,280 @@ MultiBrushCollections:
 				End: River.U
 				Points: 1,1, 1,0
 
+		MultiBrush@59:
+			Template: 59
+			Segment:
+				Start: WaterCliff.L
+				End: Beach.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@60:
+			Template: 60
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 2,2, 1,2, 1,1, 0,1
+		MultiBrush@61:
+			Template: 61
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@62:
+			Template: 62
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@63:
+			Template: 63
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@64:
+			Template: 64
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 2,1, 1,1, 1,2, 0,2
+		MultiBrush@65:
+			Template: 65
+			Segment:
+				Start: Beach.L
+				End: WaterCliff.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@66:
+			Template: 66
+			Segment:
+				Start: WaterCliff.U
+				End: Beach.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@67:
+			Template: 67
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 2,2, 2,1, 1,1, 1,0
+		MultiBrush@68:
+			Template: 68
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@69:
+			Template: 69
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@70:
+			Template: 70
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@71:
+			Template: 71
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 1,2, 1,1, 2,1, 2,0
+		MultiBrush@72:
+			Template: 72
+			Segment:
+				Start: Beach.U
+				End: WaterCliff.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@73:
+			Template: 73
+			Segment:
+				Start: Beach.R
+				End: WaterCliff.R
+				Points: 0,1, 1,1, 2,1
+		MultiBrush@74:
+			Template: 74
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 0,1, 1,1, 1,2, 2,2
+		MultiBrush@75:
+			Template: 75
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 0,1, 1,1, 2,1
+		MultiBrush@76:
+			Template: 76
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 0,1, 1,1, 2,1
+		MultiBrush@77:
+			Template: 77
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 0,1, 1,1, 2,1
+		MultiBrush@78:
+			Template: 78
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 0,2, 1,2, 1,1, 2,1
+		MultiBrush@79:
+			Template: 79
+			Segment:
+				Start: WaterCliff.R
+				End: Beach.R
+				Points: 0,1, 1,1
+		MultiBrush@80:
+			Template: 80
+			Segment:
+				Start: Beach.D
+				End: WaterCliff.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@81:
+			Template: 81
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 2,0, 2,1, 1,1, 1,2
+		MultiBrush@82:
+			Template: 82
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@83:
+			Template: 83
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@84:
+			Template: 84
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@85:
+			Template: 85
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 1,0, 1,1, 2,1, 2,2
+		MultiBrush@86:
+			Template: 86
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: Beach.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@87:
+			Template: 87
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 2,1, 1,1, 1,0
+		MultiBrush@88:
+			Template: 88
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 1,2, 1,1, 2,1
+		MultiBrush@89:
+			Template: 89
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 0,1, 1,1, 1,2
+		MultiBrush@90:
+			Template: 90
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 1,0, 1,1, 0,1
+		MultiBrush@91:
+			Template: 91
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 1,0, 1,1, 2,1
+		MultiBrush@92:
+			Template: 92
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 2,1, 1,1, 1,2
+		MultiBrush@93:
+			Template: 93
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 1,2, 1,1, 0,1
+		MultiBrush@94:
+			Template: 94
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 0,1, 1,1, 1,0
+		MultiBrush@405:
+			Template: 405
+			Segment:
+				Start: WaterCliff.L
+				Inner: WaterCliff
+				End: WaterCliff.L
+				Points: 1,1, 0,1
+		MultiBrush@406:
+			Template: 406
+			Segment:
+				Start: WaterCliff.R
+				Inner: WaterCliff
+				End: WaterCliff.R
+				Points: 0,1, 1,1
+		MultiBrush@407:
+			Template: 407
+			Segment:
+				Start: WaterCliff.D
+				Inner: WaterCliff
+				End: WaterCliff.D
+				Points: 1,0, 1,1
+		MultiBrush@408:
+			Template: 408
+			Segment:
+				Start: WaterCliff.U
+				Inner: WaterCliff
+				End: WaterCliff.U
+				Points: 1,1, 1,0
+
 		MultiBrush@3:
 			Template: 3
 			Segment:
