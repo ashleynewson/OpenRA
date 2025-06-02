@@ -522,6 +522,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			var param = new Parameters(map, args.Settings);
 
+			var terraformer = new Terraformer(map, modData, param.Mirror, param.Rotations, actorPlans);
+
 			var externalCircleRadius = minCSpan / 2 - (param.MinimumLandSeaThickness + param.MinimumMountainThickness);
 			if (externalCircleRadius <= 0)
 				throw new MapGenerationException("map is too small for circular shaping");
@@ -717,7 +719,7 @@ namespace OpenRA.Mods.Common.Traits
 				CellLayerUtils.OverCircle(
 					cellLayer: cliffRing,
 					wCenter: wMapCenter,
-					wRadius: (externalCircleRadius + param.MinimumMountainThickness) * 1024,
+					wRadius: new WDist((externalCircleRadius + param.MinimumMountainThickness) * 1024),
 					outside: true,
 					action: (mpos, _, _, _) => cliffRing[mpos] = true);
 				foreach (var cliff in CellLayerUtils.BordersToPoints(cliffRing))
@@ -842,7 +844,7 @@ namespace OpenRA.Mods.Common.Traits
 					param.Rotations,
 					param.Mirror,
 					param.ForestFeatureSize,
-					wavelength => ClumpinessAmplitude(wavelength, param.ForestClumpiness));
+					wavelength => Terraformer.ClumpinessAmplitude(wavelength, param.ForestClumpiness));
 				CellLayerUtils.CalibrateQuantileInPlace(
 					forestNoise,
 					0,
@@ -984,7 +986,7 @@ namespace OpenRA.Mods.Common.Traits
 					CellLayerUtils.OverCircle(
 						cellLayer: regionMask,
 						wCenter: wMapCenter,
-						wRadius: (minSpan - 2) * 512,
+						wRadius: new WDist((minSpan - 2) * 512),
 						outside: true,
 						action: (mpos, _, _, _) =>
 							{
@@ -1303,7 +1305,7 @@ namespace OpenRA.Mods.Common.Traits
 				CellLayerUtils.OverCircle(
 					cellLayer: spawnBias,
 					wCenter: wMapCenter,
-					wRadius: 1024 * spawnBiasRadius,
+					wRadius: new WDist(1024 * spawnBiasRadius),
 					outside: false,
 					action: (mpos, _, _, wrSq) => spawnBias[mpos] = (int)Exts.ISqrt(wrSq) / 1024);
 				foreach (var mpos in map.AllCells.MapCoords)
@@ -1337,7 +1339,7 @@ namespace OpenRA.Mods.Common.Traits
 					CellLayerUtils.OverCircle(
 						cellLayer: zoneable,
 						wCenter: wMapCenter,
-						wRadius: 1024,
+						wRadius: new WDist(1024),
 						outside: false,
 						action: (mpos, _, _, _) => zoneable[mpos] = false);
 				}
@@ -1413,7 +1415,7 @@ namespace OpenRA.Mods.Common.Traits
 						CellLayerUtils.OverCircle(
 							cellLayer: resourceSpawnPreferences,
 							wCenter: resourceSpawnPlan.WPosLocation,
-							wRadius: 1024,
+							wRadius: new WDist(1024),
 							outside: false,
 							action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
 					}
@@ -1424,7 +1426,7 @@ namespace OpenRA.Mods.Common.Traits
 						CellLayerUtils.OverCircle(
 							cellLayer: zoneable,
 							wCenter: projectedSpawn.WPosLocation,
-							wRadius: param.SpawnReservation * 1024,
+							wRadius: new WDist(param.SpawnReservation * 1024),
 							outside: false,
 							action: (mpos, _, _, _) => zoneable[mpos] = false);
 
@@ -1434,7 +1436,7 @@ namespace OpenRA.Mods.Common.Traits
 						CellLayerUtils.OverCircle(
 							cellLayer: zoneable,
 							wCenter: projectedResourceSpawn.WPosLocation,
-							wRadius: param.ResourceSpawnReservation * 1024,
+							wRadius: new WDist(param.ResourceSpawnReservation * 1024),
 							outside: false,
 							action: (mpos, _, _, _) => zoneable[mpos] = false);
 				}
@@ -1473,7 +1475,7 @@ namespace OpenRA.Mods.Common.Traits
 						CellLayerUtils.OverCircle(
 							cellLayer: resourceSpawnPreferences,
 							wCenter: CellLayerUtils.MPosToWPos(chosenMPos, gridType),
-							wRadius: radius2 * 1024,
+							wRadius: new WDist(radius2 * 1024),
 							outside: false,
 							action: (mpos, _, _, wrSq) =>
 							{
@@ -1494,7 +1496,7 @@ namespace OpenRA.Mods.Common.Traits
 							CellLayerUtils.OverCircle(
 								cellLayer: resourceSpawnPreferences,
 								wCenter: resourceSpawnPlan.WPosLocation,
-								wRadius: 1024,
+								wRadius: new WDist(1024),
 								outside: false,
 								action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
 						}
@@ -1505,7 +1507,7 @@ namespace OpenRA.Mods.Common.Traits
 							CellLayerUtils.OverCircle(
 								cellLayer: zoneable,
 								wCenter: projectedResourceSpawn.WPosLocation,
-								wRadius: param.ResourceSpawnReservation * 1024,
+								wRadius: new WDist(param.ResourceSpawnReservation * 1024),
 								outside: false,
 								action: (mpos, _, _, _) => zoneable[mpos] = false);
 					}
@@ -1547,214 +1549,54 @@ namespace OpenRA.Mods.Common.Traits
 							CellLayerUtils.OverCircle(
 								cellLayer: zoneable,
 								wCenter: projectedBuilding.WPosLocation,
-								wRadius: 2048,
+								wRadius: new WDist(2048),
 								outside: false,
 								action: (mpos, _, _, _) => zoneable[mpos] = false);
 					}
 				}
 
 				// Grow resources
+				var resourcePattern = terraformer.GenerateResourcePattern(
+					resourceRandom,
+					param.ResourceFeatureSize,
+					param.OreClumpiness,
+					param.OreUniformity * 1024 / FractionMax);
+
+				var resourceBiases = new List<Terraformer.ResourceBias>();
+				var wSpawnBuildSizeSq = (long)param.SpawnBuildSize * param.SpawnBuildSize * 1024 * 1024;
+
+				foreach (var (actorType, resourceType) in param.ResourceSpawnSeeds.OrderBy(kv => kv.Key))
 				{
-					var pattern1024ths = new CellLayer<int>(map);
-					NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
-						resourceRandom,
-						pattern1024ths,
-						param.Rotations,
-						param.Mirror,
-						param.ResourceFeatureSize,
-						wavelength => ClumpinessAmplitude(wavelength, param.OreClumpiness));
-					{
-						CellLayerUtils.CalibrateQuantileInPlace(
-							pattern1024ths,
-							0,
-							0, 1);
-						var max1024ths = pattern1024ths.Max();
-						var uniformity1024ths = param.OreUniformity * 1024 / FractionMax;
-						foreach (var mpos in map.AllCells.MapCoords)
-							pattern1024ths[mpos] = uniformity1024ths + 1024 * pattern1024ths[mpos] / max1024ths;
-					}
-
-					var strengths1024ths = new Dictionary<ResourceTypeInfo, CellLayer<int>>();
-					foreach (var actorPlan in actorPlans)
-					{
-						var type = actorPlan.Reference.Type;
-						if (param.ResourceSpawnWeights.ContainsKey(type))
-						{
-							var resource = param.ResourceSpawnSeeds[type];
-							if (!strengths1024ths.TryGetValue(resource, out var strength1024ths))
+					resourceBiases.AddRange(
+						terraformer.ActorsOfType(actorType)
+							.Select(a => new Terraformer.ResourceBias(a)
 							{
-								strength1024ths = new CellLayer<int>(map);
-								strength1024ths.Clear(1);
-								strengths1024ths.Add(resource, strength1024ths);
-							}
-
-							CellLayerUtils.OverCircle(
-								cellLayer: strength1024ths,
-								wCenter: actorPlan.WPosLocation,
-								wRadius: 16 * 1024,
-								outside: false,
-								action: (mpos, _, _, wrSq) =>
-									strength1024ths[mpos] +=
-										(int)(1024 * 1024 / (1024 + Exts.ISqrt(wrSq))));
-						}
-					}
-
-					var maxStrength1024ths = new CellLayer<int>(map);
-					maxStrength1024ths.Clear(1);
-					var bestResource = new CellLayer<ResourceTypeInfo>(map);
-					bestResource.Clear(param.DefaultResource);
-					foreach (var resourceStrength in strengths1024ths)
-					{
-						var resource = resourceStrength.Key;
-						var strength1024ths = resourceStrength.Value;
-						foreach (var mpos in map.AllCells.MapCoords)
-							if (strength1024ths[mpos] > maxStrength1024ths[mpos])
-							{
-								maxStrength1024ths[mpos] = strength1024ths[mpos];
-								bestResource[mpos] = resource;
-							}
-					}
-
-					// Closer to +inf means "more preferable" for plan.
-					var plan = new CellLayer<int>(map);
-					foreach (var mpos in map.AllCells.MapCoords)
-						plan[mpos] = pattern1024ths[mpos] * maxStrength1024ths[mpos];
-
-					var wSpawnBuildSizeSq = (long)param.SpawnBuildSize * param.SpawnBuildSize * 1024 * 1024;
-					foreach (var actorPlan in actorPlans)
-						if (actorPlan.Reference.Type == "mpspawn")
-							CellLayerUtils.OverCircle(
-								cellLayer: plan,
-								wCenter: actorPlan.WPosLocation,
-								wRadius: param.SpawnRegionSize * 2 * 1024,
-								outside: false,
-								action: (mpos, _, _, rSq) =>
-									plan[mpos] += (int)(plan[mpos] * param.SpawnResourceBias * wSpawnBuildSizeSq / Math.Max(rSq, 1024 * 1024) / FractionMax));
-
-					foreach (var mpos in map.AllCells.MapCoords)
-						if (!playableArea[mpos] || !param.AllowedTerrainResourceCombos.Contains((bestResource[mpos], map.GetTerrainIndex(mpos))))
-							plan[mpos] = -int.MaxValue;
-
-					foreach (var actorPlan in actorPlans)
-						if (actorPlan.Reference.Type == "mpspawn")
-							CellLayerUtils.OverCircle(
-								cellLayer: plan,
-								wCenter: actorPlan.WPosLocation,
-								wRadius: param.SpawnBuildSize * 1024,
-								outside: false,
-								action: (mpos, _, _, _) => plan[mpos] = -int.MaxValue);
-
-					foreach (var actorPlan in actorPlans)
-						foreach (var (cpos, _) in actorPlan.Footprint())
-							if (plan.Contains(cpos))
-								plan[cpos] = -int.MaxValue;
-
-					// Improve symmetry.
-					{
-						var newPlan = new CellLayer<int>(map);
-						Symmetry.RotateAndMirrorOverCPos(
-							plan,
-							param.Rotations,
-							param.Mirror,
-							(sources, destination)
-								=> newPlan[destination] =
-									sources.Min(source => plan.TryGetValue(source, out var value) ? value : -int.MaxValue));
-						plan = newPlan;
-					}
-
-					var remaining = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
-
-					// Closer to -inf means "more preferable" for priorities.
-					var priorities = new PriorityArray<int>(
-						plan.Size.Width * plan.Size.Height,
-						int.MaxValue);
-					{
-						var i = 0;
-						foreach (var v in plan)
-							priorities[i++] = -v;
-					}
-
-					int PriorityIndex(MPos mpos) => mpos.V * plan.Size.Width + mpos.U;
-					MPos PriorityMPos(int index)
-					{
-						var v = Math.DivRem(index, plan.Size.Width, out var u);
-						return new MPos(u, v);
-					}
-
-					map.Resources.Clear();
-
-					// Return resource value of a given square.
-					// Matches the logic in ResourceLayer trait.
-					int CheckValue(CPos cpos)
-					{
-						if (!map.Resources.Contains(cpos))
-							return 0;
-						var resource = map.Resources[cpos].Type;
-						if (resource == 0)
-							return 0;
-
-						var resourceType = bestResource[cpos];
-
-						var adjacent = 0;
-						var directions = CVec.Directions;
-						for (var i = 0; i < directions.Length; i++)
-						{
-							var c = cpos + directions[i];
-							if (map.Resources.Contains(c) && map.Resources[c].Type == resource)
-								++adjacent;
-						}
-
-						// We need to have at least one resource in the cell.
-						// HACK: we should not be lerping to 9, as maximum adjacent resources is 8.
-						// HACK: it's too disruptive to fix.
-						var density = Math.Max(int2.Lerp(0, resourceType.MaxDensity, adjacent, 9), 1);
-
-						return param.ResourceValues[resourceType] * density;
-					}
-
-					int CheckValue3By3(CPos cpos)
-					{
-						var total = 0;
-						for (var y = -1; y <= 1; y++)
-							for (var x = -1; x <= 1; x++)
-								total += CheckValue(cpos + new CVec(x, y));
-
-						return total;
-					}
-
-					// Set and return change in overall value.
-					int AddResource(CPos cpos)
-					{
-						var mpos = cpos.ToMPos(gridType);
-						priorities[PriorityIndex(mpos)] = int.MaxValue;
-						zoneable[mpos] = false;
-
-						// Generally shouldn't happen, but perhaps a rotation/mirror related inaccuracy.
-						if (map.Resources[mpos].Type != 0)
-							return 0;
-
-						var resourceType = bestResource[mpos];
-						var oldValue = CheckValue3By3(cpos);
-						map.Resources[mpos] = new ResourceTile(
-							resourceType.ResourceIndex,
-							(byte)resourceType.MaxDensity);
-						var newValue = CheckValue3By3(cpos);
-						return newValue - oldValue;
-					}
-
-					while (remaining > 0)
-					{
-						var n = priorities.GetMinIndex();
-						if (priorities[n] == int.MaxValue)
-							break;
-
-						var chosenMPos = PriorityMPos(n);
-						var chosenCPos = chosenMPos.ToCPos(gridType);
-						foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, param.Rotations, param.Mirror))
-							if (map.Resources.Contains(cpos))
-								remaining -= AddResource(cpos);
-					}
+								BiasRadius = new WDist(16 * 1024),
+								Bias = (value, rSq) => value + (int)(1024 * 1024 / (1024 + Exts.ISqrt(rSq))),
+								ResourceType = resourceType,
+							}));
 				}
+
+				resourceBiases.AddRange(
+					terraformer.ActorsOfType("mpspawn")
+						.Select(a => new Terraformer.ResourceBias(a)
+						{
+							ExclusionRadius = new WDist(param.SpawnBuildSize * 1024),
+							BiasRadius = new WDist(param.SpawnRegionSize * 2 * 1024),
+							Bias = (value, rSq) => value + (int)(value * param.SpawnResourceBias * wSpawnBuildSizeSq / Math.Max(rSq, 1024 * 1024) / FractionMax),
+						}));
+
+				var (plan, typePlan) = terraformer.PlanResources(
+					resourcePattern,
+					playableArea,
+					param.DefaultResource,
+					resourceBiases);
+				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
+				terraformer.GrowResources(
+					plan,
+					typePlan,
+					targetResourceValue);
+				terraformer.DezoneFromResources(zoneable);
 
 				// CivilianBuildings
 				if (param.CivilianBuildings > 0)
@@ -1908,14 +1750,6 @@ namespace OpenRA.Mods.Common.Traits
 							output[cpos] = MultiBrush.Replaceability.None;
 
 			return output;
-		}
-
-		static int ClumpinessAmplitude(int wavelength, int clumpiness)
-		{
-			var amplitude = wavelength;
-			for (var i = 0; i < clumpiness; i++)
-				amplitude = Exts.ISqrt(amplitude);
-			return amplitude;
 		}
 
 		string IEditorToolInfo.Label => Name;

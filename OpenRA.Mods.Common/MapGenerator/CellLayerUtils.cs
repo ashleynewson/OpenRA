@@ -218,7 +218,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public static void OverCircle<T>(
 			CellLayer<T> cellLayer,
 			WPos wCenter,
-			int wRadius,
+			WDist wRadius,
 			bool outside,
 			Action<MPos, CPos, WPos, long> action)
 		{
@@ -243,12 +243,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 				switch (gridType)
 				{
 					case MapGridType.Rectangular:
-						mRadiusU = wRadius / 1024 + 1;
-						mRadiusV = wRadius / 1024 + 1;
+						mRadiusU = wRadius.Length / 1024 + 1;
+						mRadiusV = wRadius.Length / 1024 + 1;
 						break;
 					case MapGridType.RectangularIsometric:
-						mRadiusU = wRadius / 1448 + 2;
-						mRadiusV = wRadius / 724 + 2;
+						mRadiusU = wRadius.Length / 1448 + 2;
+						mRadiusV = wRadius.Length / 724 + 2;
 						break;
 					default:
 						throw new NotImplementedException();
@@ -260,7 +260,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				maxV = Math.Min(mCenter.V + mRadiusV, cellLayer.Size.Height - 1);
 			}
 
-			var wRadiusSquared = (long)wRadius * wRadius;
+			var wRadiusSquared = wRadius.LengthSquared;
 			for (var v = minV; v <= maxV; v++)
 				for (var u = minU; u <= maxU; u++)
 				{
