@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -23,6 +24,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 	/// <summary>Collection of high-level map generation utilities.</summary>
 	public class Terraformer
 	{
+		/// <summary>Common denominator for fractional arguments.</summary>
+		const int FractionMax = 1000;
+
 		/// <summary>Biases or excludes resources at a location during resource planning.</summary>
 		public sealed class ResourceBias
 		{
@@ -56,26 +60,36 @@ namespace OpenRA.Mods.Common.MapGenerator
 			{ }
 		}
 
+		/// <summary>
+		/// Optional Terraformer parameters with general use across utilities.
+		/// </summary>
+		public struct Params
+		{
+			public Symmetry.Mirror Mirror = Symmetry.Mirror.None;
+			public int Rotations = 1;
+			public int? LandTile;
+			public IReadOnlySet<byte> PlayableTerrain;
+
+			public Params() { }
+		}
+
 		public readonly Map Map;
 		public readonly ModData ModData;
 		public readonly List<ActorPlan> ActorPlans;
-		public readonly Symmetry.Mirror Mirror;
-		public readonly int Rotations;
+		public readonly Params param;
 
 		readonly ITerrainInfo terrainInfo;
 
 		public Terraformer(
 			Map map,
 			ModData modData,
-			Symmetry.Mirror mirror,
-			int rotations,
-			List<ActorPlan> actorPlans)
+			List<ActorPlan> actorPlans,
+			Params parameters)
 		{
 			this.Map = map;
 			this.ModData = modData;
-			this.Mirror = mirror;
-			this.Rotations = rotations;
 			this.ActorPlans = actorPlans;
+			param = parameters;
 
 			terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
 		}
@@ -105,8 +119,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				pattern,
-				Rotations,
-				Mirror,
+				param.Rotations,
+				param.Mirror,
 				noiseFeatureSize,
 				wavelength => ClumpinessAmplitude(wavelength, clumpiness));
 			{
@@ -348,7 +362,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				var chosenMPos = PriorityMPos(n);
 				var chosenCPos = chosenMPos.ToCPos(gridType);
-				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Rotations, Mirror))
+				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, param.Rotations, param.Mirror))
 					if (Map.Resources.Contains(cpos))
 						remaining -= AddResource(cpos);
 			}
@@ -377,13 +391,162 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var newLayer = new CellLayer<T>(Map);
 			Symmetry.RotateAndMirrorOverCPos(
 				layer,
-				Rotations,
-				Mirror,
+				param.Rotations,
+				param.Mirror,
 				(sources, destination)
 					=> newLayer[destination] = sources
 						.Select(source => layer.TryGetValue(source, out var value) ? value : outsideValue)
 						.Aggregate(aggregator));
 			return newLayer;
+		}
+
+		/// <summary>Return a CellLayer describing the fully playable space.</summary>
+		public CellLayer<bool> PlayableSpace()
+		{
+			var playableTerrain = Required(param.PlayableTerrain);
+
+			var templatedTerrainInfo = (ITemplatedTerrainInfo)terrainInfo;
+
+			var space = new CellLayer<bool>(Map);
+			foreach (var mpos in Map.AllCells.MapCoords)
+				space[mpos] = playableTerrain.Contains(templatedTerrainInfo.GetTerrainIndex(Map.Tiles[mpos]));
+
+			foreach (var actorPlan in ActorPlans)
+				foreach (var (cpos, _) in actorPlan.Footprint())
+					if (space.Contains(cpos))
+						space[cpos] = false;
+
+			return space;
+		}
+
+		/// <summary>
+		/// Creates mask for placing decorations in out-of-the-way locations on a map.
+		/// </summary>
+		/// <param name="random">Random source for layout and tiling.</param>
+		/// <param name="space">Space that decorations must not significantly choke.</param>
+		/// <param name="zoneable">Cells where decoration is allowed.</param>
+		/// <param name="coverage">Maximum fraction of map to cover in decorations.</param>
+		/// <param name="featureSize">Noise feature size for layout.</param>
+		/// <param name="density">Density of decoration layout.</param>
+		/// <param name="minimumDensity">
+		/// Enforces a minimum local density of decorations. This can be used, for example, to
+		/// ensure that villages have a substantial size, preventing lonely buildings. Decoration
+		/// cells are removed until minimum
+		/// </param>
+		/// <param name="CivilianBuildingDensityRadius">Enforcement radius of minimum density</param>
+		public CellLayer<bool> DecorationPattern(
+			MersenneTwister random,
+			CellLayer<bool> space,
+			CellLayer<bool> zoneable,
+			int coverage,
+			int featureSize,
+			int density,
+			int minimumDensity,
+			int CivilianBuildingDensityRadius)
+		{
+			CheckHasMapShape(space);
+			CheckHasMapShape(zoneable);
+			var LandTile = Required(param.LandTile);
+
+			if (coverage <= 0)
+				return new CellLayer<bool>(Map);
+
+			var matrixSpace = CellLayerUtils.ToMatrix(space, true);
+			var deflated = MatrixUtils.DeflateSpace(matrixSpace, false);
+			var kernel = new Matrix<bool>(2, 2).Fill(true);
+			var reservedMatrix = MatrixUtils.KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(0, 0), true);
+			var reserved = new CellLayer<bool>(Map);
+			CellLayerUtils.FromMatrix(reserved, reservedMatrix, true);
+
+			var decorationNoise = new CellLayer<int>(Map);
+			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
+				random,
+				decorationNoise,
+				param.Rotations,
+				param.Mirror,
+				featureSize,
+				wavelength => 1);
+
+			var densityNoise = new CellLayer<int>(Map);
+			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
+				random,
+				densityNoise,
+				param.Rotations,
+				param.Mirror,
+				1024,
+				NoiseUtils.PinkAmplitude);
+			CellLayerUtils.CalibrateQuantileInPlace(
+				densityNoise,
+				0,
+				FractionMax - density, FractionMax);
+
+			var decorable = new CellLayer<bool>(Map);
+			var totalDecorable = 0;
+			foreach (var mpos in Map.AllCells.MapCoords)
+			{
+				var isDecorable =
+					Map.Tiles[mpos].Type == param.LandTile
+						&& zoneable[mpos] && space[mpos] && !reserved[mpos] && densityNoise[mpos] >= 0;
+				decorable[mpos] = isDecorable;
+				if (isDecorable)
+					totalDecorable++;
+				else
+					decorationNoise[mpos] = -1024 * 1024;
+			}
+
+			var mapArea = Map.MapSize.Width * Map.MapSize.Height;
+			CellLayerUtils.CalibrateQuantileInPlace(
+				decorationNoise,
+				0,
+				mapArea - totalDecorable * coverage / FractionMax, mapArea);
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (decorationNoise[mpos] < 0)
+					decorable[mpos] = false;
+
+			for (var i = 0; i < 8; i++)
+			{
+				var (blurred, changes) = MatrixUtils.BooleanBlur(
+					CellLayerUtils.ToMatrix(decorable, false),
+					CivilianBuildingDensityRadius,
+					FractionMax - minimumDensity, FractionMax);
+				if (changes == 0)
+					break;
+
+				var densityFilter = new CellLayer<bool>(Map);
+				CellLayerUtils.FromMatrix(densityFilter, blurred);
+
+				foreach (var mpos in Map.AllCells.MapCoords)
+					if (!densityFilter[mpos])
+						decorable[mpos] = false;
+			}
+
+			ImproveSymmetry(decorable, false, (a, b) => a && b);
+
+			return decorable;
+		}
+
+		/// <summary>
+		/// Wrapper around MultiBrush.PaintArea that uses Replacibility.Actor for masked cells.
+		/// </summary>
+		public void PlaceActors(
+			MersenneTwister random,
+			CellLayer<bool> mask,
+			IReadOnlyList<MultiBrush> brushes,
+			bool alwaysPreferLargerBrushes = false)
+		{
+			CheckHasMapShape(mask);
+
+			var replace = new CellLayer<MultiBrush.Replaceability>(Map);
+			foreach (var mpos in Map.AllCells.MapCoords)
+				replace[mpos] = mask[mpos] ? MultiBrush.Replaceability.Actor : MultiBrush.Replaceability.None;
+
+			MultiBrush.PaintArea(
+				Map,
+				ActorPlans,
+				replace,
+				brushes,
+				random,
+				alwaysPreferLargerBrushes);
 		}
 
 		/// <summary>
@@ -402,6 +565,20 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			if (!CellLayerUtils.AreSameShape(layer, Map.Tiles))
 				throw new ArgumentException("CellLayer has different shape to map");
+		}
+
+		public T Required<T>(T value) where T : class
+		{
+			if (value == null)
+				throw new InvalidOperationException("Terraformer has not been constructed with a required parameter");
+			return value;
+		}
+
+		public T Required<T>(T? value) where T : struct
+		{
+			if (value == null)
+				throw new InvalidOperationException("Terraformer has not been constructed with a required parameter");
+			return value.Value;
 		}
 
 		public static int ClumpinessAmplitude(int wavelength, int clumpiness)

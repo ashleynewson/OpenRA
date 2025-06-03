@@ -522,7 +522,13 @@ namespace OpenRA.Mods.Common.Traits
 
 			var param = new Parameters(map, args.Settings);
 
-			var terraformer = new Terraformer(map, modData, param.Mirror, param.Rotations, actorPlans);
+			var terraformer = new Terraformer(map, modData, actorPlans, new Terraformer.Params()
+			{
+				Mirror = param.Mirror,
+				Rotations = param.Rotations,
+				LandTile = param.LandTile,
+				PlayableTerrain = param.PlayableTerrain,
+			});
 
 			var externalCircleRadius = minCSpan / 2 - (param.MinimumLandSeaThickness + param.MinimumMountainThickness);
 			if (externalCircleRadius <= 0)
@@ -1599,111 +1605,20 @@ namespace OpenRA.Mods.Common.Traits
 				terraformer.DezoneFromResources(zoneable);
 
 				// CivilianBuildings
-				if (param.CivilianBuildings > 0)
-				{
-					var space = new CellLayer<bool>(map);
-					foreach (var mpos in map.AllCells.MapCoords)
-						space[mpos] = param.PlayableTerrain.Contains(templatedTerrainInfo.GetTerrainIndex(map.Tiles[mpos]));
-
-					foreach (var actorPlan in actorPlans)
-						foreach (var (cpos, _) in actorPlan.Footprint())
-							if (space.Contains(cpos))
-								space[cpos] = false;
-
-					var matrixSpace = CellLayerUtils.ToMatrix(space, true);
-					var deflated = MatrixUtils.DeflateSpace(matrixSpace, false);
-					var kernel = new Matrix<bool>(2, 2).Fill(true);
-					var reservedMatrix = MatrixUtils.KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(0, 0), true);
-					var reserved = new CellLayer<bool>(map);
-					CellLayerUtils.FromMatrix(reserved, reservedMatrix, true);
-
-					var decorationNoise = new CellLayer<int>(map);
-					NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
-						decorationRandom,
-						decorationNoise,
-						param.Rotations,
-						param.Mirror,
-						param.CivilianBuildingsFeatureSize,
-						wavelength => 1);
-
-					var densityNoise = new CellLayer<int>(map);
-					NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
-						decorationRandom,
-						densityNoise,
-						param.Rotations,
-						param.Mirror,
-						1024,
-						NoiseUtils.PinkAmplitude);
-					CellLayerUtils.CalibrateQuantileInPlace(
-						densityNoise,
-						0,
-						FractionMax - param.CivilianBuildingDensity, FractionMax);
-
-					var decorable = new CellLayer<bool>(map);
-					var totalDecorable = 0;
-					foreach (var mpos in map.AllCells.MapCoords)
-					{
-						var isDecorable =
-							map.Tiles[mpos].Type == param.LandTile
-								&& zoneable[mpos] && space[mpos] && !reserved[mpos] && densityNoise[mpos] >= 0;
-						decorable[mpos] = isDecorable;
-						if (isDecorable)
-							totalDecorable++;
-						else
-							decorationNoise[mpos] = -1024 * 1024;
-					}
-
-					var mapArea = map.MapSize.Width * map.MapSize.Height;
-					CellLayerUtils.CalibrateQuantileInPlace(
-						decorationNoise,
-						0,
-						mapArea - totalDecorable * param.CivilianBuildings / FractionMax, mapArea);
-					foreach (var mpos in map.AllCells.MapCoords)
-						if (decorationNoise[mpos] < 0)
-							decorable[mpos] = false;
-
-					for (var i = 0; i < 8; i++)
-					{
-						var (blurred, changes) = MatrixUtils.BooleanBlur(
-							CellLayerUtils.ToMatrix(decorable, false),
-							param.CivilianBuildingDensityRadius,
-							FractionMax - param.MinimumCivilianBuildingDensity, FractionMax);
-						if (changes == 0)
-							break;
-
-						var densityFilter = new CellLayer<bool>(map);
-						CellLayerUtils.FromMatrix(densityFilter, blurred);
-
-						foreach (var mpos in map.AllCells.MapCoords)
-							if (!densityFilter[mpos])
-								decorable[mpos] = false;
-					}
-
-					// Improve symmetry.
-					{
-						var newDecorable = new CellLayer<bool>(map);
-						Symmetry.RotateAndMirrorOverCPos(
-							decorable,
-							param.Rotations,
-							param.Mirror,
-							(sources, destination)
-								=> newDecorable[destination] =
-									sources.All(source => decorable.TryGetValue(source, out var value) && value));
-						decorable = newDecorable;
-					}
-
-					var replace = new CellLayer<MultiBrush.Replaceability>(map);
-					foreach (var mpos in map.AllCells.MapCoords)
-						replace[mpos] = decorable[mpos] ? MultiBrush.Replaceability.Actor : MultiBrush.Replaceability.None;
-
-					MultiBrush.PaintArea(
-						map,
-						actorPlans,
-						replace,
-						param.CivilianBuildingsObstacles,
-						decorationTilingRandom,
-						alwaysPreferLargerBrushes: true);
-				}
+				var decorationNoise = terraformer.DecorationPattern(
+					decorationRandom,
+					terraformer.PlayableSpace(),
+					zoneable,
+					param.CivilianBuildings,
+					param.CivilianBuildingsFeatureSize,
+					param.CivilianBuildingDensity,
+					param.MinimumCivilianBuildingDensity,
+					param.CivilianBuildingDensityRadius);
+				terraformer.PlaceActors(
+					decorationTilingRandom,
+					decorationNoise,
+					param.CivilianBuildingsObstacles,
+					alwaysPreferLargerBrushes: true);
 			}
 
 			// Cosmetically repaint tiles
