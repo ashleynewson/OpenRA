@@ -386,6 +386,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return newLayer;
 		}
 
+		/// <summary>
+		/// Commits draft data to the map, such as player and actor definitions.
+		/// </summary>
+		public void Bake()
+		{
+			var playerCount = ActorsOfType("mpspawn").Count();
+			Map.PlayerDefinitions = new MapPlayers(Map.Rules, playerCount).ToMiniYaml();
+			Map.ActorDefinitions = ActorPlans
+				.Select((plan, i) => new MiniYamlNode($"Actor{i}", plan.Reference.Save()))
+				.ToImmutableArray();
+		}
+
 		public void CheckHasMapShape<T>(CellLayer<T> layer)
 		{
 			if (!CellLayerUtils.AreSameShape(layer, Map.Tiles))

@@ -1719,10 +1719,7 @@ namespace OpenRA.Mods.Common.Traits
 				MultiBrush.PaintArea(map, actorPlans, replace, collection, repaintRandom);
 			}
 
-			map.PlayerDefinitions = new MapPlayers(map.Rules, param.Players).ToMiniYaml();
-			map.ActorDefinitions = actorPlans
-				.Select((plan, i) => new MiniYamlNode($"Actor{i}", plan.Reference.Save()))
-				.ToImmutableArray();
+			terraformer.Bake();
 
 			return map;
 		}
