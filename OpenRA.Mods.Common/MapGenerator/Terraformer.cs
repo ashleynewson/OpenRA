@@ -526,6 +526,26 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Repaint the areas occupied by given tile types using MultiBrushes.
+		/// </summary>
+		public void RepaintTiles(
+			MersenneTwister random,
+			IReadOnlyDictionary<ushort, IReadOnlyList<MultiBrush>> rules)
+		{
+			foreach (var (tile, collection) in rules.OrderBy(kv => kv.Key))
+			{
+				var replace = new CellLayer<MultiBrush.Replaceability>(Map);
+				foreach (var mpos in replace.CellRegion.MapCoords)
+					replace[mpos] =
+						Map.Tiles[mpos].Type == tile
+							? MultiBrush.Replaceability.Any
+							: MultiBrush.Replaceability.None;
+
+				MultiBrush.PaintArea(Map, ActorPlans, replace, collection, random);
+			}
+		}
+
+		/// <summary>
 		/// Wrapper around MultiBrush.PaintArea that uses Replacibility.Actor for masked cells.
 		/// </summary>
 		public void PlaceActors(

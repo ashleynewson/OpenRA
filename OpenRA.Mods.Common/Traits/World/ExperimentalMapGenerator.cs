@@ -1622,17 +1622,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			// Cosmetically repaint tiles
-			foreach (var (tile, collection) in param.RepaintTiles.OrderBy(kv => kv.Key))
-			{
-				var replace = new CellLayer<MultiBrush.Replaceability>(map);
-				foreach (var mpos in replace.CellRegion.MapCoords)
-					replace[mpos] =
-						map.Tiles[mpos].Type == tile
-							? MultiBrush.Replaceability.Any
-							: MultiBrush.Replaceability.None;
-
-				MultiBrush.PaintArea(map, actorPlans, replace, collection, repaintRandom);
-			}
+			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);
 
 			terraformer.Bake();
 
