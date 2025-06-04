@@ -141,7 +141,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			foreach (var cpos in Map.AllCells)
 				space[cpos + enlargedOffset] = availableSpace[cpos];
 
-			ImproveSymmetry(space, true, (a, b) => a && b);
+			space = ImproveSymmetry(space, true, (a, b) => a && b);
 
 			var matrixSpace = CellLayerUtils.ToMatrix(space, true);
 			var kernel = new Matrix<bool>(minimumSpacing * 2 + 1, minimumSpacing * 2 + 1);
@@ -682,7 +682,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						decorable[mpos] = false;
 			}
 
-			ImproveSymmetry(decorable, false, (a, b) => a && b);
+			decorable = ImproveSymmetry(decorable, false, (a, b) => a && b);
 
 			return decorable;
 		}
