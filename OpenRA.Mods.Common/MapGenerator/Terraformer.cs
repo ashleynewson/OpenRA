@@ -67,6 +67,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			public Symmetry.Mirror Mirror = Symmetry.Mirror.None;
 			public int Rotations = 1;
+
 			// TODO: Clean up what doesn't get used.
 			public int? LandTile;
 			public IReadOnlySet<byte> ClearTerrain;
@@ -78,7 +79,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public readonly Map Map;
 		public readonly ModData ModData;
 		public readonly List<ActorPlan> ActorPlans;
-		public readonly Params param;
+		public readonly Params Param;
 
 		readonly ITerrainInfo terrainInfo;
 
@@ -91,7 +92,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			this.Map = map;
 			this.ModData = modData;
 			this.ActorPlans = actorPlans;
-			param = parameters;
+			Param = parameters;
 
 			terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
 		}
@@ -118,9 +119,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// For awkward symmetries, we try harder to make sure roads are fairer.
 			// This can degrade the quantity of roads, though.
 			var imperfectSymmetry =
-				param.Mirror != Symmetry.Mirror.None ||
-				param.Rotations == 3 ||
-				param.Rotations >= 5;
+				Param.Mirror != Symmetry.Mirror.None ||
+				Param.Rotations == 3 ||
+				Param.Rotations >= 5;
 			var gridType = Map.Grid.Type;
 			var wMapCenter = CellLayerUtils.Center(Map.Tiles);
 
@@ -198,7 +199,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						{
 							var cposPath = CellLayerUtils.FromMatrixPoints([path], space)[0];
 							var projectedPoints = cposPath
-								.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, param.Rotations, param.Mirror))
+								.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, Param.Rotations, Param.Mirror))
 								.ToArray();
 							var matrixPoints = CellLayerUtils.ToMatrixPoints([projectedPoints], space)[0];
 							if (!matrixPoints.All(p => !nearPath.ContainsXY(p) || nearPath[p]))
@@ -245,8 +246,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				pattern,
-				param.Rotations,
-				param.Mirror,
+				Param.Rotations,
+				Param.Mirror,
 				noiseFeatureSize,
 				wavelength => ClumpinessAmplitude(wavelength, clumpiness));
 			{
@@ -488,7 +489,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				var chosenMPos = PriorityMPos(n);
 				var chosenCPos = chosenMPos.ToCPos(gridType);
-				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, param.Rotations, param.Mirror))
+				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Param.Rotations, Param.Mirror))
 					if (Map.Resources.Contains(cpos))
 						remaining -= AddResource(cpos);
 			}
@@ -515,8 +516,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var newLayer = new CellLayer<T>(layer.GridType, layer.Size);
 			Symmetry.RotateAndMirrorOverCPos(
 				layer,
-				param.Rotations,
-				param.Mirror,
+				Param.Rotations,
+				Param.Mirror,
 				(sources, destination)
 					=> newLayer[destination] = sources
 						.Select(source => layer.TryGetValue(source, out var value) ? value : outsideValue)
@@ -598,9 +599,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <param name="minimumDensity">
 		/// Enforces a minimum local density of decorations. This can be used, for example, to
 		/// ensure that villages have a substantial size, preventing lonely buildings. Decoration
-		/// cells are removed until minimum
+		/// cells are removed until minimum.
 		/// </param>
-		/// <param name="CivilianBuildingDensityRadius">Enforcement radius of minimum density</param>
+		/// <param name="minimumDensityRadius">Enforcement radius of minimum density.</param>
 		public CellLayer<bool> DecorationPattern(
 			MersenneTwister random,
 			CellLayer<bool> space,
@@ -609,7 +610,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			int featureSize,
 			int density,
 			int minimumDensity,
-			int CivilianBuildingDensityRadius)
+			int minimumDensityRadius)
 		{
 			CheckHasMapShape(space);
 			CheckHasMapShape(zoneable);
@@ -625,8 +626,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				decorationNoise,
-				param.Rotations,
-				param.Mirror,
+				Param.Rotations,
+				Param.Mirror,
 				featureSize,
 				wavelength => 1);
 
@@ -634,8 +635,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				densityNoise,
-				param.Rotations,
-				param.Mirror,
+				Param.Rotations,
+				Param.Mirror,
 				1024,
 				NoiseUtils.PinkAmplitude);
 			CellLayerUtils.CalibrateQuantileInPlace(
@@ -669,7 +670,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			{
 				var (blurred, changes) = MatrixUtils.BooleanBlur(
 					CellLayerUtils.ToMatrix(decorable, false),
-					CivilianBuildingDensityRadius,
+					minimumDensityRadius,
 					FractionMax - minimumDensity, FractionMax);
 				if (changes == 0)
 					break;
