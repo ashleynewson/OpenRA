@@ -532,5 +532,31 @@ namespace OpenRA.Mods.Common.MapGenerator
 				}
 			}
 		}
+
+		public static CellLayer<bool> Conjunction(IEnumerable<CellLayer<bool>> layers)
+		{
+			return Aggregate(layers, (a, b) => a && b);
+		}
+
+		public static CellLayer<T> Aggregate<T>(
+			IEnumerable<CellLayer<T>> layers,
+			Func<T, T, T> aggregator)
+		{
+			var layersArray = layers.ToArray();
+			if (layersArray.Length == 0)
+				throw new ArgumentException("No layers were supplied");
+
+			var accumulator = new CellLayer<T>(layersArray[0].GridType, layersArray[0].Size);
+			accumulator.CopyValuesFrom(layersArray[0]);
+			foreach (var layer in layersArray.Skip(1))
+			{
+				if (!AreSameShape(accumulator, layer))
+					throw new ArgumentException("Layers are not the same shape");
+				foreach (var mpos in accumulator.CellRegion.MapCoords)
+					accumulator[mpos] = aggregator(accumulator[mpos], layer[mpos]);
+			}
+
+			return accumulator;
+		}
 	}
 }

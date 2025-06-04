@@ -67,7 +67,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			public Symmetry.Mirror Mirror = Symmetry.Mirror.None;
 			public int Rotations = 1;
+			// TODO: Clean up what doesn't get used.
 			public int? LandTile;
+			public IReadOnlySet<byte> ClearTerrain;
 			public IReadOnlySet<byte> PlayableTerrain;
 
 			public Params() { }
@@ -100,6 +102,130 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public IEnumerable<ActorPlan> ActorsOfType(string type)
 		{
 			return ActorPlans.Where(a => a.Reference.Type == type);
+		}
+
+		/// <summary>
+		/// Plan paths for roads that travel through the middle of playable space.
+		/// </summary>
+		/// <param name="availableSpace">Space in which roads are permitted.</param>
+		/// <param name="minimumSpacing">Minimum distance that roads must be from the edges of available space.</param>
+		/// <param name="minimumLength">Roads shorter than this will be merged or pruned.</param>
+		public CPos[][] PlanRoads(
+			CellLayer<bool> availableSpace,
+			int minimumSpacing,
+			int minimumLength)
+		{
+			// For awkward symmetries, we try harder to make sure roads are fairer.
+			// This can degrade the quantity of roads, though.
+			var imperfectSymmetry =
+				param.Mirror != Symmetry.Mirror.None ||
+				param.Rotations == 3 ||
+				param.Rotations >= 5;
+			var gridType = Map.Grid.Type;
+			var wMapCenter = CellLayerUtils.Center(Map.Tiles);
+
+			// Enlargement must increase dimensions by multiple of 4 to maximize compatibility
+			// with IsometricRectangular grids, where a non-multiple of 4 would change how the
+			// center aligns with the grid.
+			var enlargedSize = new Size(
+				Map.MapSize.Width + (Map.MapSize.Width & ~3) + 4,
+				Map.MapSize.Height + (Map.MapSize.Height & ~3) + 4);
+
+			var space = new CellLayer<bool>(gridType, enlargedSize);
+			space.Clear(true);
+
+			var enlargedOffset =
+				CellLayerUtils.WPosToCPos(CellLayerUtils.Center(space), gridType)
+					- CellLayerUtils.WPosToCPos(CellLayerUtils.Center(Map.Tiles), gridType);
+
+			foreach (var cpos in Map.AllCells)
+				space[cpos + enlargedOffset] = availableSpace[cpos];
+
+			ImproveSymmetry(space, true, (a, b) => a && b);
+
+			var matrixSpace = CellLayerUtils.ToMatrix(space, true);
+			var kernel = new Matrix<bool>(minimumSpacing * 2 + 1, minimumSpacing * 2 + 1);
+			MatrixUtils.OverCircle(
+				matrix: kernel,
+				centerIn1024ths: kernel.Size * 512,
+				radiusIn1024ths: minimumSpacing * 1024,
+				outside: false,
+				action: (xy, _) => kernel[xy] = true);
+			var dilated = MatrixUtils.KernelDilateOrErode(
+				matrixSpace,
+				kernel,
+				new int2(minimumSpacing, minimumSpacing),
+				false);
+			var deflated = MatrixUtils.DeflateSpace(dilated, true);
+
+			if (imperfectSymmetry)
+			{
+				var changing = true;
+				while (changing)
+				{
+					changing = false;
+
+					// Delete short paths.
+					{
+						MatrixUtils.RemoveStubsFromDirectionMapInPlace(deflated);
+						var paths = MatrixUtils.DirectionMapToPaths(deflated);
+						if (paths.Length == 0)
+							break;
+
+						var minLength = paths.Min(p => p.Length);
+						if (minLength < minimumLength)
+						{
+							changing = true;
+							var shortPaths = paths
+								.Where(path => path.Length == minLength);
+							foreach (var path in shortPaths)
+								foreach (var point in path)
+									deflated[point] = 0;
+							MatrixUtils.RemoveStubsFromDirectionMapInPlace(deflated);
+						}
+					}
+
+					// Prune asymmetric paths.
+					{
+						const int Dilation = 3;
+						var nearPath = MatrixUtils.KernelDilateOrErode(
+							deflated.Map(v => v != 0),
+							new Matrix<bool>(Dilation * 2 + 1, Dilation * 2 + 1).Fill(true),
+							new int2(Dilation, Dilation),
+							true);
+						var matrixPaths = MatrixUtils.DirectionMapToPaths(deflated);
+						foreach (var path in matrixPaths)
+						{
+							var cposPath = CellLayerUtils.FromMatrixPoints([path], space)[0];
+							var projectedPoints = cposPath
+								.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, param.Rotations, param.Mirror))
+								.ToArray();
+							var matrixPoints = CellLayerUtils.ToMatrixPoints([projectedPoints], space)[0];
+							if (!matrixPoints.All(p => !nearPath.ContainsXY(p) || nearPath[p]))
+							{
+								// The path doesn't exist across all symmetries (or isn't consistent enough).
+								changing = true;
+								foreach (var point in path)
+									deflated[point] = 0;
+							}
+						}
+					}
+				}
+			}
+
+			var matrixPointArrays = MatrixUtils.DirectionMapToPathsWithPruning(
+				input: deflated,
+				minimumLength: minimumLength,
+				minimumJunctionSeparation: 6,
+				preserveEdgePaths: true);
+			var pointArrays = CellLayerUtils.FromMatrixPoints(matrixPointArrays, space);
+			pointArrays = TilingPath.RetainDisjointPaths(pointArrays);
+			pointArrays = pointArrays
+				.Select(a => a.Select(p => p - enlargedOffset).ToArray())
+				.Select(a => TilingPath.ChirallyNormalizePathPoints(a, cvec => CellLayerUtils.CornerToWPos(cvec, gridType) - wMapCenter))
+				.ToArray();
+
+			return pointArrays;
 		}
 
 		/// <summary>
@@ -386,9 +512,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			T outsideValue,
 			Func<T, T, T> aggregator)
 		{
-			CheckHasMapShape(layer);
-
-			var newLayer = new CellLayer<T>(Map);
+			var newLayer = new CellLayer<T>(layer.GridType, layer.Size);
 			Symmetry.RotateAndMirrorOverCPos(
 				layer,
 				param.Rotations,
@@ -400,23 +524,66 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return newLayer;
 		}
 
-		/// <summary>Return a CellLayer describing the fully playable space.</summary>
-		public CellLayer<bool> PlayableSpace()
+		/// <summary>
+		/// Returns a CellLayer describing whether the space in a map satisfies given terrain types
+		/// (if allowedTerrain is non-null), is free of actors, and/or is free of resources.
+		/// </summary>
+		public CellLayer<bool> CheckSpace(
+			IReadOnlySet<byte> allowedTerrain,
+			bool checkActors = false,
+			bool checkResources = false)
 		{
-			var playableTerrain = Required(param.PlayableTerrain);
-
 			var templatedTerrainInfo = (ITemplatedTerrainInfo)terrainInfo;
 
 			var space = new CellLayer<bool>(Map);
-			foreach (var mpos in Map.AllCells.MapCoords)
-				space[mpos] = playableTerrain.Contains(templatedTerrainInfo.GetTerrainIndex(Map.Tiles[mpos]));
+			if (allowedTerrain != null)
+			{
+				foreach (var mpos in Map.AllCells.MapCoords)
+					space[mpos] = allowedTerrain.Contains(templatedTerrainInfo.GetTerrainIndex(Map.Tiles[mpos]));
+			}
+			else
+			{
+				space.Clear(true);
+			}
 
-			foreach (var actorPlan in ActorPlans)
-				foreach (var (cpos, _) in actorPlan.Footprint())
-					if (space.Contains(cpos))
-						space[cpos] = false;
+			if (checkActors)
+				DezoneFromActors(space);
+
+			if (checkResources)
+				DezoneFromResources(space);
 
 			return space;
+		}
+
+		/// <summary>
+		/// Returns a CellLayer describing whether the space in a map has the given tile type and
+		/// is free of actors and/or resources.
+		/// </summary>
+		public CellLayer<bool> CheckSpace(
+			ushort requiredTile,
+			bool checkActors = false,
+			bool checkResources = false)
+		{
+			var space = new CellLayer<bool>(Map);
+			foreach (var mpos in Map.AllCells.MapCoords)
+				space[mpos] = Map.Tiles[mpos].Type == requiredTile;
+
+			if (checkActors)
+				DezoneFromActors(space);
+
+			if (checkResources)
+				DezoneFromResources(space);
+
+			return space;
+		}
+
+		/// <summary>Sets all zoneable cells where the map has actor footprints to false.</summary>
+		public void DezoneFromActors(CellLayer<bool> zoneable)
+		{
+			foreach (var actorPlan in ActorPlans)
+				foreach (var (cpos, _) in actorPlan.Footprint())
+					if (zoneable.Contains(cpos))
+						zoneable[cpos] = false;
 		}
 
 		/// <summary>
@@ -446,10 +613,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			CheckHasMapShape(space);
 			CheckHasMapShape(zoneable);
-			var LandTile = Required(param.LandTile);
-
-			if (coverage <= 0)
-				return new CellLayer<bool>(Map);
 
 			var matrixSpace = CellLayerUtils.ToMatrix(space, true);
 			var deflated = MatrixUtils.DeflateSpace(matrixSpace, false);
@@ -485,8 +648,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			foreach (var mpos in Map.AllCells.MapCoords)
 			{
 				var isDecorable =
-					Map.Tiles[mpos].Type == param.LandTile
-						&& zoneable[mpos] && space[mpos] && !reserved[mpos] && densityNoise[mpos] >= 0;
+					zoneable[mpos] && space[mpos] && !reserved[mpos] && densityNoise[mpos] >= 0;
 				decorable[mpos] = isDecorable;
 				if (isDecorable)
 					totalDecorable++;
@@ -590,14 +752,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public T Required<T>(T value) where T : class
 		{
 			if (value == null)
-				throw new InvalidOperationException("Terraformer has not been constructed with a required parameter");
+				throw new InvalidOperationException("A call to a method required a parameter that was not supplied to Terraformer at construction.");
 			return value;
 		}
 
 		public T Required<T>(T? value) where T : struct
 		{
 			if (value == null)
-				throw new InvalidOperationException("Terraformer has not been constructed with a required parameter");
+				throw new InvalidOperationException("A call to a method required a parameter that was not supplied to Terraformer at construction");
 			return value.Value;
 		}
 

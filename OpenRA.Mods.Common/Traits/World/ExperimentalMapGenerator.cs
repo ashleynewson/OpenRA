@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Linq.Expressions;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
@@ -527,6 +528,7 @@ namespace OpenRA.Mods.Common.Traits
 				Mirror = param.Mirror,
 				Rotations = param.Rotations,
 				LandTile = param.LandTile,
+				ClearTerrain = param.ClearTerrain,
 				PlayableTerrain = param.PlayableTerrain,
 			});
 
@@ -1114,177 +1116,35 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (param.Roads)
 			{
-				// For awkward symmetries, we try harder to make sure roads are fairer.
-				// This can degrade the quantity of roads, though.
-				var imperfectSymmetry =
-					param.Mirror != Symmetry.Mirror.None ||
-					param.Rotations == 3 ||
-					param.Rotations >= 5;
-
-				// Enlargement must increase dimensions by multiple of 4 to maximize compatibility
-				// with IsometricRectangular grids, where a non-multiple of 4 would change how the
-				// center aligns with the grid.
-				var enlargedSize = new Size(
-					map.MapSize.Width + (map.MapSize.Width & ~3) + 4,
-					map.MapSize.Height + (map.MapSize.Height & ~3) + 4);
-
-				var space = new CellLayer<bool>(gridType, enlargedSize);
-				space.Clear(true);
-
-				var enlargedOffset =
-					CellLayerUtils.WPosToCPos(CellLayerUtils.Center(space), gridType)
-						- CellLayerUtils.WPosToCPos(CellLayerUtils.Center(map.Tiles), gridType);
-
-				foreach (var cpos in map.AllCells)
-					space[cpos + enlargedOffset] = param.ClearTerrain.Contains(templatedTerrainInfo.GetTerrainIndex(map.Tiles[cpos]));
-
-				foreach (var actorPlan in actorPlans)
-					foreach (var (cpos, _) in actorPlan.Footprint())
-						if (space.Contains(cpos + enlargedOffset))
-							space[cpos + enlargedOffset] = false;
-
-				// Improve symmetry.
-				{
-					var newSpace = new CellLayer<bool>(gridType, enlargedSize);
-					Symmetry.RotateAndMirrorOverCPos(
-						space,
-						param.Rotations,
-						param.Mirror,
-						(sources, destination)
-							=> newSpace[destination] =
-								sources.All(source => !space.TryGetValue(source, out var value) || value));
-					space = newSpace;
-				}
-
-				// TODO: Move to configuration
+				// TODO: Move or collapse into configuration
+				const int RoadMinimumShrinkLength = 12;
 				const int RoadStraightenShrink = 4;
 				const int RoadStraightenGrow = 2;
-				const int RoadMinimumShrinkLength = 12;
 				const int RoadInertialRange = 8;
-				var roadTotalShrink = RoadStraightenShrink + param.RoadShrink;
-				var minimumRoadLengthForPruning = RoadMinimumShrinkLength + 2 * roadTotalShrink;
 
-				var matrixSpace = CellLayerUtils.ToMatrix(space, true);
-				var kernel = new Matrix<bool>(param.RoadSpacing * 2 + 1, param.RoadSpacing * 2 + 1);
-				MatrixUtils.OverCircle(
-					matrix: kernel,
-					centerIn1024ths: kernel.Size * 512,
-					radiusIn1024ths: param.RoadSpacing * 1024,
-					outside: false,
-					action: (xy, _) => kernel[xy] = true);
-				var dilated = MatrixUtils.KernelDilateOrErode(
-					matrixSpace,
-					kernel,
-					new int2(param.RoadSpacing, param.RoadSpacing),
-					false);
-				var deflated = MatrixUtils.DeflateSpace(dilated, true);
-
-				if (imperfectSymmetry)
+				var roadPaths = terraformer.PlanRoads(
+					terraformer.CheckSpace(param.ClearTerrain, true, false),
+					param.RoadSpacing,
+					RoadMinimumShrinkLength + 2 * (RoadStraightenShrink + param.RoadShrink));
+				foreach (var roadPath in roadPaths)
 				{
-					var changing = true;
-					while (changing)
-					{
-						changing = false;
-
-						// Delete short paths.
-						{
-							MatrixUtils.RemoveStubsFromDirectionMapInPlace(deflated);
-							var paths = MatrixUtils.DirectionMapToPaths(deflated);
-							if (paths.Length == 0)
-								break;
-
-							var minLength = paths.Min(p => p.Length);
-							if (minLength < minimumRoadLengthForPruning)
-							{
-								changing = true;
-								var shortPaths = paths
-									.Where(path => path.Length == minLength);
-								foreach (var path in shortPaths)
-									foreach (var point in path)
-										deflated[point] = 0;
-								MatrixUtils.RemoveStubsFromDirectionMapInPlace(deflated);
-							}
-						}
-
-						// Prune asymmetric paths.
-						{
-							const int Dilation = 3;
-							var nearPath = MatrixUtils.KernelDilateOrErode(
-								deflated.Map(v => v != 0),
-								new Matrix<bool>(Dilation * 2 + 1, Dilation * 2 + 1).Fill(true),
-								new int2(Dilation, Dilation),
-								true);
-							var matrixPaths = MatrixUtils.DirectionMapToPaths(deflated);
-							foreach (var path in matrixPaths)
-							{
-								var cposPath = CellLayerUtils.FromMatrixPoints([path], space)[0];
-								var projectedPoints = cposPath
-									.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, param.Rotations, param.Mirror))
-									.ToArray();
-								var matrixPoints = CellLayerUtils.ToMatrixPoints([projectedPoints], space)[0];
-								if (!matrixPoints.All(p => !nearPath.ContainsXY(p) || nearPath[p]))
-								{
-									// The path doesn't exist across all symmetries (or isn't consistent enough).
-									changing = true;
-									foreach (var point in path)
-										deflated[point] = 0;
-								}
-							}
-						}
-					}
-				}
-
-				var matrixPointArrays = MatrixUtils.DirectionMapToPathsWithPruning(
-					input: deflated,
-					minimumLength: minimumRoadLengthForPruning,
-					minimumJunctionSeparation: 6,
-					preserveEdgePaths: true);
-				var pointArrays = CellLayerUtils.FromMatrixPoints(matrixPointArrays, space);
-				pointArrays = TilingPath.RetainDisjointPaths(pointArrays);
-				pointArrays = pointArrays.Select(a => a.Select(p => p - enlargedOffset).ToArray()).ToArray();
-
-				var nonLoopedRoadPermittedTemplates =
-					TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
-						param.SegmentedBrushes, param.RoadSegmentTypes, param.ClearSegmentTypes);
-				var loopedRoadPermittedTemplates =
-					TilingPath.PermittedSegments.FromType(
-						param.SegmentedBrushes, param.RoadSegmentTypes);
-
-				foreach (var pointArray in pointArrays)
-				{
-					var isLoop = pointArray[0] == pointArray[^1];
-					TilingPath path;
-					if (isLoop)
-						path = new TilingPath(
-							map,
-							pointArray,
-							param.RoadSpacing - 1,
-							param.RoadSegmentTypes[0],
-							param.RoadSegmentTypes[0],
-							loopedRoadPermittedTemplates);
-					else
-						path = new TilingPath(
-							map,
-							pointArray,
-							param.RoadSpacing - 1,
-							param.ClearSegmentTypes[0],
-							param.ClearSegmentTypes[0],
-							nonLoopedRoadPermittedTemplates);
-
-					path
-						.ChirallyNormalize(cvec => CellLayerUtils.CornerToWPos(cvec, gridType) - wMapCenter)
-						.ExtendEdge(2 * roadTotalShrink + RoadMinimumShrinkLength)
-						.Shrink(roadTotalShrink, RoadMinimumShrinkLength)
-						.InertiallyExtend(RoadStraightenGrow, RoadInertialRange)
-						.SetAutoEndDeviation()
-						.OptimizeLoop()
-						.RetainIfValid();
-
-					// Shrinking may have deleted the path.
-					if (path.Points == null)
+					var tilingPath = TilingPath.QuickCreate(
+						map,
+						param.SegmentedBrushes,
+						roadPath,
+						param.RoadSpacing - 1,
+						param.RoadSegmentTypes[0],
+						param.ClearSegmentTypes[0])
+							.StraightenEnds(
+								RoadStraightenShrink + param.RoadShrink,
+								RoadStraightenGrow,
+								RoadMinimumShrinkLength,
+								RoadInertialRange)
+							.RetainIfValid();
+					if (tilingPath.Points == null)
 						continue;
 
-					var brush = path.Tile(roadTilingRandom)
+					var brush = tilingPath.Tile(roadTilingRandom)
 						?? throw new MapGenerationException("Could not fit tiles for roads");
 					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile, pickAnyRandom);
 				}
@@ -1562,63 +1422,71 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				// Grow resources
-				var resourcePattern = terraformer.GenerateResourcePattern(
-					resourceRandom,
-					param.ResourceFeatureSize,
-					param.OreClumpiness,
-					param.OreUniformity * 1024 / FractionMax);
-
-				var resourceBiases = new List<Terraformer.ResourceBias>();
-				var wSpawnBuildSizeSq = (long)param.SpawnBuildSize * param.SpawnBuildSize * 1024 * 1024;
-
-				foreach (var (actorType, resourceType) in param.ResourceSpawnSeeds.OrderBy(kv => kv.Key))
+				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
+				if (targetResourceValue > 0)
 				{
+					var resourcePattern = terraformer.GenerateResourcePattern(
+						resourceRandom,
+						param.ResourceFeatureSize,
+						param.OreClumpiness,
+						param.OreUniformity * 1024 / FractionMax);
+
+					var resourceBiases = new List<Terraformer.ResourceBias>();
+					var wSpawnBuildSizeSq = (long)param.SpawnBuildSize * param.SpawnBuildSize * 1024 * 1024;
+
+					// Bias towards resource spawns
+					foreach (var (actorType, resourceType) in param.ResourceSpawnSeeds.OrderBy(kv => kv.Key))
+					{
+						resourceBiases.AddRange(
+							terraformer.ActorsOfType(actorType)
+								.Select(a => new Terraformer.ResourceBias(a)
+								{
+									BiasRadius = new WDist(16 * 1024),
+									Bias = (value, rSq) => value + (int)(1024 * 1024 / (1024 + Exts.ISqrt(rSq))),
+									ResourceType = resourceType,
+								}));
+					}
+
+					// Bias towards player spawns, but also reserve an area for base building.
 					resourceBiases.AddRange(
-						terraformer.ActorsOfType(actorType)
+						terraformer.ActorsOfType("mpspawn")
 							.Select(a => new Terraformer.ResourceBias(a)
 							{
-								BiasRadius = new WDist(16 * 1024),
-								Bias = (value, rSq) => value + (int)(1024 * 1024 / (1024 + Exts.ISqrt(rSq))),
-								ResourceType = resourceType,
+								ExclusionRadius = new WDist(param.SpawnBuildSize * 1024),
+								BiasRadius = new WDist(param.SpawnRegionSize * 2 * 1024),
+								Bias = (value, rSq) => value + (int)(value * param.SpawnResourceBias * wSpawnBuildSizeSq / Math.Max(rSq, 1024 * 1024) / FractionMax),
 							}));
+
+					var (plan, typePlan) = terraformer.PlanResources(
+						resourcePattern,
+						playableArea,
+						param.DefaultResource,
+						resourceBiases);
+					terraformer.GrowResources(
+						plan,
+						typePlan,
+						targetResourceValue);
+					terraformer.DezoneFromResources(zoneable);
 				}
 
-				resourceBiases.AddRange(
-					terraformer.ActorsOfType("mpspawn")
-						.Select(a => new Terraformer.ResourceBias(a)
-						{
-							ExclusionRadius = new WDist(param.SpawnBuildSize * 1024),
-							BiasRadius = new WDist(param.SpawnRegionSize * 2 * 1024),
-							Bias = (value, rSq) => value + (int)(value * param.SpawnResourceBias * wSpawnBuildSizeSq / Math.Max(rSq, 1024 * 1024) / FractionMax),
-						}));
-
-				var (plan, typePlan) = terraformer.PlanResources(
-					resourcePattern,
-					playableArea,
-					param.DefaultResource,
-					resourceBiases);
-				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
-				terraformer.GrowResources(
-					plan,
-					typePlan,
-					targetResourceValue);
-				terraformer.DezoneFromResources(zoneable);
-
 				// CivilianBuildings
-				var decorationNoise = terraformer.DecorationPattern(
-					decorationRandom,
-					terraformer.PlayableSpace(),
-					zoneable,
-					param.CivilianBuildings,
-					param.CivilianBuildingsFeatureSize,
-					param.CivilianBuildingDensity,
-					param.MinimumCivilianBuildingDensity,
-					param.CivilianBuildingDensityRadius);
-				terraformer.PlaceActors(
-					decorationTilingRandom,
-					decorationNoise,
-					param.CivilianBuildingsObstacles,
-					alwaysPreferLargerBrushes: true);
+				if (param.CivilianBuildings > 0)
+				{
+					var decorationNoise = terraformer.DecorationPattern(
+						decorationRandom,
+						terraformer.CheckSpace(param.PlayableTerrain, true),
+						CellLayerUtils.Conjunction([zoneable, terraformer.CheckSpace(param.LandTile)]),
+						param.CivilianBuildings,
+						param.CivilianBuildingsFeatureSize,
+						param.CivilianBuildingDensity,
+						param.MinimumCivilianBuildingDensity,
+						param.CivilianBuildingDensityRadius);
+					terraformer.PlaceActors(
+						decorationTilingRandom,
+						decorationNoise,
+						param.CivilianBuildingsObstacles,
+						alwaysPreferLargerBrushes: true);
+				}
 			}
 
 			// Cosmetically repaint tiles
