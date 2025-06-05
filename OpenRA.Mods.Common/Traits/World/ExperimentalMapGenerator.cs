@@ -535,7 +535,6 @@ namespace OpenRA.Mods.Common.Traits
 				throw new MapGenerationException("map is too small for circular shaping");
 
 			var beachPermittedTemplates = TilingPath.PermittedSegments.FromType(param.SegmentedBrushes, param.BeachSegmentTypes);
-			var replaceabilityMap = new Dictionary<TerrainTile, MultiBrush.Replaceability>();
 			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
 
 			var templatedTerrainInfo = (ITemplatedTerrainInfo)terrainInfo;
@@ -559,28 +558,35 @@ namespace OpenRA.Mods.Common.Traits
 					else
 						throw new MapGenerationException($"Terrain index {type} has unknown playability.");
 
-					if (id == param.LandTile)
+					if (id != param.LandTile
+						&& id != param.WaterTile
+						&& param.PartiallyPlayableCategories.Overlaps(template.Categories)
+						&& playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
 					{
-						replaceabilityMap[tile] = MultiBrush.Replaceability.Any;
+						playabilityMap[tile] = PlayableSpace.Playability.Partial;
 					}
-					else if (id == param.WaterTile)
+				}
+			}
+
+			CellLayer<MultiBrush.Replaceability> PlayableToReplaceable()
+			{
+				var playable = terraformer.CheckSpace(param.PlayableTerrain, true);
+				var basicLand = terraformer.CheckSpace(param.LandTile);
+				var replace = new CellLayer<MultiBrush.Replaceability>(map);
+				foreach (var mpos in map.AllCells.MapCoords)
+					if (playable[mpos])
 					{
-						replaceabilityMap[tile] = MultiBrush.Replaceability.Tile;
+						if (basicLand[mpos])
+							replace[mpos] = MultiBrush.Replaceability.Any;
+						else
+							replace[mpos] = MultiBrush.Replaceability.Actor;
 					}
 					else
 					{
-						if (playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
-							replaceabilityMap[tile] = MultiBrush.Replaceability.None;
-						else
-							replaceabilityMap[tile] = MultiBrush.Replaceability.Actor;
-
-						if (param.PartiallyPlayableCategories.Overlaps(template.Categories)
-							&& playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
-						{
-							playabilityMap[tile] = PlayableSpace.Playability.Partial;
-						}
+						replace[mpos] = MultiBrush.Replaceability.None;
 					}
-				}
+
+				return replace;
 			}
 
 			// Use `random` to derive separate independent random number generators.
@@ -854,7 +860,7 @@ namespace OpenRA.Mods.Common.Traits
 					param.ForestFeatureSize,
 					param.Forests,
 					param.ForestClumpiness);
-				var replace = IdentifyReplaceableTiles(map, replaceabilityMap, null);
+				var replace = PlayableToReplaceable();
 				foreach (var mpos in map.AllCells.MapCoords)
 					if (!forestNoise[mpos] || !space[mpos] || passages[mpos])
 						replace[mpos] = MultiBrush.Replaceability.None;
@@ -1013,7 +1019,7 @@ namespace OpenRA.Mods.Common.Traits
 							DirectionExts.Spread4CVec);
 					}
 
-					var replaceable = IdentifyReplaceableTiles(map, replaceabilityMap, actorPlans);
+					var replaceable = PlayableToReplaceable();
 					var replace = new CellLayer<MultiBrush.Replaceability>(map);
 					foreach (var mpos in map.AllCells.MapCoords)
 						if (regionMask[mpos] == largest.Id || !map.Contains(mpos))
@@ -1409,31 +1415,6 @@ namespace OpenRA.Mods.Common.Traits
 			terraformer.Bake();
 
 			return map;
-		}
-
-		static CellLayer<MultiBrush.Replaceability> IdentifyReplaceableTiles(
-			Map map,
-			Dictionary<TerrainTile, MultiBrush.Replaceability> replaceabilityMap,
-			IEnumerable<ActorPlan> actorPlans)
-		{
-			var output = new CellLayer<MultiBrush.Replaceability>(map);
-
-			foreach (var mpos in map.AllCells.MapCoords)
-			{
-				var tile = map.Tiles[mpos];
-				var replaceability = MultiBrush.Replaceability.Any;
-				if (replaceabilityMap.TryGetValue(tile, out var value))
-					replaceability = value;
-				output[mpos] = replaceability;
-			}
-
-			if (actorPlans != null)
-				foreach (var actorPlan in actorPlans)
-					foreach (var cpos in actorPlan.Footprint().Keys)
-						if (map.AllCells.Contains(cpos))
-							output[cpos] = MultiBrush.Replaceability.None;
-
-			return output;
 		}
 
 		string IEditorToolInfo.Label => Name;
