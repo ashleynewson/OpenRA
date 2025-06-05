@@ -106,6 +106,114 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Creates a boolean fractal noise pattern obeying symmetry requirements.
+		/// <param name="random">Random source</param>
+		/// <param name="noiseFeatureSize">Largest interval for fractal noise.</param>
+		/// <param name="fraction">Target fraction of true values (from 0 to FractionMax).</param>
+		/// <param name="clumpiness">
+		/// The number of times to square root the noise wavelength to arrive at the amplitude.
+		/// In other words, amplitude = wavelength ** (1 / (2 ** clumpiness))
+		/// Setting to 0 is equivalent to pink noise.
+		/// </param>
+		/// </summary>
+		public CellLayer<bool> BooleanNoise(
+			MersenneTwister random,
+			int noiseFeatureSize,
+			int fraction,
+			int clumpiness = 0)
+		{
+			var noise = new CellLayer<int>(Map);
+			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
+				random,
+				noise,
+				Param.Rotations,
+				Param.Mirror,
+				noiseFeatureSize,
+				wavelength => ClumpinessAmplitude(wavelength, clumpiness));
+
+			return CellLayerUtils.CalibratedBooleanThreshold(
+				noise, FractionMax - fraction, FractionMax);
+		}
+
+		/// <summary>
+		/// Plan passageway cutouts that, when subtracted away from obstructions, preserve
+		/// connectivity through a given space.
+		/// </summary>
+		/// <param name="random">Random source for carving addition passageways to comply with maximumCutoutSpacing.</param>
+		/// <param name="space">Describes the space through which connectivity needs to be preserved.</param>
+		/// <param name="cutoutRadius">Half-thickness of passageways.</param>
+		/// <param name="maximumCutoutSpacing">
+		/// If greater than zero, inserts additional passageways, ensuring that passageways are no
+		/// greater than this distance apart (in Chebyshev distance).
+		/// </param>
+		public CellLayer<bool> PlanPassages(
+			MersenneTwister random,
+			CellLayer<bool> space,
+			int cutoutRadius,
+			int maximumCutoutSpacing = 0)
+		{
+			CheckHasMapShape(space);
+
+			var passages = new CellLayer<bool>(Map);
+
+			if (cutoutRadius <= 0)
+				return passages;
+
+			if (maximumCutoutSpacing > 0)
+			{
+				space = CellLayerUtils.Clone(space);
+				var roominess = new CellLayer<int>(Map);
+				CellLayerUtils.ChebyshevRoom(roominess, space, false);
+				foreach (var mpos in Map.AllCells.MapCoords)
+					roominess[mpos] = Math.Min(
+						maximumCutoutSpacing,
+						roominess[mpos]);
+
+				while (true)
+				{
+					var (chosenMPos, room) = CellLayerUtils.FindRandomBest(
+						roominess,
+						random,
+						(a, b) => a.CompareTo(b));
+					if (room < maximumCutoutSpacing)
+						break;
+
+					var projections = Symmetry.RotateAndMirrorCPos(
+						chosenMPos.ToCPos(Map),
+						space,
+						Param.Rotations,
+						Param.Mirror);
+					foreach (var projection in projections)
+					{
+						if (space.Contains(projection))
+							space[projection] = false;
+						var minX = projection.X - 2 * maximumCutoutSpacing + 1;
+						var minY = projection.Y - 2 * maximumCutoutSpacing + 1;
+						var maxX = projection.X + 2 * maximumCutoutSpacing - 1;
+						var maxY = projection.Y + 2 * maximumCutoutSpacing - 1;
+						for (var y = minY; y <= maxY; y++)
+							for (var x = minX; x <= maxX; x++)
+							{
+								var mpos = new CPos(x, y).ToMPos(Map);
+								if (roominess.Contains(mpos))
+									roominess[mpos] = 0;
+							}
+					}
+				}
+			}
+
+			var matrixSpace = CellLayerUtils.ToMatrix(space, false);
+
+			// deflated is grid points, not squares. Has a size of `size + 1`.
+			var deflated = MatrixUtils.DeflateSpace(matrixSpace, false);
+			var kernel = new Matrix<bool>(2 * cutoutRadius, 2 * cutoutRadius).Fill(true);
+			var inflated = MatrixUtils.KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(cutoutRadius - 1, cutoutRadius - 1), true);
+			CellLayerUtils.FromMatrix(passages, inflated, true);
+
+			return passages;
+		}
+
+		/// <summary>
 		/// Plan paths for roads that travel through the middle of playable space.
 		/// </summary>
 		/// <param name="availableSpace">Space in which roads are permitted.</param>
@@ -116,6 +224,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			int minimumSpacing,
 			int minimumLength)
 		{
+			CheckHasMapShape(availableSpace);
+
 			// For awkward symmetries, we try harder to make sure roads are fairer.
 			// This can degrade the quantity of roads, though.
 			var imperfectSymmetry =
@@ -500,13 +610,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			CheckHasMapShape(zoneable);
 
-			foreach (var mpos in zoneable.CellRegion)
+			foreach (var mpos in Map.AllCells.MapCoords)
 				if (Map.Resources[mpos].Type != 0)
 					zoneable[mpos] = false;
 		}
 
 		/// <summary>
 		/// Return a new CellLayer produced by aggregating projected cells from an input CellLayer.
+		/// The input does not need to have the same shape as the map.
 		/// </summary>
 		public CellLayer<T> ImproveSymmetry<T>(
 			CellLayer<T> layer,
@@ -698,7 +809,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			foreach (var (tile, collection) in rules.OrderBy(kv => kv.Key))
 			{
 				var replace = new CellLayer<MultiBrush.Replaceability>(Map);
-				foreach (var mpos in replace.CellRegion.MapCoords)
+				foreach (var mpos in Map.AllCells.MapCoords)
 					replace[mpos] =
 						Map.Tiles[mpos].Type == tile
 							? MultiBrush.Replaceability.Any
@@ -709,7 +820,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Wrapper around MultiBrush.PaintArea that uses Replacibility.Actor for masked cells.
+		/// Wrapper around PaintArea that uses Replacibility.Actor for masked cells.
 		/// </summary>
 		public void PlaceActors(
 			MersenneTwister random,
@@ -722,6 +833,22 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var replace = new CellLayer<MultiBrush.Replaceability>(Map);
 			foreach (var mpos in Map.AllCells.MapCoords)
 				replace[mpos] = mask[mpos] ? MultiBrush.Replaceability.Actor : MultiBrush.Replaceability.None;
+
+			PaintArea(
+				random,
+				replace,
+				brushes,
+				alwaysPreferLargerBrushes);
+		}
+
+		/// <summary>Wrapper around MultiBrush.PaintArea.</summary>
+		public void PaintArea(
+			MersenneTwister random,
+			CellLayer<MultiBrush.Replaceability> replace,
+			IReadOnlyList<MultiBrush> brushes,
+			bool alwaysPreferLargerBrushes = false)
+		{
+			CheckHasMapShape(replace);
 
 			MultiBrush.PaintArea(
 				Map,

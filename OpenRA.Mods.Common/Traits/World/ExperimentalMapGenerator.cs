@@ -843,106 +843,22 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (param.Forests > 0)
 			{
-				var forestNoise = new CellLayer<int>(map);
-				NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
+				var space = terraformer.CheckSpace(param.ClearTerrain);
+				var passages = terraformer.PlanPassages(
+					topologyRandom,
+					terraformer.ImproveSymmetry(space, true, (a, b) => a && b),
+					param.ForestCutout,
+					param.MaximumCutoutSpacing);
+				var forestNoise = terraformer.BooleanNoise(
 					forestRandom,
-					forestNoise,
-					param.Rotations,
-					param.Mirror,
 					param.ForestFeatureSize,
-					wavelength => Terraformer.ClumpinessAmplitude(wavelength, param.ForestClumpiness));
-				CellLayerUtils.CalibrateQuantileInPlace(
-					forestNoise,
-					0,
-					FractionMax - param.Forests, FractionMax);
-
-				var forestPlan = new CellLayer<bool>(map);
+					param.Forests,
+					param.ForestClumpiness);
+				var replace = IdentifyReplaceableTiles(map, replaceabilityMap, null);
 				foreach (var mpos in map.AllCells.MapCoords)
-					if (param.ClearTerrain.Contains(map.GetTerrainIndex(mpos)) && forestNoise[mpos] >= 0)
-						forestPlan[mpos] = true;
-
-				if (param.ForestCutout > 0)
-				{
-					var space = new CellLayer<bool>(map);
-					foreach (var mpos in map.AllCells.MapCoords)
-						space[mpos] = param.ClearTerrain.Contains(map.GetTerrainIndex(mpos));
-
-					// Improve symmetry.
-					{
-						var newSpace = new CellLayer<bool>(map);
-						Symmetry.RotateAndMirrorOverCPos(
-							space,
-							param.Rotations,
-							param.Mirror,
-							(sources, destination)
-								=> newSpace[destination] =
-									sources.All(source => !space.TryGetValue(source, out var value) || value));
-						space = newSpace;
-					}
-
-					if (param.MaximumCutoutSpacing > 0)
-					{
-						var roominess = new CellLayer<int>(map);
-						CellLayerUtils.ChebyshevRoom(roominess, space, false);
-						foreach (var mpos in map.AllCells.MapCoords)
-							roominess[mpos] = Math.Min(
-								param.MaximumCutoutSpacing,
-								roominess[mpos]);
-
-						while (true)
-						{
-							var (chosenMPos, room) = CellLayerUtils.FindRandomBest(
-								roominess,
-								topologyRandom,
-								(a, b) => a.CompareTo(b));
-							if (room < param.MaximumCutoutSpacing)
-								break;
-
-							var projections = Symmetry.RotateAndMirrorCPos(
-								chosenMPos.ToCPos(map),
-								space,
-								param.Rotations,
-								param.Mirror);
-							foreach (var projection in projections)
-							{
-								if (space.Contains(projection))
-									space[projection] = false;
-								var minX = projection.X - 2 * param.MaximumCutoutSpacing + 1;
-								var minY = projection.Y - 2 * param.MaximumCutoutSpacing + 1;
-								var maxX = projection.X + 2 * param.MaximumCutoutSpacing - 1;
-								var maxY = projection.Y + 2 * param.MaximumCutoutSpacing - 1;
-								for (var y = minY; y <= maxY; y++)
-									for (var x = minX; x <= maxX; x++)
-									{
-										var mpos = new CPos(x, y).ToMPos(map);
-										if (roominess.Contains(mpos))
-											roominess[mpos] = 0;
-									}
-							}
-						}
-					}
-
-					var matrixSpace = CellLayerUtils.ToMatrix(space, false);
-
-					// deflated is grid points, not squares. Has a size of `size + 1`.
-					var deflated = MatrixUtils.DeflateSpace(matrixSpace, false);
-					var kernel = new Matrix<bool>(2 * param.ForestCutout, 2 * param.ForestCutout).Fill(true);
-					var inflated = MatrixUtils.KernelDilateOrErode(deflated.Map(v => v != 0), kernel, new int2(param.ForestCutout - 1, param.ForestCutout - 1), true);
-					var cutout = new CellLayer<bool>(map);
-					CellLayerUtils.FromMatrix(cutout, inflated, true);
-					foreach (var mpos in map.AllCells.MapCoords)
-						if (cutout[mpos])
-							forestPlan[mpos] = false;
-				}
-
-				var replaceable = IdentifyReplaceableTiles(map, replaceabilityMap, null);
-				var forestReplace = new CellLayer<MultiBrush.Replaceability>(map);
-				foreach (var mpos in map.AllCells.MapCoords)
-					if (forestPlan[mpos])
-						forestReplace[mpos] = replaceable[mpos];
-					else
-						forestReplace[mpos] = MultiBrush.Replaceability.None;
-				MultiBrush.PaintArea(map, actorPlans, forestReplace, param.ForestObstacles, forestTilingRandom);
+					if (!forestNoise[mpos] || !space[mpos] || passages[mpos])
+						replace[mpos] = MultiBrush.Replaceability.None;
+				terraformer.PaintArea(forestTilingRandom, replace, param.ForestObstacles);
 			}
 
 			if (param.EnforceSymmetry != 0)
@@ -1473,7 +1389,7 @@ namespace OpenRA.Mods.Common.Traits
 					var decorationNoise = terraformer.DecorationPattern(
 						decorationRandom,
 						terraformer.CheckSpace(param.PlayableTerrain, true),
-						CellLayerUtils.Conjunction([zoneable, terraformer.CheckSpace(param.LandTile)]),
+						CellLayerUtils.Subtract([zoneable, terraformer.CheckSpace(param.LandTile)]),
 						param.CivilianBuildings,
 						param.CivilianBuildingsFeatureSize,
 						param.CivilianBuildingDensity,

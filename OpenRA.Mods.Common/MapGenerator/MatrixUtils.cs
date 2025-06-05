@@ -712,8 +712,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Uniformally add to or subtract from all cells such that count out of every outOf cells,
-		/// are no greater than the given target value.
+		/// Uniformally add to or subtract from all cells such that the quantile (count/outOf) has at the target value.
+		/// For example, (target: 0, count: 25, outOf: 75) where there are 401 cells would mean
+		/// that 100 cells are no greater than 0, 300 cells are no less than 0, and at least 1 cell
+		/// is 0.
 		/// </summary>
 		public static void CalibrateQuantileInPlace(Matrix<int> matrix, int target, int count, int outOf)
 		{
@@ -722,6 +724,23 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var adjustment = target - sorted[(long)(sorted.Length - 1) * count / outOf];
 			for (var i = 0; i < matrix.Data.Length; i++)
 				matrix[i] += adjustment;
+		}
+
+		/// <summary>
+		/// Return a boolean matrix where true correlates with the largest values in the input,
+		/// such that the fraction of true cells is at least (but approximately) count/outOf.
+		/// </summary>
+		public static Matrix<bool> CalibratedBooleanThreshold(Matrix<int> input, int count, int outOf)
+		{
+			if (count <= 0)
+				return new Matrix<bool>(input.Size);
+			else if (count >= outOf)
+				return new Matrix<bool>(input.Size).Fill(true);
+
+			var sorted = (int[])input.Data.Clone();
+			Array.Sort(sorted);
+			var threshold = sorted[(long)sorted.Length * count / outOf];
+			return input.Map(v => v >= threshold);
 		}
 
 		/// <summary>

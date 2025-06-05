@@ -288,8 +288,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Uniformally add to or subtract from all cells such that count out of every outOf cells,
-		/// are no greater than the given target value.
+		/// Uniformally add to or subtract from all cells such that the quantile (count/outOf) has at the target value.
+		/// For example, (target: 0, count: 25, outOf: 75) where there are 401 cells would mean
+		/// that 100 cells are no greater than 0, 300 cells are no less than 0, and at least 1 cell
+		/// is 0.
 		/// </summary>
 		public static void CalibrateQuantileInPlace(CellLayer<int> cellLayer, int target, int count, int outOf)
 		{
@@ -298,6 +300,32 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var adjustment = target - sorted[(long)(sorted.Length - 1) * count / outOf];
 			foreach (var mpos in cellLayer.CellRegion.MapCoords)
 				cellLayer[mpos] += adjustment;
+		}
+
+		/// <summary>
+		/// Return a boolean CellLayer where true correlates with the largest values in the input,
+		/// such that the fraction of true cells is at least (but approximately) count/outOf.
+		/// </summary>
+		public static CellLayer<bool> CalibratedBooleanThreshold(CellLayer<int> input, int count, int outOf)
+		{
+			var output = new CellLayer<bool>(input.GridType, input.Size);
+			if (count <= 0)
+			{
+				return output;
+			}
+			else if (count >= outOf)
+			{
+				output.Clear(true);
+				return output;
+			}
+
+			var sorted = Entries(input);
+			Array.Sort(sorted);
+			var threshold = sorted[(long)sorted.Length * count / outOf];
+			foreach (var mpos in input.CellRegion.MapCoords)
+				output[mpos] = input[mpos] >= threshold;
+
+			return output;
 		}
 
 		/// <summary>
@@ -533,9 +561,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
-		public static CellLayer<bool> Conjunction(IEnumerable<CellLayer<bool>> layers)
+		/// <summary>Return logical AND / conjunction / intersection of layers.</summary>
+		public static CellLayer<bool> Intersect(IEnumerable<CellLayer<bool>> layers)
 		{
 			return Aggregate(layers, (a, b) => a && b);
+		}
+
+		/// <summary>
+		/// Return the difference of layers. Each cell is true if and only if something appears
+		/// only in the first layer.
+		/// </summary>
+		public static CellLayer<bool> Subtract(IEnumerable<CellLayer<bool>> layers)
+		{
+			return Aggregate(layers, (a, b) => a && !b);
 		}
 
 		public static CellLayer<T> Aggregate<T>(
@@ -557,6 +595,22 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			return accumulator;
+		}
+
+		/// <summary>Create a shallow copy of a CellLayer.</summary>
+		public static CellLayer<T> Clone<T>(CellLayer<T> input)
+		{
+			var output = new CellLayer<T>(input.GridType, input.Size);
+			output.CopyValuesFrom(input);
+			return output;
+		}
+
+		public static CellLayer<R> Map<T, R>(CellLayer<T> input, Func<T, R> func)
+		{
+			var output = new CellLayer<R>(input.GridType, input.Size);
+			foreach (var mpos in input.CellRegion.MapCoords)
+				output[mpos] = func(input[mpos]);
+			return output;
 		}
 	}
 }
