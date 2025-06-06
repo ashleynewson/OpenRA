@@ -83,6 +83,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		readonly ITerrainInfo terrainInfo;
 
+		// Will be null if terrainInfo isn't a ITemplatedTerrainInfo. Some methods assume that the
+		// terrainInfo is an ITemplatedTerrainInfo.
+		readonly ITemplatedTerrainInfo templatedTerrainInfo;
+
 		public Terraformer(
 			Map map,
 			ModData modData,
@@ -95,6 +99,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Param = parameters;
 
 			terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
+			templatedTerrainInfo = terrainInfo as ITemplatedTerrainInfo;
 		}
 
 		/// <summary>
@@ -645,8 +650,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 			bool checkActors = false,
 			bool checkResources = false)
 		{
-			var templatedTerrainInfo = (ITemplatedTerrainInfo)terrainInfo;
-
 			var space = new CellLayer<bool>(Map);
 			if (allowedTerrain != null)
 			{
@@ -857,6 +860,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 				brushes,
 				random,
 				alwaysPreferLargerBrushes);
+		}
+
+		/// <summary>
+		/// For a 1x1 tile, return a TerrainTile with the given tile type, using a random index if
+		/// it's a PickAny template.
+		/// </summary>
+		public TerrainTile PickTile(MersenneTwister random, ushort tileType)
+		{
+			if (templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
+				return new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
+			else
+				return new TerrainTile(tileType, 0);
 		}
 
 		/// <summary>

@@ -617,18 +617,10 @@ namespace OpenRA.Mods.Common.Traits
 			var decorationTilingRandom = new MersenneTwister(random.Next());
 			var pickAnyRandom = new MersenneTwister(random.Next());
 
-			TerrainTile PickTile(ushort tileType)
-			{
-				if (templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
-					return new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
-				else
-					return new TerrainTile(tileType, 0);
-			}
-
 			foreach (var cell in map.AllCells)
 			{
 				var mpos = cell.ToMPos(gridType);
-				map.Tiles[mpos] = PickTile(param.LandTile);
+				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
 			}
@@ -705,7 +697,7 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					// `map.Tiles[mpos].Type == param.LandTile` avoids overwriting beach tiles.
 					if (beachChirality[mpos] < 0 && !beachesShape.Contains(mpos.ToCPos(map)))
-						map.Tiles[mpos] = PickTile(param.WaterTile);
+						map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.WaterTile);
 				}
 			}
 			else
@@ -715,7 +707,7 @@ namespace OpenRA.Mods.Common.Traits
 				foreach (var cell in map.AllCells)
 				{
 					var mpos = cell.ToMPos(gridType);
-					map.Tiles[mpos] = PickTile(tileType);
+					map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, tileType);
 				}
 			}
 
@@ -1007,7 +999,7 @@ namespace OpenRA.Mods.Common.Traits
 							var propagate =
 								beachesShape.Remove(cpos) ||
 								map.Tiles[mpos].Type == param.WaterTile;
-							map.Tiles[mpos] = PickTile(param.LandTile);
+							map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
 							regionMask[mpos] = PlayableSpace.NullRegion;
 							return propagate ? false : null;
 						}
