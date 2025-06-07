@@ -534,7 +534,6 @@ namespace OpenRA.Mods.Common.Traits
 			if (externalCircleRadius <= 0)
 				throw new MapGenerationException("map is too small for circular shaping");
 
-			var beachPermittedTemplates = TilingPath.PermittedSegments.FromType(param.SegmentedBrushes, param.BeachSegmentTypes);
 			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
 
 			var templatedTerrainInfo = (ITemplatedTerrainInfo)terrainInfo;
@@ -663,53 +662,25 @@ namespace OpenRA.Mods.Common.Traits
 			var beaches = CellLayerUtils.FromMatrixPoints(
 				MatrixUtils.BordersToPoints(landPlan),
 				map.Tiles);
-			var beachesShape = new HashSet<CPos>();
-			if (beaches.Length > 0)
-			{
-				var tiledBeaches = new CPos[beaches.Length][];
-				for (var i = 0; i < beaches.Length; i++)
-				{
-					var beachPath = new TilingPath(
-						map,
-						beaches[i],
-						(param.MinimumLandSeaThickness - 1) / 2,
-						param.BeachSegmentTypes[0],
-						param.BeachSegmentTypes[0],
-						beachPermittedTemplates);
-					beachPath
-						.ExtendEdge(4)
-						.SetAutoEndDeviation()
-						.OptimizeLoop();
-					var brush = beachPath.Tile(beachTilingRandom)
-						?? throw new MapGenerationException("Could not fit tiles for beach");
-					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile, pickAnyRandom);
-					tiledBeaches[i] = brush.Segment.Points.Select(vec => CPos.Zero + vec).ToArray();
-					foreach (var cvec in brush.Shape)
-						beachesShape.Add(CPos.Zero + cvec);
-				}
-
-				var beachChiralityMatrix = MatrixUtils.PointsChirality(
-					landPlan.Size,
-					CellLayerUtils.ToMatrixPoints(tiledBeaches, map.Tiles));
-				var beachChirality = new CellLayer<int>(map);
-				CellLayerUtils.FromMatrix(beachChirality, beachChiralityMatrix);
-				foreach (var mpos in map.AllCells.MapCoords)
-				{
-					// `map.Tiles[mpos].Type == param.LandTile` avoids overwriting beach tiles.
-					if (beachChirality[mpos] < 0 && !beachesShape.Contains(mpos.ToCPos(map)))
-						map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.WaterTile);
-				}
-			}
-			else
-			{
-				// There weren't any coastlines
-				var tileType = landPlan[0] ? param.LandTile : param.WaterTile;
-				foreach (var cell in map.AllCells)
-				{
-					var mpos = cell.ToMPos(gridType);
-					map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, tileType);
-				}
-			}
+			var beachPaths = beaches
+				.Select(beach =>
+					TilingPath.QuickCreate(
+							map,
+							param.SegmentedBrushes,
+							beach,
+							(param.MinimumLandSeaThickness - 1) / 2,
+							param.BeachSegmentTypes[0],
+							param.BeachSegmentTypes[0])
+								.ExtendEdge(4))
+				.ToArray();
+			var landBeachWater = terraformer.PaintLoopsAndFill(
+				beachTilingRandom,
+				beachPaths,
+				landPlan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
+				[new MultiBrush().WithTemplate(map, param.WaterTile, CVec.Zero)],
+				[new MultiBrush().WithTemplate(map, param.LandTile, CVec.Zero)]);
+			if (landBeachWater == null)
+				throw new MapGenerationException("Could not fit tiles for beach");
 
 			var nonLoopedCliffPermittedTemplates =
 				TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
@@ -992,6 +963,10 @@ namespace OpenRA.Mods.Common.Traits
 									if (map.Tiles.Contains(projection) && map.Tiles[projection].Type == param.WaterTile)
 										unplayableWater.Add(projection);
 							}
+
+						var beachesShape = map.AllCells
+							.Where(cpos => landBeachWater[cpos] == Terraformer.Side.None)
+							.ToHashSet();
 
 						bool? ClearWaterBody(CPos cpos, bool _)
 						{

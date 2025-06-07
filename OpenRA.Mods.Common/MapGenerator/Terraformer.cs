@@ -60,6 +60,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 			{ }
 		}
 
+		public enum Side : sbyte
+		{
+			Out = -1,
+			None = 0,
+			In = 1,
+		}
+
 		/// <summary>
 		/// Optional Terraformer parameters with general use across utilities.
 		/// </summary>
@@ -93,9 +100,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			List<ActorPlan> actorPlans,
 			Params parameters)
 		{
-			this.Map = map;
-			this.ModData = modData;
-			this.ActorPlans = actorPlans;
+			Map = map;
+			ModData = modData;
+			ActorPlans = actorPlans;
 			Param = parameters;
 
 			terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
@@ -138,6 +145,115 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			return CellLayerUtils.CalibratedBooleanThreshold(
 				noise, FractionMax - fraction, FractionMax);
+		}
+
+		/// <summary>
+		/// Wrapper around InsideOutside which performs both path tiling and side filling, painting
+		/// the result to the map. If tiling fails, returns null without modifying the map.
+		/// </summary>
+		/// <param name="random">Random source used for tiling and filling.</param>
+		/// <param name="tilingPaths">
+		/// Paths to tile. Note that these are tiled exactly as specified, so if end deviation is
+		/// enabled, this will allow tiling errors.
+		/// </param>
+		/// <param name="fallback">Side to assume if no paths are contained in the map.</param>
+		/// <param name="outside">If non-null, these MultiBrushes are painted over outside regions.</param>
+		/// <param name="inside">If non-null, these MultiBrushes are painted over inside regions.</param>
+		/// <param name="replaceMask">Optional replaceability constraints for filling. Ignored for path tiling.</param>
+		public CellLayer<Side> PaintLoopsAndFill(
+			MersenneTwister random,
+			IReadOnlyList<TilingPath> tilingPaths,
+			Side fallback,
+			IReadOnlyList<MultiBrush> outside,
+			IReadOnlyList<MultiBrush> inside,
+			CellLayer<MultiBrush.Replaceability> replaceMask = null)
+		{
+			if (replaceMask != null)
+				CheckHasMapShape(replaceMask);
+
+			var tilings = new MultiBrush[tilingPaths.Count];
+			for (var i = 0; i < tilingPaths.Count; i++)
+			{
+				var tiling = tilingPaths[i].Tile(random);
+				if (tiling == null)
+					return null;
+
+				tilings[i] = tiling;
+			}
+
+			foreach (var tiling in tilings)
+				tiling.Paint(Map, ActorPlans, CPos.Zero, MultiBrush.Replaceability.Any, random);
+
+			if (inside == null && outside == null)
+				return null;
+
+			var sides = InsideOutside(tilings, fallback);
+
+			foreach (var (brushes, side) in new[] { (inside, Side.In), (outside, Side.Out) })
+			{
+				if (brushes == null)
+					continue;
+
+				var replace = new CellLayer<MultiBrush.Replaceability>(Map);
+				foreach (var mpos in Map.AllCells.MapCoords)
+					replace[mpos] = (sides[mpos] == side)
+						? (replaceMask?[mpos] ?? MultiBrush.Replaceability.Any)
+						: MultiBrush.Replaceability.None;
+
+				PaintArea(random, replace, brushes);
+			}
+
+			return sides;
+		}
+
+		/// <summary>
+		/// Given a collection of path tiling results which form non-nested loops or extend beyond
+		/// or out to the map edge, return a CellLayer identifying whether cells are inside or
+		/// outside of the tiled loops, or Side.None if the cell is covered by a MultiBrush.
+		/// If a loop wraps around a space clockwise, that space is considered inside.
+		/// </summary>
+		/// <param name="tilings">Path tiling results which partition the space.</param>
+		/// <param name="fallback">Side to assume if no paths are contained in the map.</param>
+		public CellLayer<Side> InsideOutside(
+			IReadOnlyList<MultiBrush> tilings,
+			Side fallback)
+		{
+			var sides = new CellLayer<Side>(Map);
+			var tiledPoints = new CPos[tilings.Count][];
+			var tiledArea = new CellLayer<bool>(Map);
+			for (var i = 0; i < tilings.Count; i++)
+			{
+				tiledPoints[i] = tilings[i].Segment.Points
+					.Select(vec => CPos.Zero + vec)
+					.ToArray();
+				foreach (var cvec in tilings[i].Shape)
+					if (tiledArea.Contains(CPos.Zero + cvec))
+						tiledArea[CPos.Zero + cvec] = true;
+			}
+
+			var chiralityMatrix = MatrixUtils.PointsChirality(
+				CellLayerUtils.CellBounds(Map).Size.ToInt2(),
+				CellLayerUtils.ToMatrixPoints(tiledPoints, Map.Tiles));
+			if (chiralityMatrix == null)
+			{
+				sides.Clear(fallback);
+				return sides;
+			}
+
+			var chirality = new CellLayer<int>(Map);
+			CellLayerUtils.FromMatrix(chirality, chiralityMatrix);
+			foreach (var mpos in Map.AllCells.MapCoords)
+			{
+				if (!tiledArea[mpos])
+				{
+					if (chirality[mpos] > 0)
+						sides[mpos] = Side.In;
+					else if (chirality[mpos] < 0)
+						sides[mpos] = Side.Out;
+				}
+			}
+
+			return sides;
 		}
 
 		/// <summary>

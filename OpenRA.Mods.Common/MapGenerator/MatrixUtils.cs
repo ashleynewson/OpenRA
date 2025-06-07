@@ -804,12 +804,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <para>
 		/// Given a set of grid-intersection point arrays, creates a matrix where each cell
 		/// identifies whether the closest points are wrapping around it clockwise or
-		/// counter-clockwise (as defined in MapUtils.Direction).
+		/// counter-clockwise (as defined in MapGenerator.Direction).
 		/// </para>
 		/// <para>
 		/// Positive output values indicate the points are wrapping around it clockwise.
 		/// Negative output values indicate the points are wrapping around it counter-clockwise.
 		/// Outputs can be zero or non-unit magnitude if there are fighting point arrays.
+		/// </para>
+		/// <para>
+		/// If no points are on or close enough to the matrix area, returns null.
 		/// </para>
 		/// </summary>
 		public static Matrix<int> PointsChirality(int2 size, IEnumerable<int2[]> pointArrayArray)
@@ -828,6 +831,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			foreach (var pointArray in pointArrayArray)
+			{
 				for (var i = 1; i < pointArray.Length; i++)
 				{
 					var from = pointArray[i - 1];
@@ -857,6 +861,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 							throw new ArgumentException("Unsupported direction for chirality");
 					}
 				}
+			}
+
+			if (seeds.Count == 0)
+				return null;
 
 			int? FillChirality(int2 point, int prop)
 			{
