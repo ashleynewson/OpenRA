@@ -68,7 +68,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public static (Region[] Regions, CellLayer<int> RegionMap, CellLayer<Playability> Playable) FindPlayableRegions(
 			Map map,
 			List<ActorPlan> actorPlans,
-			Dictionary<TerrainTile, Playability> playabilityMap)
+			IReadOnlyDictionary<TerrainTile, Playability> playabilityMap)
 		{
 			var regions = new List<Region>();
 			var regionMap = new CellLayer<int>(map);

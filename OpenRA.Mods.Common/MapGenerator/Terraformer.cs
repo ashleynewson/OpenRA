@@ -168,8 +168,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			IReadOnlyList<MultiBrush> inside,
 			CellLayer<MultiBrush.Replaceability> replaceMask = null)
 		{
-			if (replaceMask != null)
-				CheckHasMapShape(replaceMask);
+			CheckHasMapShapeOrNull(replaceMask);
 
 			var tilings = new MultiBrush[tilingPaths.Count];
 			for (var i = 0; i < tilingPaths.Count; i++)
@@ -254,6 +253,93 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			return sides;
+		}
+
+		/// <summary>
+		/// Finds the largest, symmetrical, unpoisoned playable region on the map.
+		/// Returns a CellLayer describing the playable region, or null if there is no suitable
+		/// playable region.
+		/// </summary>
+		/// <param name="playabilityMap">Rules for which tiles are playable.</param>
+		/// <param name="poison">Any regions with a poisoned fully playable cell are disqualified.</param>
+		public CellLayer<PlayableSpace.Playability> ChoosePlayableRegion(
+			IReadOnlyDictionary<TerrainTile, PlayableSpace.Playability> playabilityMap,
+			CellLayer<bool> poison = null)
+		{
+			CheckHasMapShapeOrNull(poison);
+
+			var (regions, regionMask, playability) = PlayableSpace.FindPlayableRegions(Map, ActorPlans, playabilityMap);
+			var disqualifications = new HashSet<int>();
+
+			if (poison != null)
+				foreach (var mpos in Map.AllCells.MapCoords)
+					if (poison[mpos]
+							&& regionMask[mpos] != PlayableSpace.NullRegion
+							&& playability[mpos] == PlayableSpace.Playability.Playable)
+						disqualifications.Add(regionMask[mpos]);
+
+			// Disqualify regions that violate any symmetry requirements.
+			{
+				var symmetryScore = new int[regions.Length];
+				void TestSymmetry(CPos[] sources, CPos destination)
+				{
+					var id = regionMask[destination];
+					if (playability[destination] != PlayableSpace.Playability.Playable)
+						return;
+					if (sources.All(source => regionMask.TryGetValue(source, out var sourceId) && sourceId == id))
+						symmetryScore[id]++;
+				}
+
+				Symmetry.RotateAndMirrorOverCPos(
+					regionMask,
+					Param.Rotations,
+					Param.Mirror,
+					TestSymmetry);
+
+				for (var id = 0; id < symmetryScore.Length; id++)
+					if (symmetryScore[id] < regions[id].PlayableArea / 2)
+						disqualifications.Add(id);
+			}
+
+			PlayableSpace.Region largest = null;
+			foreach (var region in regions)
+			{
+				if (disqualifications.Contains(region.Id))
+					continue;
+				if (largest == null || region.PlayableArea > largest.PlayableArea)
+					largest = region;
+			}
+
+			if (largest == null)
+				return null;
+
+			bool? AdoptPartiallyPlayableIntoLargest(CPos cpos, bool first)
+			{
+				if (first)
+					return false;
+				else if (regionMask[cpos] == largest.Id || playability[cpos] != PlayableSpace.Playability.Partial)
+					return null;
+
+				regionMask[cpos] = largest.Id;
+				largest.Area++;
+				return false;
+			}
+
+			// Adopt any partially playable tiles connected to the largest region into the largest region.
+			// This avoids potentially debris-filling connected oceans for mods where water is unplayable.
+			CellLayerUtils.FloodFill(
+				regionMask,
+				Map.AllCells
+					.Where(cpos => regionMask[cpos] == largest.Id)
+					.Select(cpos => (cpos, true)),
+				AdoptPartiallyPlayableIntoLargest,
+				DirectionExts.Spread4CVec);
+
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (regionMask[mpos] != largest.Id)
+					playability[mpos] = PlayableSpace.Playability.Unplayable;
+
+			return playability;
 		}
 
 		/// <summary>
@@ -1000,6 +1086,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Map.ActorDefinitions = ActorPlans
 				.Select((plan, i) => new MiniYamlNode($"Actor{i}", plan.Reference.Save()))
 				.ToImmutableArray();
+		}
+
+		public void CheckHasMapShapeOrNull<T>(CellLayer<T> layer)
+		{
+			if (layer != null)
+				CheckHasMapShape(layer);
 		}
 
 		public void CheckHasMapShape<T>(CellLayer<T> layer)

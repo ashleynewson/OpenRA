@@ -829,85 +829,27 @@ namespace OpenRA.Mods.Common.Traits
 
 			var playableArea = new CellLayer<bool>(map);
 			{
-				var (regions, regionMask, playability) = PlayableSpace.FindPlayableRegions(map, actorPlans, playabilityMap);
-				PlayableSpace.Region largest = null;
-				var disqualifications = new HashSet<int>();
-
 				// For circle-in-mountains, the outside is unplayable and should never count as
 				// the largest/preferred region.
+				var poison = new CellLayer<bool>(map);
 				if (param.ExternalCircularBias > 0)
 				{
 					if (map.Grid.Type != MapGridType.Rectangular)
 						throw new NotImplementedException();
 					CellLayerUtils.OverCircle(
-						cellLayer: regionMask,
+						cellLayer: poison,
 						wCenter: wMapCenter,
 						wRadius: new WDist((minSpan - 2) * 512),
 						outside: true,
-						action: (mpos, _, _, _) =>
-							{
-								if (regionMask[mpos] != PlayableSpace.NullRegion)
-									disqualifications.Add(regionMask[mpos]);
-							});
+						action: (mpos, _, _, _) => poison[mpos] = true);
 				}
 
-				// Disqualify regions that violate any symmetry requirements.
-				{
-					var symmetryScore = new int[regions.Length];
-					void TestSymmetry(CPos[] sources, CPos destination)
-					{
-						var id = regionMask[destination];
-						if (playability[destination] != PlayableSpace.Playability.Playable)
-							return;
-						if (sources.All(source => regionMask.TryGetValue(source, out var sourceId) && sourceId == id))
-							symmetryScore[id]++;
-					}
-
-					Symmetry.RotateAndMirrorOverCPos(
-						regionMask,
-						param.Rotations,
-						param.Mirror,
-						TestSymmetry);
-
-					for (var id = 0; id < symmetryScore.Length; id++)
-						if (symmetryScore[id] < regions[id].PlayableArea / 2)
-							disqualifications.Add(id);
-				}
-
-				foreach (var region in regions)
-				{
-					if (disqualifications.Contains(region.Id))
-						continue;
-					if (largest == null || region.PlayableArea > largest.PlayableArea)
-						largest = region;
-				}
-
-				if (largest == null)
-					throw new MapGenerationException("could not find a playable region");
+				var playability = terraformer.ChoosePlayableRegion(playabilityMap, poison)
+					?? throw new MapGenerationException("could not find a playable region");
 
 				var minimumPlayableSpace = (int)(param.Players * Math.PI * param.SpawnBuildSize * param.SpawnBuildSize);
-				if (largest.PlayableArea < minimumPlayableSpace)
+				if (playability.Count(p => p == PlayableSpace.Playability.Playable) < minimumPlayableSpace)
 					throw new MapGenerationException("playable space is too small");
-
-				bool? AdoptPartiallyPlayableIntoLargest(CPos cpos, bool first)
-				{
-					if (first)
-						return false;
-					else if (regionMask[cpos] == largest.Id || playability[cpos] != PlayableSpace.Playability.Partial)
-						return null;
-
-					regionMask[cpos] = largest.Id;
-					largest.Area++;
-					return false;
-				}
-
-				// Adopt any partially playable tiles connected to the largest region into the largest region.
-				// This avoids potentially debris-filling connected oceans for mods where water is unplayable.
-				CellLayerUtils.FloodFill(
-					regionMask,
-					map.AllCells.Where(cpos => regionMask[cpos] == largest.Id).Select(cpos => (cpos, true)),
-					AdoptPartiallyPlayableIntoLargest,
-					DirectionExts.Spread4CVec);
 
 				if (param.DenyWalledAreas)
 				{
@@ -919,7 +861,7 @@ namespace OpenRA.Mods.Common.Traits
 						foreach (var mpos in map.AllCells.MapCoords)
 							if (map.Contains(mpos) &&
 								map.Tiles[mpos].Type == param.WaterTile &&
-								regionMask[mpos] != largest.Id)
+								playability[mpos] == PlayableSpace.Playability.Unplayable)
 							{
 								var cpos = mpos.ToCPos(gridType);
 								var projections = Symmetry.RotateAndMirrorCPos(
@@ -940,7 +882,6 @@ namespace OpenRA.Mods.Common.Traits
 								beachesShape.Remove(cpos) ||
 								map.Tiles[mpos].Type == param.WaterTile;
 							map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
-							regionMask[mpos] = PlayableSpace.NullRegion;
 							return propagate ? false : null;
 						}
 
@@ -954,7 +895,7 @@ namespace OpenRA.Mods.Common.Traits
 					var replaceable = PlayableToReplaceable();
 					var replace = new CellLayer<MultiBrush.Replaceability>(map);
 					foreach (var mpos in map.AllCells.MapCoords)
-						if (regionMask[mpos] == largest.Id || !map.Contains(mpos))
+						if (playability[mpos] != PlayableSpace.Playability.Unplayable || !map.Contains(mpos))
 							replace[mpos] = MultiBrush.Replaceability.None;
 						else
 							replace[mpos] = replaceable[mpos];
@@ -963,7 +904,7 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				foreach (var mpos in map.AllCells.MapCoords)
-					playableArea[mpos] = playability[mpos] == PlayableSpace.Playability.Playable && regionMask[mpos] == largest.Id;
+					playableArea[mpos] = playability[mpos] == PlayableSpace.Playability.Playable;
 			}
 
 			if (param.Roads)
