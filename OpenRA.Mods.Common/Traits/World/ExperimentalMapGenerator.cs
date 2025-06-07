@@ -678,16 +678,9 @@ namespace OpenRA.Mods.Common.Traits
 				beachPaths,
 				landPlan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 				[new MultiBrush().WithTemplate(map, param.WaterTile, CVec.Zero)],
-				[new MultiBrush().WithTemplate(map, param.LandTile, CVec.Zero)]);
-			if (landBeachWater == null)
-				throw new MapGenerationException("Could not fit tiles for beach");
+				[new MultiBrush().WithTemplate(map, param.LandTile, CVec.Zero)])
+					?? throw new MapGenerationException("Could not fit tiles for beach");
 
-			var nonLoopedCliffPermittedTemplates =
-				TilingPath.PermittedSegments.FromInnerAndTerminalTypes(
-					param.SegmentedBrushes, param.CliffSegmentTypes, param.ClearSegmentTypes);
-			var loopedCliffPermittedTemplates =
-				TilingPath.PermittedSegments.FromType(
-					param.SegmentedBrushes, param.CliffSegmentTypes);
 			if (param.ExternalCircularBias > 0)
 			{
 				var cliffRing = new CellLayer<bool>(map);
@@ -699,28 +692,14 @@ namespace OpenRA.Mods.Common.Traits
 					action: (mpos, _, _, _) => cliffRing[mpos] = true);
 				foreach (var cliff in CellLayerUtils.BordersToPoints(cliffRing))
 				{
-					var isLoop = cliff[0] == cliff[^1];
-					TilingPath cliffPath;
-					if (isLoop)
-						cliffPath = new TilingPath(
-							map,
-							cliff,
-							(param.MinimumMountainThickness - 1) / 2,
-							param.CliffSegmentTypes[0],
-							param.CliffSegmentTypes[0],
-							loopedCliffPermittedTemplates);
-					else
-						cliffPath = new TilingPath(
-							map,
-							cliff,
-							(param.MinimumMountainThickness - 1) / 2,
-							param.ClearSegmentTypes[0],
-							param.ClearSegmentTypes[0],
-							nonLoopedCliffPermittedTemplates);
-					cliffPath
-						.ExtendEdge(4)
-						.SetAutoEndDeviation()
-						.OptimizeLoop();
+					var cliffPath = TilingPath.QuickCreate(
+						map,
+						param.SegmentedBrushes,
+						cliff,
+						(param.MinimumMountainThickness - 1) / 2,
+						param.CliffSegmentTypes[0],
+						param.ClearSegmentTypes[0])
+							.ExtendEdge(4);
 					var brush = cliffPath.Tile(cliffTilingRandom)
 						?? throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
 					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile, pickAnyRandom);
@@ -781,30 +760,16 @@ namespace OpenRA.Mods.Common.Traits
 						break;
 					foreach (var cliff in cliffs)
 					{
-						var isLoop = cliff[0] == cliff[^1];
-						TilingPath cliffPath;
-						if (isLoop)
-							cliffPath = new TilingPath(
-								map,
-								cliff,
-								(param.MinimumMountainThickness - 1) / 2,
-								param.CliffSegmentTypes[0],
-								param.CliffSegmentTypes[0],
-								loopedCliffPermittedTemplates);
-						else
-							cliffPath = new TilingPath(
-								map,
-								cliff,
-								(param.MinimumMountainThickness - 1) / 2,
-								param.ClearSegmentTypes[0],
-								param.ClearSegmentTypes[0],
-								nonLoopedCliffPermittedTemplates);
-						cliffPath
-							.ExtendEdge(4)
-							.SetAutoEndDeviation()
-							.OptimizeLoop();
+						var cliffPath = TilingPath.QuickCreate(
+							map,
+							param.SegmentedBrushes,
+							cliff,
+							(param.MinimumMountainThickness - 1) / 2,
+							param.CliffSegmentTypes[0],
+							param.ClearSegmentTypes[0])
+								.ExtendEdge(4);
 						var brush = cliffPath.Tile(cliffTilingRandom)
-							?? throw new MapGenerationException("Could not fit tiles for  cliffs");
+							?? throw new MapGenerationException("Could not fit tiles for cliffs");
 						brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile, pickAnyRandom);
 					}
 				}
