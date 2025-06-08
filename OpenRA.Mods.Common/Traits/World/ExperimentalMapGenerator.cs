@@ -797,34 +797,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (param.EnforceSymmetry != 0)
 			{
-				// This is not commutative.
-				bool CheckCompatibility(byte main, byte other)
-				{
-					if (main == other)
-						return true;
-					else if (param.DominantTerrain.Contains(main))
-						return true;
-					else if (param.DominantTerrain.Contains(other))
-						return false;
-					else
-						return param.EnforceSymmetry < 2;
-				}
-
-				var replace = new CellLayer<MultiBrush.Replaceability>(map);
-				Symmetry.RotateAndMirrorOverCPos(
-					replace,
-					param.Rotations,
-					param.Mirror,
-					(CPos[] sources, CPos destination) =>
-					{
-						var main = templatedTerrainInfo.GetTerrainIndex(map.Tiles[destination]);
-						var compatible = sources
-							.Where(replace.Contains)
-							.Select(source => templatedTerrainInfo.GetTerrainIndex(map.Tiles[source]))
-							.All(source => CheckCompatibility(main, source));
-						replace[destination] = compatible ? MultiBrush.Replaceability.None : MultiBrush.Replaceability.Actor;
-					});
-				MultiBrush.PaintArea(map, actorPlans, replace, param.ForestObstacles, symmetryTilingRandom);
+				var asymmetries = terraformer.FindAsymmetries(param.DominantTerrain, true, param.EnforceSymmetry == 2);
+				terraformer.PaintActors(symmetryTilingRandom, asymmetries, param.ForestObstacles);
 			}
 
 			CellLayer<bool> playableArea;
@@ -1215,7 +1189,7 @@ namespace OpenRA.Mods.Common.Traits
 						plan,
 						typePlan,
 						targetResourceValue);
-					terraformer.DezoneFromResources(zoneable);
+					terraformer.ZoneFromResources(zoneable, false);
 				}
 
 				// CivilianBuildings
@@ -1230,7 +1204,7 @@ namespace OpenRA.Mods.Common.Traits
 						param.CivilianBuildingDensity,
 						param.MinimumCivilianBuildingDensity,
 						param.CivilianBuildingDensityRadius);
-					terraformer.PlaceActors(
+					terraformer.PaintActors(
 						decorationTilingRandom,
 						decorationNoise,
 						param.CivilianBuildingsObstacles,

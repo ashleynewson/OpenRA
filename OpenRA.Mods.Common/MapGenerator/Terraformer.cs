@@ -813,13 +813,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>Sets all zoneable cells where the map has resources to false.</summary>
-		public void DezoneFromResources(CellLayer<bool> zoneable)
+		public void ZoneFromResources<T>(CellLayer<T> zoneable, T value)
 		{
 			CheckHasMapShape(zoneable);
 
 			foreach (var mpos in Map.AllCells.MapCoords)
 				if (Map.Resources[mpos].Type != 0)
-					zoneable[mpos] = false;
+					zoneable[mpos] = value;
 		}
 
 		/// <summary>
@@ -864,10 +864,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			if (checkActors)
-				DezoneFromActors(space);
+				ZoneFromActors(space, false);
 
 			if (checkResources)
-				DezoneFromResources(space);
+				ZoneFromResources(space, false);
 
 			return space;
 		}
@@ -886,21 +886,21 @@ namespace OpenRA.Mods.Common.MapGenerator
 				space[mpos] = Map.Tiles[mpos].Type == requiredTile;
 
 			if (checkActors)
-				DezoneFromActors(space);
+				ZoneFromActors(space, false);
 
 			if (checkResources)
-				DezoneFromResources(space);
+				ZoneFromResources(space, false);
 
 			return space;
 		}
 
 		/// <summary>Sets all zoneable cells where the map has actor footprints to false.</summary>
-		public void DezoneFromActors(CellLayer<bool> zoneable)
+		public void ZoneFromActors<T>(CellLayer<T> zoneable, T value)
 		{
 			foreach (var actorPlan in ActorPlans)
 				foreach (var (cpos, _) in actorPlan.Footprint())
 					if (zoneable.Contains(cpos))
-						zoneable[cpos] = false;
+						zoneable[cpos] = value;
 		}
 
 		/// <summary>
@@ -1027,7 +1027,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>
 		/// Wrapper around PaintArea that uses Replacibility.Actor for masked cells.
 		/// </summary>
-		public void PlaceActors(
+		public void PaintActors(
 			MersenneTwister random,
 			CellLayer<bool> mask,
 			IReadOnlyList<MultiBrush> brushes,
@@ -1090,6 +1090,32 @@ namespace OpenRA.Mods.Common.MapGenerator
 				(projections, cpos) =>
 					projectionSpacing[cpos] = Symmetry.ProjectionProximity(projections) / 2);
 			return projectionSpacing;
+		}
+
+		public CellLayer<bool> FindAsymmetries(
+			IReadOnlySet<byte> dominantTerrain,
+			bool dominantActors,
+			bool strict)
+		{
+			var terrainTypes = CellLayerUtils.Create(Map, (MPos mpos) =>
+				templatedTerrainInfo.GetTerrainIndex(Map.Tiles[mpos]));
+			var dominant = CellLayerUtils.Map(terrainTypes, dominantTerrain.Contains);
+			if (dominantActors)
+				ZoneFromActors(dominant, true);
+
+			var incompatibilities = new CellLayer<bool>(Map);
+			Symmetry.RotateAndMirrorOverCPos(
+				incompatibilities,
+				Param.Rotations,
+				Param.Mirror,
+				(CPos[] sources, CPos destination) =>
+				{
+					if (!dominant[destination])
+						incompatibilities[destination] = sources
+							.Where(incompatibilities.Contains)
+							.Any(source => dominant[source] || (strict && terrainTypes[destination] != terrainTypes[source]));
+				});
+			return incompatibilities;
 		}
 
 		/// <summary>
