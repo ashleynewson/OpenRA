@@ -1224,7 +1224,7 @@ namespace OpenRA.Mods.Common.Traits
 					var decorationNoise = terraformer.DecorationPattern(
 						decorationRandom,
 						terraformer.CheckSpace(param.PlayableTerrain, true),
-						CellLayerUtils.Subtract([zoneable, terraformer.CheckSpace(param.LandTile)]),
+						CellLayerUtils.Intersect([zoneable, terraformer.CheckSpace(param.LandTile)]),
 						param.CivilianBuildings,
 						param.CivilianBuildingsFeatureSize,
 						param.CivilianBuildingDensity,
