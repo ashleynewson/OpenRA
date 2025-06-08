@@ -921,13 +921,7 @@ namespace OpenRA.Mods.Common.Traits
 				var (buildingTypes, buildingWeights) = Parameters.SplitWeights(param.BuildingWeights);
 				var (resourceSpawnTypes, resourceSpawnWeights) = Parameters.SplitWeights(param.ResourceSpawnWeights);
 
-				var projectionSpacing = new CellLayer<int>(map);
-				Symmetry.RotateAndMirrorOverCPos(
-					projectionSpacing,
-					param.Rotations,
-					param.Mirror,
-					(projections, cpos) =>
-						projectionSpacing[cpos] = Symmetry.ProjectionProximity(projections) / 2);
+				var projectionSpacing = terraformer.ProjectionSpacing();
 
 				// Spawn bias tries to move spawns away from the map center and their symmetry
 				// projections.
@@ -952,18 +946,7 @@ namespace OpenRA.Mods.Common.Traits
 						if (map.AllCells.Contains(cpos))
 							zoneable[cpos] = false;
 
-				// Improve symmetry.
-				{
-					var newZoneable = new CellLayer<bool>(map);
-					Symmetry.RotateAndMirrorOverCPos(
-						zoneable,
-						param.Rotations,
-						param.Mirror,
-						(sources, destination)
-							=> newZoneable[destination] =
-								sources.All(source => zoneable.TryGetValue(source, out var value) && value));
-					zoneable = newZoneable;
-				}
+				zoneable = terraformer.ImproveSymmetry(zoneable, false, (a, b) => a && b);
 
 				if (param.Rotations > 1 || param.Mirror != Symmetry.Mirror.None)
 				{

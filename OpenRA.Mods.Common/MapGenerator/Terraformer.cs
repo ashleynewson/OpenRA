@@ -1077,6 +1077,22 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Return a CellLayer where each cell is half the minimum distances to one of its symmetry
+		/// projections. Can be used to avoid placing actors too close to their own projections.
+		/// </summary>
+		public CellLayer<int> ProjectionSpacing()
+		{
+			var projectionSpacing = new CellLayer<int>(Map);
+			Symmetry.RotateAndMirrorOverCPos(
+				projectionSpacing,
+				Param.Rotations,
+				Param.Mirror,
+				(projections, cpos) =>
+					projectionSpacing[cpos] = Symmetry.ProjectionProximity(projections) / 2);
+			return projectionSpacing;
+		}
+
+		/// <summary>
 		/// Commits draft data to the map, such as player and actor definitions.
 		/// </summary>
 		public void Bake()
