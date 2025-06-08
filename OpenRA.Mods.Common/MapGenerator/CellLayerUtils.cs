@@ -561,6 +561,40 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
+		/// <summary>
+		/// Simple flood fill that propagates a given value, starting from seed cells, throughout a
+		/// masked area. cellLayer is modified in-place.
+		/// </summary>
+		public static void SimpleFloodFill<T>(
+			CellLayer<T> cellLayer,
+			CellLayer<bool> mask,
+			CellLayer<bool> seeds,
+			T value,
+			ImmutableArray<CVec> spread)
+		{
+			if (!AreSameShape(cellLayer, mask) || !AreSameShape(cellLayer, seeds))
+				throw new ArgumentException("cellLayer, mask, and seeds did not have same shape");
+
+			mask = Clone(mask);
+
+			var seedSet = cellLayer.CellRegion
+				.Where(cpos => seeds[cpos] && mask[cpos])
+				.Select(cpos => (cpos, true))
+				.ToHashSet();
+
+			bool? Filler(CPos cpos, bool _)
+			{
+				if (!mask[cpos])
+					return null;
+
+				cellLayer[cpos] = value;
+				mask[cpos] = false;
+				return true;
+			}
+
+			FloodFill(cellLayer, seedSet, Filler, spread);
+		}
+
 		/// <summary>Return logical AND / conjunction / intersection of layers.</summary>
 		public static CellLayer<bool> Intersect(IEnumerable<CellLayer<bool>> layers)
 		{
@@ -611,6 +645,24 @@ namespace OpenRA.Mods.Common.MapGenerator
 			foreach (var mpos in input.CellRegion.MapCoords)
 				output[mpos] = func(input[mpos]);
 			return output;
+		}
+
+		public static CellLayer<T> Create<T>(Map map, Func<MPos, T> func)
+		{
+			var layer = new CellLayer<T>(map);
+			foreach (var mpos in map.AllCells.MapCoords)
+				layer[mpos] = func(mpos);
+
+			return layer;
+		}
+
+		public static CellLayer<T> Create<T>(Map map, Func<CPos, T> func)
+		{
+			var layer = new CellLayer<T>(map);
+			foreach (var cpos in map.AllCells)
+				layer[cpos] = func(cpos);
+
+			return layer;
 		}
 	}
 }

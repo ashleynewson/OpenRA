@@ -827,7 +827,7 @@ namespace OpenRA.Mods.Common.Traits
 				MultiBrush.PaintArea(map, actorPlans, replace, param.ForestObstacles, symmetryTilingRandom);
 			}
 
-			var playableArea = new CellLayer<bool>(map);
+			CellLayer<bool> playableArea;
 			{
 				// For circle-in-mountains, the outside is unplayable and should never count as
 				// the largest/preferred region.
@@ -856,55 +856,28 @@ namespace OpenRA.Mods.Common.Traits
 					// Beach tiles are particularly problematic. If they're for unplayable bodies
 					// of water, they should be obliterated. If they're just surrounded by rocks,
 					// trees, etc, they should be filled in with actors.
-					{
-						var unplayableWater = new HashSet<CPos>();
-						foreach (var mpos in map.AllCells.MapCoords)
-							if (map.Contains(mpos) &&
-								map.Tiles[mpos].Type == param.WaterTile &&
-								playability[mpos] == PlayableSpace.Playability.Unplayable)
-							{
-								var cpos = mpos.ToCPos(gridType);
-								var projections = Symmetry.RotateAndMirrorCPos(
-									cpos, map.Tiles, param.Rotations, param.Mirror);
-								foreach (var projection in projections)
-									if (map.Tiles.Contains(projection) && map.Tiles[projection].Type == param.WaterTile)
-										unplayableWater.Add(projection);
-							}
+					var unplayableWater = CellLayerUtils.Create(map, (MPos mpos) =>
+						map.Tiles[mpos].Type == param.WaterTile &&
+						playability[mpos] == PlayableSpace.Playability.Unplayable &&
+						map.Contains(mpos));
+					unplayableWater = terraformer.ImproveSymmetry(unplayableWater, false, (a, b) => a || b);
+					var beachOrWater = CellLayerUtils.Map(landBeachWater, side => side != Terraformer.Side.In);
+					CellLayerUtils.SimpleFloodFill(
+						map.Tiles,
+						beachOrWater,
+						unplayableWater,
+						new TerrainTile(param.LandTile, 0),
+						DirectionExts.Spread4CVec);
 
-						var beachesShape = map.AllCells
-							.Where(cpos => landBeachWater[cpos] == Terraformer.Side.None)
-							.ToHashSet();
-
-						bool? ClearWaterBody(CPos cpos, bool _)
-						{
-							var mpos = cpos.ToMPos(gridType);
-							var propagate =
-								beachesShape.Remove(cpos) ||
-								map.Tiles[mpos].Type == param.WaterTile;
-							map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
-							return propagate ? false : null;
-						}
-
-						CellLayerUtils.FloodFill(
-							map.Tiles,
-							unplayableWater.Select(cpos => (cpos, false)),
-							ClearWaterBody,
-							DirectionExts.Spread4CVec);
-					}
-
-					var replaceable = PlayableToReplaceable();
-					var replace = new CellLayer<MultiBrush.Replaceability>(map);
+					var replace = PlayableToReplaceable();
 					foreach (var mpos in map.AllCells.MapCoords)
 						if (playability[mpos] != PlayableSpace.Playability.Unplayable || !map.Contains(mpos))
 							replace[mpos] = MultiBrush.Replaceability.None;
-						else
-							replace[mpos] = replaceable[mpos];
 
 					MultiBrush.PaintArea(map, actorPlans, replace, param.UnplayableObstacles, debrisTilingRandom);
 				}
 
-				foreach (var mpos in map.AllCells.MapCoords)
-					playableArea[mpos] = playability[mpos] == PlayableSpace.Playability.Playable;
+				playableArea = CellLayerUtils.Map(playability, p => p == PlayableSpace.Playability.Playable);
 			}
 
 			if (param.Roads)
