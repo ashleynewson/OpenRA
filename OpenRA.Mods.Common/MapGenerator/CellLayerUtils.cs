@@ -562,37 +562,37 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Simple flood fill that propagates a given value, starting from seed cells, throughout a
-		/// masked area. cellLayer is modified in-place.
+		/// Simple flood fill that propagates, starting from seed cells, throughout a masked area.
+		/// The fillAction is run once (in a consistent order) for each filled cell.
 		/// </summary>
-		public static void SimpleFloodFill<T>(
-			CellLayer<T> cellLayer,
+		public static void SimpleFloodFill(
 			CellLayer<bool> mask,
 			CellLayer<bool> seeds,
-			T value,
+			Action<CPos> fillAction,
 			ImmutableArray<CVec> spread)
 		{
-			if (!AreSameShape(cellLayer, mask) || !AreSameShape(cellLayer, seeds))
-				throw new ArgumentException("cellLayer, mask, and seeds did not have same shape");
+			if (!AreSameShape(mask, seeds))
+				throw new ArgumentException("mask and seeds did not have same shape");
 
-			mask = Clone(mask);
-
-			var seedSet = cellLayer.CellRegion
-				.Where(cpos => seeds[cpos] && mask[cpos])
-				.Select(cpos => (cpos, true))
-				.ToHashSet();
+			var available = Clone(mask);
 
 			bool? Filler(CPos cpos, bool _)
 			{
-				if (!mask[cpos])
+				if (!available[cpos])
 					return null;
 
-				cellLayer[cpos] = value;
-				mask[cpos] = false;
+				fillAction(cpos);
+				available[cpos] = false;
 				return true;
 			}
 
-			FloodFill(cellLayer, seedSet, Filler, spread);
+			FloodFill(
+				available,
+				seeds.CellRegion
+					.Where(cpos => seeds[cpos] && mask[cpos])
+					.Select(cpos => (cpos, true)),
+				Filler,
+				spread);
 		}
 
 		/// <summary>Return logical AND / conjunction / intersection of layers.</summary>

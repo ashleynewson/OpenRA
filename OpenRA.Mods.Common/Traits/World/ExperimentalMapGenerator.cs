@@ -830,18 +830,11 @@ namespace OpenRA.Mods.Common.Traits
 					// Beach tiles are particularly problematic. If they're for unplayable bodies
 					// of water, they should be obliterated. If they're just surrounded by rocks,
 					// trees, etc, they should be filled in with actors.
-					var unplayableWater = CellLayerUtils.Create(map, (MPos mpos) =>
-						map.Tiles[mpos].Type == param.WaterTile &&
-						playability[mpos] == PlayableSpace.Playability.Unplayable &&
-						map.Contains(mpos));
-					unplayableWater = terraformer.ImproveSymmetry(unplayableWater, false, (a, b) => a || b);
-					var beachOrWater = CellLayerUtils.Map(landBeachWater, side => side != Terraformer.Side.In);
-					CellLayerUtils.SimpleFloodFill(
-						map.Tiles,
-						beachOrWater,
-						unplayableWater,
-						new TerrainTile(param.LandTile, 0),
-						DirectionExts.Spread4CVec);
+					terraformer.FillUnplayableSideAndBorder(
+						playability,
+						landBeachWater,
+						Terraformer.Side.Out,
+						cpos => map.Tiles[cpos] = terraformer.PickTile(pickAnyRandom, param.LandTile));
 
 					var replace = PlayableToReplaceable();
 					foreach (var mpos in map.AllCells.MapCoords)

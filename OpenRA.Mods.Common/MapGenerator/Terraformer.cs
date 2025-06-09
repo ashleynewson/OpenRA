@@ -1119,6 +1119,37 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Fill a CellLayer with a given value to identify or undo the effects of painting sided
+		/// regions. For example, this can be used to un-paint an unplayable body of water along
+		/// with its beaches.
+		/// </summary>
+		public void FillUnplayableSideAndBorder(
+			CellLayer<PlayableSpace.Playability> playability,
+			CellLayer<Side> sides,
+			Side fillSide,
+			Action<CPos> fillAction)
+		{
+			CheckHasMapShape(playability);
+			CheckHasMapShape(sides);
+
+			if (fillSide == Side.None)
+				throw new ArgumentException("fillSide was not In or Out");
+
+			var notFillSide = fillSide == Side.In ? Side.Out : Side.In;
+			var fillSeeds = CellLayerUtils.Create(Map, (MPos mpos) =>
+				sides[mpos] == fillSide &&
+				playability[mpos] == PlayableSpace.Playability.Unplayable &&
+				Map.Contains(mpos));
+			fillSeeds = ImproveSymmetry(fillSeeds, false, (a, b) => a || b);
+			var fillable = CellLayerUtils.Map(sides, side => side != notFillSide);
+			CellLayerUtils.SimpleFloodFill(
+				fillable,
+				fillSeeds,
+				fillAction,
+				DirectionExts.Spread4CVec);
+		}
+
+		/// <summary>
 		/// Commits draft data to the map, such as player and actor definitions.
 		/// </summary>
 		public void Bake()
