@@ -1068,7 +1068,7 @@ namespace OpenRA.Mods.Common.Traits
 						for (var resourceSpawn = 0; resourceSpawn < resourceSpawnCount; resourceSpawn++)
 						{
 							var mpos = CellLayerUtils.PickWeighted(resourceSpawnPreferences, expansionRandom);
-							var resourceSpawnType = resourceSpawnTypes[playerRandom.PickWeighted(resourceSpawnWeights)];
+							var resourceSpawnType = resourceSpawnTypes[expansionRandom.PickWeighted(resourceSpawnWeights)];
 							var resourceSpawnPlan =
 								new ActorPlan(map, resourceSpawnType)
 								{
