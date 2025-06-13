@@ -1150,6 +1150,49 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Add an actor and its symmetry projections to the map and subtract its footprint from
+		/// zoneable. Optionally, a circle with a given dezone radius from the actor center can
+		/// also be subtracted from zoneable.
+		/// </summary>
+		public void ProjectPlaceDezone(
+			ActorPlan actorPlan,
+			CellLayer<bool> zoneable = null,
+			WDist? dezoneRadius = null)
+		{
+			CheckHasMapShapeOrNull(zoneable);
+			var projections = Symmetry.RotateAndMirrorActorPlan(
+				actorPlan, Param.Rotations, Param.Mirror);
+			ActorPlans.AddRange(projections);
+			if (zoneable != null)
+			{
+				foreach (var projection in projections)
+				{
+					foreach (var (cpos, _) in projection.Footprint())
+						if (zoneable.Contains(cpos))
+							zoneable[cpos] = false;
+					if (dezoneRadius.HasValue)
+					{
+						CellLayerUtils.OverCircle(
+							cellLayer: zoneable,
+							wCenter: projection.WPosCenterLocation,
+							wRadius: dezoneRadius.Value,
+							outside: false,
+							action: (mpos, _, _, _) => zoneable[mpos] = false);
+					}
+				}
+			}
+		}
+
+		public void ProjectPlaceDezone(
+			IEnumerable<ActorPlan> actorPlans,
+			CellLayer<bool> zoneable = null,
+			WDist? dezoneRadius = null)
+		{
+			foreach (var actorPlan in actorPlans)
+				ProjectPlaceDezone(actorPlan, zoneable, dezoneRadius);
+		}
+
+		/// <summary>
 		/// Commits draft data to the map, such as player and actor definitions.
 		/// </summary>
 		public void Bake()

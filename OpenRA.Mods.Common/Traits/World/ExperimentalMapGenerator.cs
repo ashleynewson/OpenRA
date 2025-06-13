@@ -1002,25 +1002,8 @@ namespace OpenRA.Mods.Common.Traits
 							action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
 					}
 
-					var projectedSpawns = Symmetry.RotateAndMirrorActorPlan(spawn, param.Rotations, param.Mirror);
-					actorPlans.AddRange(projectedSpawns);
-					foreach (var projectedSpawn in projectedSpawns)
-						CellLayerUtils.OverCircle(
-							cellLayer: zoneable,
-							wCenter: projectedSpawn.WPosLocation,
-							wRadius: new WDist(param.SpawnReservation * 1024),
-							outside: false,
-							action: (mpos, _, _, _) => zoneable[mpos] = false);
-
-					var projectedResourceSpawns = Symmetry.RotateAndMirrorActorPlans(resourceSpawns, param.Rotations, param.Mirror);
-					actorPlans.AddRange(projectedResourceSpawns);
-					foreach (var projectedResourceSpawn in projectedResourceSpawns)
-						CellLayerUtils.OverCircle(
-							cellLayer: zoneable,
-							wCenter: projectedResourceSpawn.WPosLocation,
-							wRadius: new WDist(param.ResourceSpawnReservation * 1024),
-							outside: false,
-							action: (mpos, _, _, _) => zoneable[mpos] = false);
+					terraformer.ProjectPlaceDezone(spawn, zoneable, new WDist(param.SpawnReservation * 1024));
+					terraformer.ProjectPlaceDezone(resourceSpawns, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
 				}
 
 				// Expansions
@@ -1083,15 +1066,7 @@ namespace OpenRA.Mods.Common.Traits
 								action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
 						}
 
-						var projectedResourceSpawns = Symmetry.RotateAndMirrorActorPlans(resourceSpawns, param.Rotations, param.Mirror);
-						actorPlans.AddRange(projectedResourceSpawns);
-						foreach (var projectedResourceSpawn in projectedResourceSpawns)
-							CellLayerUtils.OverCircle(
-								cellLayer: zoneable,
-								wCenter: projectedResourceSpawn.WPosLocation,
-								wRadius: new WDist(param.ResourceSpawnReservation * 1024),
-								outside: false,
-								action: (mpos, _, _, _) => zoneable[mpos] = false);
+						terraformer.ProjectPlaceDezone(resourceSpawns, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
 					}
 				}
 
@@ -1125,15 +1100,7 @@ namespace OpenRA.Mods.Common.Traits
 							WPosCenterLocation = CellLayerUtils.CPosToWPos(chosenCPos, gridType),
 						};
 
-						var projectedBuildings = Symmetry.RotateAndMirrorActorPlan(actorPlan, param.Rotations, param.Mirror);
-						actorPlans.AddRange(projectedBuildings);
-						foreach (var projectedBuilding in projectedBuildings)
-							CellLayerUtils.OverCircle(
-								cellLayer: zoneable,
-								wCenter: projectedBuilding.WPosLocation,
-								wRadius: new WDist(2048),
-								outside: false,
-								action: (mpos, _, _, _) => zoneable[mpos] = false);
+						terraformer.ProjectPlaceDezone(actorPlan, zoneable);
 					}
 				}
 
