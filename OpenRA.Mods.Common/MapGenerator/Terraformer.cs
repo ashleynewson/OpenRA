@@ -90,6 +90,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		readonly ITerrainInfo terrainInfo;
 
+		readonly int minSpan;
+		readonly WPos wMapCenter;
+		readonly Lazy<CellLayer<int>> lazyProjectionSpacing;
+
 		// Will be null if terrainInfo isn't a ITemplatedTerrainInfo. Some methods assume that the
 		// terrainInfo is an ITemplatedTerrainInfo.
 		readonly ITemplatedTerrainInfo templatedTerrainInfo;
@@ -107,6 +111,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
 			templatedTerrainInfo = terrainInfo as ITemplatedTerrainInfo;
+
+			minSpan = Math.Min(map.MapSize.Width, map.MapSize.Height);
+			wMapCenter = CellLayerUtils.Center(Map.Tiles);
+			lazyProjectionSpacing = new(ProjectionSpacing);
 		}
 
 		/// <summary>
@@ -440,7 +448,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Param.Rotations == 3 ||
 				Param.Rotations >= 5;
 			var gridType = Map.Grid.Type;
-			var wMapCenter = CellLayerUtils.Center(Map.Tiles);
 
 			// Enlargement must increase dimensions by multiple of 4 to maximize compatibility
 			// with IsometricRectangular grids, where a non-multiple of 4 would change how the
@@ -1092,6 +1099,31 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return projectionSpacing;
 		}
 
+		/// <summary>
+		/// Generate a CellLayer containing scores for the preferability of spawn locations, based
+		/// on separation from symmetry projections and the map center. Higher scores are better.
+		/// </summary>
+		/// <param name="centralReservationFraction">
+		/// Distance from the map center or symmetry lines inside of which spawns are biased away
+		/// from. Measured as a fraction (out of 1024) of the map's smallest dimension.
+		/// </param>
+		public CellLayer<int> SpawnBias(int centralReservationFraction)
+		{
+			var projectionSpacing = lazyProjectionSpacing.Value;
+			var spawnBias = new CellLayer<int>(Map);
+			var spawnBiasRadius = Math.Max(1, minSpan * centralReservationFraction / FractionMax);
+			spawnBias.Clear(spawnBiasRadius);
+			CellLayerUtils.OverCircle(
+				cellLayer: spawnBias,
+				wCenter: wMapCenter,
+				wRadius: new WDist(1024 * spawnBiasRadius),
+				outside: false,
+				action: (mpos, _, _, wrSq) => spawnBias[mpos] = (int)Exts.ISqrt(wrSq) / 1024);
+			foreach (var mpos in Map.AllCells.MapCoords)
+				spawnBias[mpos] = Math.Min(spawnBias[mpos], projectionSpacing[mpos]);
+			return spawnBias;
+		}
+
 		public CellLayer<bool> FindAsymmetries(
 			IReadOnlySet<byte> dominantTerrain,
 			bool dominantActors,
@@ -1147,6 +1179,84 @@ namespace OpenRA.Mods.Common.MapGenerator
 				fillSeeds,
 				fillAction,
 				DirectionExts.Spread4CVec);
+		}
+
+		/// <summary>
+		/// Finds a random suitable mpspawn location, biased away from symmetries and the map
+		/// center. Returns null if nowhere is suitable.
+		/// </summary>
+		/// <param name="random">Random source for spawn placement.</param>
+		/// <param name="zoneable">Mask of valid space for spawn (and other object) placement.</param>
+		/// <param name="centralReservationFraction">
+		/// Distance from the map center or symmetry lines inside of which spawns are biased away
+		/// from. Measured as a fraction (out of 1024) of the map's smallest dimension.
+		/// </param>
+		/// <param name="minimumRadius">Minimum space required for a spawn.</param>
+		/// <param name="maximumRadius">Maximum space used by a spawn, beyond which larger spaces are equally preferable.</param>
+		/// <param name="zoneRadius">
+		/// Space that spawns are expected to reserve in zoneable. Note that this function does not
+		/// modify zoneable, but this is needed in order to avoid placing symmetry-projected spawns
+		/// with overlapping zone allocations.
+		/// </param>
+		public CPos? ChooseSpawnInZoneable(
+			MersenneTwister random,
+			CellLayer<bool> zoneable,
+			int centralReservationFraction,
+			int minimumRadius,
+			int maximumRadius,
+			int zoneRadius)
+		{
+			CheckHasMapShape(zoneable);
+			var projectionSpacing = ProjectionSpacing();
+			var spawnBias = SpawnBias(centralReservationFraction);
+			var spawnPreference = new CellLayer<int>(Map);
+			CellLayerUtils.ChebyshevRoom(spawnPreference, zoneable, false);
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (spawnPreference[mpos] >= minimumRadius &&
+					projectionSpacing[mpos] * 2 >= zoneRadius + minimumRadius)
+				{
+					spawnPreference[mpos] = spawnBias[mpos] * Math.Min(maximumRadius, spawnPreference[mpos]);
+				}
+				else
+				{
+					spawnPreference[mpos] = 0;
+				}
+
+			var (chosenMPos, chosenValue) = CellLayerUtils.FindRandomBest(
+				spawnPreference,
+				random,
+				(a, b) => a.CompareTo(b));
+
+			if (chosenValue < 1)
+				return null;
+
+			return chosenMPos.ToCPos(Map.Grid.Type);
+		}
+
+		/// <summary>
+		/// Find a random cell in zoneable with the most free space. Spaces which are maximumSpace
+		/// or more away from unzoned cells are treated equally.
+		/// Returns the CPos and space (up to maximumSpace) of the chosen cell.
+		/// The space value will be negative if there are no zoned cells.
+		/// </summary>
+		public (CPos CPos, int Space) ChooseInZoneable(
+			MersenneTwister random,
+			CellLayer<bool> zoneable,
+			int maximumSpace)
+		{
+			CheckHasMapShape(zoneable);
+			var projectionSpacing = lazyProjectionSpacing.Value;
+			var roominess = new CellLayer<int>(Map);
+			CellLayerUtils.ChebyshevRoom(roominess, zoneable, false);
+			foreach (var mpos in Map.AllCells.MapCoords)
+				roominess[mpos] = Math.Min(
+					maximumSpace,
+					Math.Min(roominess[mpos], projectionSpacing[mpos]));
+			var (chosenMPos, chosenValue) = CellLayerUtils.FindRandomBest(
+				roominess,
+				random,
+				(a, b) => a.CompareTo(b));
+			return (chosenMPos.ToCPos(Map.Grid.Type), chosenValue);
 		}
 
 		/// <summary>

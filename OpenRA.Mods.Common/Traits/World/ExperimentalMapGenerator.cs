@@ -937,30 +937,18 @@ namespace OpenRA.Mods.Common.Traits
 				var symmetryPlayers = param.Players / symmetryCount;
 				for (var iteration = 0; iteration < symmetryPlayers; iteration++)
 				{
-					var spawnPreference = new CellLayer<int>(map);
-					CellLayerUtils.ChebyshevRoom(spawnPreference, zoneable, false);
-					foreach (var mpos in map.AllCells.MapCoords)
-						if (spawnPreference[mpos] >= param.MinimumSpawnRadius &&
-							projectionSpacing[mpos] * 2 >= param.SpawnReservation + param.MinimumSpawnRadius)
-						{
-							spawnPreference[mpos] = spawnBias[mpos] * Math.Min(param.SpawnRegionSize, spawnPreference[mpos]);
-						}
-						else
-						{
-							spawnPreference[mpos] = 0;
-						}
-
-					var (chosenMPos, chosenValue) = CellLayerUtils.FindRandomBest(
-						spawnPreference,
-						playerRandom,
-						(a, b) => a.CompareTo(b));
-
-					if (chosenValue < 1)
-						throw new MapGenerationException("Not enough room for player spawns");
+					var chosenCPos = terraformer.ChooseSpawnInZoneable(
+						random,
+						zoneable,
+						param.CentralSpawnReservationFraction,
+						param.MinimumSpawnRadius,
+						param.SpawnRegionSize,
+						param.SpawnReservation)
+							?? throw new MapGenerationException("Not enough room for player spawns");
 
 					var spawn = new ActorPlan(map, "mpspawn")
 					{
-						Location = chosenMPos.ToCPos(gridType),
+						Location = chosenCPos,
 					};
 
 					var preferedRange1024ths = (param.SpawnBuildSize + param.SpawnRegionSize * 2) * 512;
@@ -968,7 +956,7 @@ namespace OpenRA.Mods.Common.Traits
 					CellLayerUtils.WalkingDistances(
 						resourceSpawnPreferences,
 						zoneable,
-						[chosenMPos.ToCPos(gridType)],
+						[chosenCPos],
 						param.SpawnRegionSize * 1024);
 					foreach (var mpos in map.AllCells.MapCoords)
 					{
@@ -1011,16 +999,8 @@ namespace OpenRA.Mods.Common.Traits
 					var resourceSpawnsRemaining = (int)(param.MaximumExpansionResourceSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
 					while (resourceSpawnsRemaining > 0)
 					{
-						var roominess = new CellLayer<int>(map);
-						CellLayerUtils.ChebyshevRoom(roominess, zoneable, false);
-						foreach (var mpos in map.AllCells.MapCoords)
-							roominess[mpos] = Math.Min(
-								param.MaximumExpansionSize + param.ExpansionBorder,
-								Math.Min(roominess[mpos], projectionSpacing[mpos]));
-						var (chosenMPos, chosenValue) = CellLayerUtils.FindRandomBest(
-							roominess,
-							expansionRandom,
-							(a, b) => a.CompareTo(b));
+						var (chosenCPos, chosenValue) = terraformer.ChooseInZoneable(
+							expansionRandom, zoneable, param.MaximumExpansionSize + param.ExpansionBorder);
 						var room = chosenValue - 1;
 						var radius2 = room - param.ExpansionBorder;
 						if (radius2 < param.MinimumExpansionSize)
@@ -1039,7 +1019,7 @@ namespace OpenRA.Mods.Common.Traits
 						var radius1Sq = radius1 * radius1;
 						CellLayerUtils.OverCircle(
 							cellLayer: resourceSpawnPreferences,
-							wCenter: CellLayerUtils.MPosToWPos(chosenMPos, gridType),
+							wCenter: CellLayerUtils.CPosToWPos(chosenCPos, gridType),
 							wRadius: new WDist(radius2 * 1024),
 							outside: false,
 							action: (mpos, _, _, wrSq) =>
@@ -1080,19 +1060,10 @@ namespace OpenRA.Mods.Common.Traits
 							: 0;
 					for (var i = 0; i < targetBuildingCount; i++)
 					{
-						var roominess = new CellLayer<int>(map);
-						CellLayerUtils.ChebyshevRoom(roominess, zoneable, false);
-						foreach (var mpos in map.AllCells.MapCoords)
-							roominess[mpos] = Math.Min(
-								3,
-								Math.Min(roominess[mpos], projectionSpacing[mpos]));
-						var (chosenMPos, chosenValue) = CellLayerUtils.FindRandomBest(
-							roominess,
-							buildingRandom,
-							(a, b) => a.CompareTo(b));
+						var (chosenCPos, chosenValue) = terraformer.ChooseInZoneable(
+							buildingRandom, zoneable, 3);
 						if (chosenValue < 3)
 							break;
-						var chosenCPos = chosenMPos.ToCPos(gridType);
 						var typeChoice = buildingRandom.PickWeighted(buildingWeights);
 						var type = buildingTypes[typeChoice];
 						var actorPlan = new ActorPlan(map, type)
