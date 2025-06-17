@@ -447,10 +447,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// Returns world distances (1024ths).
 		/// </summary>
 		public static void WalkingDistances(
-			CellLayer<int> distances,
+			CellLayer<WDist> distances,
 			CellLayer<bool> passable,
 			IEnumerable<CPos> seeds,
-			int maxDistance)
+			WDist maxDistance)
 		{
 			var passableMatrix = ToMatrix(passable, false);
 			var cellBounds = CellBounds(passable);

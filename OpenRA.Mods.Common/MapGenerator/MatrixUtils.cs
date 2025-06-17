@@ -166,12 +166,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// int.MaxValue.
 		/// </para>
 		/// </summary>
-		public static Matrix<int> WalkingDistances(Matrix<bool> passable, IEnumerable<int2> seeds, int maxDistance)
+		public static Matrix<WDist> WalkingDistances(Matrix<bool> passable, IEnumerable<int2> seeds, WDist maxDistance)
 		{
 			const int Diagonal = 1448;
 			const int Straight = 1024;
 
-			var output = new Matrix<int>(passable.Size).Fill(int.MaxValue);
+			var output = new Matrix<WDist>(passable.Size).Fill(WDist.MaxValue);
 			var unprocessed = new PriorityArray<int>(passable.Size.X * passable.Size.Y, int.MaxValue);
 			foreach (var seed in seeds)
 				unprocessed[passable.Index(seed)] = 0;
@@ -182,11 +182,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 				var distance = unprocessed[i];
 				var xy = passable.XY(i);
 
-				if (distance > maxDistance)
+				if (distance > maxDistance.Length)
 					break;
 
-				if (distance <= maxDistance && output.ContainsXY(xy))
-					output[xy] = distance;
+				if (distance <= maxDistance.Length && output.ContainsXY(xy))
+					output[xy] = new WDist(distance);
 				unprocessed[i] = int.MaxValue;
 
 				foreach (var (offset, direction) in DirectionExts.Spread8D)
@@ -196,7 +196,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						continue;
 					if (!passable[nextXY])
 						continue;
-					if (output[nextXY] != int.MaxValue)
+					if (output[nextXY] != WDist.MaxValue)
 						continue;
 					int nextDistance;
 					if (direction.IsDiagonal())

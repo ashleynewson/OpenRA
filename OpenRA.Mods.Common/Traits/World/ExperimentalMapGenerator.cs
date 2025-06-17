@@ -951,19 +951,12 @@ namespace OpenRA.Mods.Common.Traits
 						Location = chosenCPos,
 					};
 
-					var preferedRange1024ths = (param.SpawnBuildSize + param.SpawnRegionSize * 2) * 512;
-					var resourceSpawnPreferences = new CellLayer<int>(map);
-					CellLayerUtils.WalkingDistances(
-						resourceSpawnPreferences,
-						zoneable,
+					var resourceSpawnPreferences = terraformer.TargetWalkingDistance(
+						terraformer.CheckSpace(param.PlayableTerrain, true),
+						terraformer.ErodeZones(zoneable, 1),
 						[chosenCPos],
-						param.SpawnRegionSize * 1024);
-					foreach (var mpos in map.AllCells.MapCoords)
-					{
-						var v = resourceSpawnPreferences[mpos];
-						resourceSpawnPreferences[mpos] =
-							((v > preferedRange1024ths ? 2 * preferedRange1024ths - v : v) + 1023) / 1024;
-					}
+						new WDist((param.SpawnBuildSize + param.SpawnRegionSize * 2) * 512),
+						new WDist(param.SpawnRegionSize * 1024));
 
 					var resourceSpawns = new List<ActorPlan>();
 					for (var resourceSpawn = 0; resourceSpawn < param.SpawnResourceSpawns; resourceSpawn++)

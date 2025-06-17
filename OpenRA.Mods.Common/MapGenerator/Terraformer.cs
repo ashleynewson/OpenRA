@@ -1234,6 +1234,59 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Shrink zoneable areas by a given thickness in cells. Zones will be shrunk even if they
+		/// border the edge of the map.
+		/// </summary>
+		public CellLayer<bool> ErodeZones(CellLayer<bool> zoneable, int amount)
+		{
+			CheckHasMapShape(zoneable);
+			var roominess = new CellLayer<int>(Map);
+			CellLayerUtils.ChebyshevRoom(roominess, zoneable, false);
+			return CellLayerUtils.Map(roominess, r => r > amount);
+		}
+
+		/// <summary>
+		/// Generate a CellLayer scoring cells on how close to a target walking distance through
+		/// walkable cells they are from the closest seed point. Higher scores are better. The
+		/// score considers the distance needed to walk around unwalkable cells. Unsuitable cells
+		/// will have a score of -int.MaxValue.
+		/// </summary>
+		/// <param name="walkable">Walkable cells.</param>
+		/// <param name="mask">Unmasked cells will have a score of -int.MaxValue. Can be null.</param>
+		/// <param name="seeds">Points from which to measure walking distance.</param>
+		/// <param name="targetRange">The highest scoring walking distance..</param>
+		/// <param name="maximumRange">Distances greater than this are given a score of -int.MaxValue.</param>
+		public CellLayer<int> TargetWalkingDistance(
+			CellLayer<bool> walkable,
+			CellLayer<bool> mask,
+			IEnumerable<CPos> seeds,
+			WDist targetRange,
+			WDist maximumRange)
+		{
+			CheckHasMapShape(walkable);
+			CheckHasMapShapeOrNull(mask);
+			var walkingDistances = new CellLayer<WDist>(Map);
+			CellLayerUtils.WalkingDistances(
+				walkingDistances,
+				walkable,
+				seeds,
+				maximumRange);
+			var scores = new CellLayer<int>(Map);
+			foreach (var mpos in Map.AllCells.MapCoords)
+			{
+				var v = (mask?[mpos] ?? true) ? walkingDistances[mpos].Length : int.MaxValue;
+				if (v == int.MaxValue)
+					scores[mpos] = -int.MaxValue;
+				else if (v <= targetRange.Length)
+					scores[mpos] = (v + 1023) / 1024;
+				else
+					scores[mpos] = (2 * targetRange.Length - v + 1023) / 1024;
+			}
+
+			return scores;
+		}
+
+		/// <summary>
 		/// Find a random cell in zoneable with the most free space. Spaces which are maximumSpace
 		/// or more away from unzoned cells are treated equally.
 		/// Returns the CPos and space (up to maximumSpace) of the chosen cell.
