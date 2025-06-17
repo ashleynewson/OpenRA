@@ -958,7 +958,6 @@ namespace OpenRA.Mods.Common.Traits
 						new WDist((param.SpawnBuildSize + param.SpawnRegionSize * 2) * 512),
 						new WDist(param.SpawnRegionSize * 1024));
 
-					var resourceSpawns = new List<ActorPlan>();
 					for (var resourceSpawn = 0; resourceSpawn < param.SpawnResourceSpawns; resourceSpawn++)
 					{
 						var (mpos, value) = CellLayerUtils.FindRandomBest(
@@ -969,22 +968,20 @@ namespace OpenRA.Mods.Common.Traits
 							break;
 
 						var resourceSpawnType = resourceSpawnTypes[playerRandom.PickWeighted(resourceSpawnWeights)];
-						var resourceSpawnPlan =
-							new ActorPlan(map, resourceSpawnType)
-							{
-								Location = mpos.ToCPos(gridType)
-							};
-						resourceSpawns.Add(resourceSpawnPlan);
+						var resourceSpawnPlan = new ActorPlan(map, resourceSpawnType)
+						{
+							Location = mpos.ToCPos(gridType)
+						};
 						CellLayerUtils.OverCircle(
 							cellLayer: resourceSpawnPreferences,
 							wCenter: resourceSpawnPlan.WPosLocation,
 							wRadius: new WDist(1024),
 							outside: false,
 							action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
+						terraformer.ProjectPlaceDezone(resourceSpawnPlan, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
 					}
 
 					terraformer.ProjectPlaceDezone(spawn, zoneable, new WDist(param.SpawnReservation * 1024));
-					terraformer.ProjectPlaceDezone(resourceSpawns, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
 				}
 
 				// Expansions
