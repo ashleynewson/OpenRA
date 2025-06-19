@@ -1313,11 +1313,37 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Subtract an actor's footprint from zoneable. Optionally, a circle with a given dezone
+		/// radius from the actor center can also be subtracted from zoneable.
+		/// </summary>
+		public void DezoneActor(
+			ActorPlan actorPlan,
+			CellLayer<bool> zoneable,
+			WDist? dezoneRadius = null)
+		{
+			CheckHasMapShape(zoneable);
+
+			foreach (var (cpos, _) in actorPlan.Footprint())
+				if (zoneable.Contains(cpos))
+					zoneable[cpos] = false;
+
+			if (dezoneRadius.HasValue)
+			{
+				CellLayerUtils.OverCircle(
+					cellLayer: zoneable,
+					wCenter: actorPlan.WPosCenterLocation,
+					wRadius: dezoneRadius.Value,
+					outside: false,
+					action: (mpos, _, _, _) => zoneable[mpos] = false);
+			}
+		}
+
+		/// <summary>
 		/// Add an actor and its symmetry projections to the map and subtract its footprint from
 		/// zoneable. Optionally, a circle with a given dezone radius from the actor center can
 		/// also be subtracted from zoneable.
 		/// </summary>
-		public void ProjectPlaceDezone(
+		public void ProjectPlaceDezoneActor(
 			ActorPlan actorPlan,
 			CellLayer<bool> zoneable = null,
 			WDist? dezoneRadius = null)
@@ -1327,32 +1353,42 @@ namespace OpenRA.Mods.Common.MapGenerator
 				actorPlan, Param.Rotations, Param.Mirror);
 			ActorPlans.AddRange(projections);
 			if (zoneable != null)
-			{
 				foreach (var projection in projections)
-				{
-					foreach (var (cpos, _) in projection.Footprint())
-						if (zoneable.Contains(cpos))
-							zoneable[cpos] = false;
-					if (dezoneRadius.HasValue)
-					{
-						CellLayerUtils.OverCircle(
-							cellLayer: zoneable,
-							wCenter: projection.WPosCenterLocation,
-							wRadius: dezoneRadius.Value,
-							outside: false,
-							action: (mpos, _, _, _) => zoneable[mpos] = false);
-					}
-				}
-			}
+					DezoneActor(projection, zoneable, dezoneRadius);
 		}
 
-		public void ProjectPlaceDezone(
+		public void ProjectPlaceDezoneActors(
 			IEnumerable<ActorPlan> actorPlans,
 			CellLayer<bool> zoneable = null,
 			WDist? dezoneRadius = null)
 		{
 			foreach (var actorPlan in actorPlans)
-				ProjectPlaceDezone(actorPlan, zoneable, dezoneRadius);
+				ProjectPlaceDezoneActor(actorPlan, zoneable, dezoneRadius);
+		}
+
+		/// <summary>
+		/// Chooses a location for an actor, and then projects, places, and dezones for it.
+		/// (The zoneable CellLayer is modified.)
+		/// </summary>
+		/// <returns>True if an actor was placed, false if there was insufficient space.</returns>
+		public bool AddStructure(
+			MersenneTwister random,
+			CellLayer<bool> zoneable,
+			string actorType)
+		{
+			var actorPlan = new ActorPlan(Map, actorType);
+
+			var requiredSpace = actorPlan.MaxSpan() / 2 + 2;
+			var (chosenCPos, chosenValue) = ChooseInZoneable(
+				random, zoneable, requiredSpace);
+			if (chosenValue < requiredSpace)
+				return false;
+
+			actorPlan.WPosCenterLocation = CellLayerUtils.CPosToWPos(chosenCPos, Map.Grid.Type);
+
+			ProjectPlaceDezoneActor(actorPlan, zoneable);
+
+			return true;
 		}
 
 		/// <summary>

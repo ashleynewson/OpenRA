@@ -978,10 +978,10 @@ namespace OpenRA.Mods.Common.Traits
 							wRadius: new WDist(1024),
 							outside: false,
 							action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
-						terraformer.ProjectPlaceDezone(resourceSpawnPlan, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
+						terraformer.ProjectPlaceDezoneActor(resourceSpawnPlan, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
 					}
 
-					terraformer.ProjectPlaceDezone(spawn, zoneable, new WDist(param.SpawnReservation * 1024));
+					terraformer.ProjectPlaceDezoneActor(spawn, zoneable, new WDist(param.SpawnReservation * 1024));
 				}
 
 				// Expansions
@@ -1036,7 +1036,7 @@ namespace OpenRA.Mods.Common.Traits
 								action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
 						}
 
-						terraformer.ProjectPlaceDezone(resourceSpawns, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
+						terraformer.ProjectPlaceDezoneActors(resourceSpawns, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
 					}
 				}
 
@@ -1044,25 +1044,15 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					var targetBuildingCount =
 						(param.MaximumBuildings != 0)
-							? expansionRandom.Next(
+							? buildingRandom.Next(
 								(int)(param.MinimumBuildings * perSymmetryEntityMultiplier / EntityBonusMax),
 								(int)(param.MaximumBuildings * perSymmetryEntityMultiplier / EntityBonusMax) + 1)
 							: 0;
 					for (var i = 0; i < targetBuildingCount; i++)
-					{
-						var (chosenCPos, chosenValue) = terraformer.ChooseInZoneable(
-							buildingRandom, zoneable, 3);
-						if (chosenValue < 3)
-							break;
-						var typeChoice = buildingRandom.PickWeighted(buildingWeights);
-						var type = buildingTypes[typeChoice];
-						var actorPlan = new ActorPlan(map, type)
-						{
-							WPosCenterLocation = CellLayerUtils.CPosToWPos(chosenCPos, gridType),
-						};
-
-						terraformer.ProjectPlaceDezone(actorPlan, zoneable);
-					}
+						terraformer.AddStructure(
+							buildingRandom,
+							zoneable,
+							buildingTypes[buildingRandom.PickWeighted(buildingWeights)]);
 				}
 
 				// Grow resources
