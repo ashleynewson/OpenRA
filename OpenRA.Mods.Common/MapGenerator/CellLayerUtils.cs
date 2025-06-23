@@ -647,6 +647,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return output;
 		}
 
+		/// <summary>Create and initialize a CellLayer according to the given function.</summary>
 		public static CellLayer<T> Create<T>(Map map, Func<MPos, T> func)
 		{
 			var layer = new CellLayer<T>(map);
@@ -656,6 +657,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return layer;
 		}
 
+		/// <summary>Create and initialize a CellLayer according to the given function.</summary>
 		public static CellLayer<T> Create<T>(Map map, Func<CPos, T> func)
 		{
 			var layer = new CellLayer<T>(map);

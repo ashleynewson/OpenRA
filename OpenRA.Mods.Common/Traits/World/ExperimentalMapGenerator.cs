@@ -989,54 +989,19 @@ namespace OpenRA.Mods.Common.Traits
 					var resourceSpawnsRemaining = (int)(param.MaximumExpansionResourceSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
 					while (resourceSpawnsRemaining > 0)
 					{
-						var (chosenCPos, chosenValue) = terraformer.ChooseInZoneable(
-							expansionRandom, zoneable, param.MaximumExpansionSize + param.ExpansionBorder);
-						var room = chosenValue - 1;
-						var radius2 = room - param.ExpansionBorder;
-						if (radius2 < param.MinimumExpansionSize)
+						var added = terraformer.AddActorCluster(
+							expansionRandom,
+							zoneable,
+							param.ResourceSpawnWeights,
+							Math.Min(resourceSpawnsRemaining, expansionRandom.Next(param.MaximumResourceSpawnsPerExpansion) + 1),
+							param.ExpansionInner,
+							param.MinimumExpansionSize,
+							param.MaximumExpansionSize,
+							param.ExpansionBorder,
+							new WDist(param.ResourceSpawnReservation * 1024));
+						resourceSpawnsRemaining -= added;
+						if (added == 0)
 							break;
-						if (radius2 > param.MaximumExpansionSize)
-							radius2 = param.MaximumExpansionSize;
-						var radius1 = Math.Min(Math.Min(param.ExpansionInner, room), radius2);
-						var resourceSpawnCount = Math.Min(resourceSpawnsRemaining, expansionRandom.Next(param.MaximumResourceSpawnsPerExpansion) + 1);
-						resourceSpawnsRemaining -= resourceSpawnCount;
-
-						if (radius1 < 1)
-							break;
-
-						var resourceSpawns = new List<ActorPlan>();
-						var resourceSpawnPreferences = new CellLayer<int>(map);
-						var radius1Sq = radius1 * radius1;
-						CellLayerUtils.OverCircle(
-							cellLayer: resourceSpawnPreferences,
-							wCenter: CellLayerUtils.CPosToWPos(chosenCPos, gridType),
-							wRadius: new WDist(radius2 * 1024),
-							outside: false,
-							action: (mpos, _, _, wrSq) =>
-							{
-								var rSq = (int)(wrSq / (1024 * 1024));
-								resourceSpawnPreferences[mpos] =
-									rSq >= radius1Sq ? rSq : 0;
-							});
-						for (var resourceSpawn = 0; resourceSpawn < resourceSpawnCount; resourceSpawn++)
-						{
-							var mpos = CellLayerUtils.PickWeighted(resourceSpawnPreferences, expansionRandom);
-							var resourceSpawnType = resourceSpawnTypes[expansionRandom.PickWeighted(resourceSpawnWeights)];
-							var resourceSpawnPlan =
-								new ActorPlan(map, resourceSpawnType)
-								{
-									Location = mpos.ToCPos(gridType)
-								};
-							resourceSpawns.Add(resourceSpawnPlan);
-							CellLayerUtils.OverCircle(
-								cellLayer: resourceSpawnPreferences,
-								wCenter: resourceSpawnPlan.WPosLocation,
-								wRadius: new WDist(1024),
-								outside: false,
-								action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
-						}
-
-						terraformer.ProjectPlaceDezoneActors(resourceSpawns, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
 					}
 				}
 
@@ -1049,7 +1014,7 @@ namespace OpenRA.Mods.Common.Traits
 								(int)(param.MaximumBuildings * perSymmetryEntityMultiplier / EntityBonusMax) + 1)
 							: 0;
 					for (var i = 0; i < targetBuildingCount; i++)
-						terraformer.AddStructure(
+						terraformer.AddActor(
 							buildingRandom,
 							zoneable,
 							buildingTypes[buildingRandom.PickWeighted(buildingWeights)]);
