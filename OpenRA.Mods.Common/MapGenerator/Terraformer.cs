@@ -819,6 +819,37 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
+		/// <summary>
+		/// Derives a CellLayer identifying the space in a map available for various actors,
+		/// resources, decorations, etc. A mask (usually playable space) can be used to further
+		/// limit the zoneable area.
+		/// </summary>
+		public CellLayer<bool> GetZoneable(
+			IReadOnlySet<byte> zoneableTerrain,
+			CellLayer<bool> mask = null)
+		{
+			CheckHasMapShapeOrNull(mask);
+
+			var zoneable = CheckSpace(zoneableTerrain, true, true);
+			if (mask != null)
+				zoneable = CellLayerUtils.Intersect([zoneable, mask]);
+
+			if (Param.Rotations > 1 || Param.Mirror != Symmetry.Mirror.None)
+			{
+				// Reserve the center of the map - otherwise it will mess with symmetries
+				CellLayerUtils.OverCircle(
+					cellLayer: zoneable,
+					wCenter: wMapCenter,
+					wRadius: new WDist(1024),
+					outside: false,
+					action: (mpos, _, _, _) => zoneable[mpos] = false);
+			}
+
+			zoneable = ImproveSymmetry(zoneable, false, (a, b) => a && b);
+
+			return zoneable;
+		}
+
 		/// <summary>Sets all zoneable cells where the map has resources to false.</summary>
 		public void ZoneFromResources<T>(CellLayer<T> zoneable, T value)
 		{
@@ -1380,8 +1411,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		/// <summary>
 		/// Chooses a location for a cluster of actors within zoneable, and then projects, places,
-		/// and dezones for them. Placement is biased to the center of the cluster, though a
-		/// central area can be reserved to encourage a ring shape.
+		/// and dezones for them.
 		/// </summary>
 		/// <param name="random">Random source for locations and actor type selection.</param>
 		/// <param name="zoneable">Available space for actors. Modified if actors placed.</param>
@@ -1391,9 +1421,16 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <param name="minimumRadius">Minimum cluster radius for actor center placement.</param>
 		/// <param name="maximumRadius">Maximum cluster radius for actor center placement.</param>
 		/// <param name="outerBorder">Zoneable spacing required beyond radius (that actors' centers will not be placed in).</param>
+		/// <param name="weighted">If true, choose actor locations using probabilistic weights instead of best candidate.</param>
 		/// <param name="actorDezoneRadius">
 		/// Dezone radius for placed actors (in addition to footprint).
 		/// This does not affect spacing within the cluster.
+		/// </param>
+		/// <param name="distributor">
+		/// Calculates location weights or candidate priorities based on distance from the cluster
+		/// center. The input is the WDist.LengthSquared from the cluster center. Location choices
+		/// are biased towards greater outputs. If null, defaults to a function where the weight is
+		/// proportional to the squared distance, thus biasing actors towards the outside.
 		/// </param>
 		/// <returns>Number of actors added. 0 indicates none could be added.</returns>
 		public int AddActorCluster(
@@ -1405,38 +1442,74 @@ namespace OpenRA.Mods.Common.MapGenerator
 			int minimumRadius,
 			int maximumRadius,
 			int outerBorder,
-			WDist? actorDezoneRadius = null)
+			bool weighted,
+			WDist? actorDezoneRadius = null,
+			Func<long, int> distributor = null)
 		{
 			CheckHasMapShape(zoneable);
 
-			var (actorTypes, actorTypeWeights) = SplitDictionary(weightedActorTypes);
-			var (chosenCPos, chosenValue) = ChooseInZoneable(
+			var (chosenCPos, room) = ChooseInZoneable(
 				random, zoneable, maximumRadius + outerBorder);
-			var room = chosenValue - 1;
-			var radius2 = room - outerBorder;
+			var radius2 = room - outerBorder - 1;
 			if (radius2 < minimumRadius)
 				return 0;
 
 			if (radius2 > maximumRadius)
 				radius2 = maximumRadius;
 
-			var radius1 = Math.Min(Math.Min(innerReservation, room), radius2);
+			var radius1 = Math.Min(innerReservation, radius2);
 			if (radius1 < 1)
 				return 0;
 
-			var locationWeights = new CellLayer<int>(Map);
-			var radius1Sq = radius1 * radius1;
+			var distribution = new CellLayer<int>(Map);
+			var wRadius1Sq = radius1 * radius1 * 1024L * 1024L;
+			distributor ??= wrSq => (int)(wrSq / (1024 * 1024));
 			CellLayerUtils.OverCircle(
-				cellLayer: locationWeights,
+				cellLayer: distribution,
 				wCenter: CellLayerUtils.CPosToWPos(chosenCPos, Map.Grid.Type),
 				wRadius: new WDist(radius2 * 1024),
 				outside: false,
 				action: (mpos, _, _, wrSq) =>
-				{
-					var rSq = (int)(wrSq / (1024 * 1024));
-					locationWeights[mpos] =
-						rSq >= radius1Sq ? rSq : 0;
-				});
+					distribution[mpos] = wrSq >= wRadius1Sq ? distributor(wrSq) : 0);
+
+			return AddDistributedActors(
+				random,
+				zoneable,
+				distribution,
+				weightedActorTypes,
+				targetCount,
+				weighted,
+				actorDezoneRadius);
+		}
+
+		/// <summary>
+		/// Given a CellLayer of weights/priorities, chooses locations for actors within zoneable,
+		/// and then projects, places, and dezones for them.
+		/// </summary>
+		/// <param name="random">Random source for locations and actor type selection.</param>
+		/// <param name="zoneable">Available space for actors. Modified if actors placed.</param>
+		/// <param name="distribution">Weights or priorities for placing an actor centered on cells.</param>
+		/// <param name="weightedActorTypes">Actor types to choose from and their relative weights.</param>
+		/// <param name="targetCount">Number of actors to attempt to place.</param>
+		/// <param name="weighted">If true, choose actor locations using probabilistic weights instead of best candidate.</param>
+		/// <param name="actorDezoneRadius">
+		/// Dezone radius for placed actors (in addition to footprint).
+		/// This does not affect spacing within the region.
+		/// </param>
+		/// <returns>Number of actors added. 0 indicates none could be added.</returns>
+		public int AddDistributedActors(
+			MersenneTwister random,
+			CellLayer<bool> zoneable,
+			CellLayer<int> distribution,
+			IReadOnlyDictionary<string, int> weightedActorTypes,
+			int targetCount,
+			bool weighted,
+			WDist? actorDezoneRadius = null)
+		{
+			CheckHasMapShape(zoneable);
+			CheckHasMapShape(distribution);
+
+			var (actorTypes, actorTypeWeights) = SplitDictionary(weightedActorTypes);
 			var clusterZoneable = CellLayerUtils.Clone(zoneable);
 			for (var count = 0; count < targetCount; count++)
 			{
@@ -1446,20 +1519,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				var roominess = new CellLayer<int>(Map);
 				CellLayerUtils.ChebyshevRoom(roominess, clusterZoneable, false);
-				var filteredLocationWeights = CellLayerUtils.Create(Map, (MPos mpos) =>
-					roominess[mpos] >= requiredSpace ? locationWeights[mpos] : 0);
+				var filteredDistribution = CellLayerUtils.Create(Map, (MPos mpos) =>
+					roominess[mpos] >= requiredSpace ? distribution[mpos] : 0);
 
-				var mpos = CellLayerUtils.PickWeighted(filteredLocationWeights, random);
-				if (filteredLocationWeights[mpos] == 0)
+				MPos mpos;
+				if (weighted)
+					mpos = CellLayerUtils.PickWeighted(filteredDistribution, random);
+				else
+					(mpos, _) = CellLayerUtils.FindRandomBest(filteredDistribution, random, (a, b) => a.CompareTo(b));
+
+				if (filteredDistribution[mpos] == 0)
 					return count;
 
 				actorPlan.Location = mpos.ToCPos(Map.Grid.Type);
 				CellLayerUtils.OverCircle(
-					cellLayer: locationWeights,
+					cellLayer: distribution,
 					wCenter: actorPlan.WPosLocation,
 					wRadius: new WDist(actorPlan.MaxSpan() * 1024),
 					outside: false,
-					action: (mpos, _, _, _) => locationWeights[mpos] = 0);
+					action: (mpos, _, _, _) => distribution[mpos] = 0);
 
 				ProjectPlaceDezoneActor(actorPlan, zoneable, actorDezoneRadius);
 				DezoneActor(actorPlan, clusterZoneable);

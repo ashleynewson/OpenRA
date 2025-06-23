@@ -474,18 +474,6 @@ namespace OpenRA.Mods.Common.Traits
 				if (Players % symmetryCount != 0)
 					throw new MapGenerationException($"Total number of players must be a multiple of {symmetryCount}");
 			}
-
-			public static (T[] Types, int[] Weights) SplitWeights<T>(IReadOnlyDictionary<T, int> typeWeights)
-			{
-				var types = typeWeights
-					.Select(kv => kv.Key)
-					.Order()
-					.ToArray();
-				var weights = types
-					.Select(type => typeWeights[type])
-					.ToArray();
-				return (types, weights);
-			}
 		}
 
 		public IMapGeneratorSettings GetSettings()
@@ -885,46 +873,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (param.CreateEntities)
 			{
-				var (buildingTypes, buildingWeights) = Parameters.SplitWeights(param.BuildingWeights);
-				var (resourceSpawnTypes, resourceSpawnWeights) = Parameters.SplitWeights(param.ResourceSpawnWeights);
-
-				var projectionSpacing = terraformer.ProjectionSpacing();
-
-				// Spawn bias tries to move spawns away from the map center and their symmetry
-				// projections.
-				var spawnBiasRadius = Math.Max(1, minSpan * param.CentralSpawnReservationFraction / FractionMax);
-				var spawnBias = new CellLayer<int>(map);
-				spawnBias.Clear(spawnBiasRadius);
-				CellLayerUtils.OverCircle(
-					cellLayer: spawnBias,
-					wCenter: wMapCenter,
-					wRadius: new WDist(1024 * spawnBiasRadius),
-					outside: false,
-					action: (mpos, _, _, wrSq) => spawnBias[mpos] = (int)Exts.ISqrt(wrSq) / 1024);
-				foreach (var mpos in map.AllCells.MapCoords)
-					spawnBias[mpos] = Math.Min(spawnBias[mpos], projectionSpacing[mpos]);
-
-				var zoneable = new CellLayer<bool>(map);
-				foreach (var mpos in map.AllCells.MapCoords)
-					zoneable[mpos] = playableArea[mpos] && param.ZoneableTerrain.Contains(templatedTerrainInfo.GetTerrainIndex(map.Tiles[mpos]));
-
-				foreach (var actorPlan in actorPlans)
-					foreach (var cpos in actorPlan.Footprint().Keys)
-						if (map.AllCells.Contains(cpos))
-							zoneable[cpos] = false;
-
-				zoneable = terraformer.ImproveSymmetry(zoneable, false, (a, b) => a && b);
-
-				if (param.Rotations > 1 || param.Mirror != Symmetry.Mirror.None)
-				{
-					// Reserve the center of the map - otherwise it will mess with rotations
-					CellLayerUtils.OverCircle(
-						cellLayer: zoneable,
-						wCenter: wMapCenter,
-						wRadius: new WDist(1024),
-						outside: false,
-						action: (mpos, _, _, _) => zoneable[mpos] = false);
-				}
+				var zoneable = terraformer.GetZoneable(param.ZoneableTerrain, playableArea);
 
 				var zoneableArea = zoneable.Count(v => v);
 				var symmetryCount = Symmetry.RotateAndMirrorProjectionCount(param.Rotations, param.Mirror);
@@ -957,29 +906,14 @@ namespace OpenRA.Mods.Common.Traits
 						[chosenCPos],
 						new WDist((param.SpawnBuildSize + param.SpawnRegionSize * 2) * 512),
 						new WDist(param.SpawnRegionSize * 1024));
-
-					for (var resourceSpawn = 0; resourceSpawn < param.SpawnResourceSpawns; resourceSpawn++)
-					{
-						var (mpos, value) = CellLayerUtils.FindRandomBest(
-							resourceSpawnPreferences,
-							playerRandom,
-							(a, b) => a.CompareTo(b));
-						if (value <= 1)
-							break;
-
-						var resourceSpawnType = resourceSpawnTypes[playerRandom.PickWeighted(resourceSpawnWeights)];
-						var resourceSpawnPlan = new ActorPlan(map, resourceSpawnType)
-						{
-							Location = mpos.ToCPos(gridType)
-						};
-						CellLayerUtils.OverCircle(
-							cellLayer: resourceSpawnPreferences,
-							wCenter: resourceSpawnPlan.WPosLocation,
-							wRadius: new WDist(1024),
-							outside: false,
-							action: (mpos, _, _, _) => resourceSpawnPreferences[mpos] = 0);
-						terraformer.ProjectPlaceDezoneActor(resourceSpawnPlan, zoneable, new WDist(param.ResourceSpawnReservation * 1024));
-					}
+					terraformer.AddDistributedActors(
+						playerRandom,
+						zoneable,
+						resourceSpawnPreferences,
+						param.ResourceSpawnWeights,
+						param.SpawnResourceSpawns,
+						false,
+						new WDist(param.ResourceSpawnReservation * 1024));
 
 					terraformer.ProjectPlaceDezoneActor(spawn, zoneable, new WDist(param.SpawnReservation * 1024));
 				}
@@ -998,6 +932,7 @@ namespace OpenRA.Mods.Common.Traits
 							param.MinimumExpansionSize,
 							param.MaximumExpansionSize,
 							param.ExpansionBorder,
+							true,
 							new WDist(param.ResourceSpawnReservation * 1024));
 						resourceSpawnsRemaining -= added;
 						if (added == 0)
@@ -1007,6 +942,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				// Neutral buildings
 				{
+					var (buildingTypes, buildingWeights) = Terraformer.SplitDictionary(param.BuildingWeights);
 					var targetBuildingCount =
 						(param.MaximumBuildings != 0)
 							? buildingRandom.Next(
