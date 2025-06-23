@@ -489,13 +489,7 @@ namespace OpenRA.Mods.Common.Traits
 			var size = args.Size;
 
 			var map = new Map(modData, terrainInfo, size);
-			var maxTerrainHeight = map.Grid.MaximumTerrainHeight;
-			var tl = new PPos(1, 1 + maxTerrainHeight);
-			var br = new PPos(size.Width - 1, size.Height + maxTerrainHeight - 1);
-			map.SetBounds(tl, br);
-			map.Title = args.Title;
-			map.Author = args.Author;
-			map.RequiresMod = modData.Manifest.Id;
+			Terraformer.InitMap(map, modData, args);
 
 			var minSpan = Math.Min(size.Width, size.Height);
 			var mapCenter1024ths = new int2(size.Width * 512, size.Height * 512);
@@ -503,20 +497,12 @@ namespace OpenRA.Mods.Common.Traits
 			var matrixMapCenter1024ths = CellLayerUtils.CellBounds(map).Size.ToInt2() * 512;
 			var cellBounds = CellLayerUtils.CellBounds(map);
 			var minCSpan = Math.Min(cellBounds.Size.Width, cellBounds.Size.Height);
-			var gridType = map.Grid.Type;
 
 			var actorPlans = new List<ActorPlan>();
 
 			var param = new Parameters(map, args.Settings);
 
-			var terraformer = new Terraformer(map, modData, actorPlans, new Terraformer.Params()
-			{
-				Mirror = param.Mirror,
-				Rotations = param.Rotations,
-				LandTile = param.LandTile,
-				ClearTerrain = param.ClearTerrain,
-				PlayableTerrain = param.PlayableTerrain,
-			});
+			var terraformer = new Terraformer(map, modData, actorPlans, param.Mirror, param.Rotations);
 
 			var externalCircleRadius = minCSpan / 2 - (param.MinimumLandSeaThickness + param.MinimumMountainThickness);
 			if (externalCircleRadius <= 0)
@@ -604,9 +590,8 @@ namespace OpenRA.Mods.Common.Traits
 			var decorationTilingRandom = new MersenneTwister(random.Next());
 			var pickAnyRandom = new MersenneTwister(random.Next());
 
-			foreach (var cell in map.AllCells)
+			foreach (var mpos in map.AllCells.MapCoords)
 			{
-				var mpos = cell.ToMPos(gridType);
 				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
 				map.Resources[mpos] = new ResourceTile(0, 0);
 				map.Height[mpos] = 0;
@@ -1027,7 +1012,7 @@ namespace OpenRA.Mods.Common.Traits
 			// Cosmetically repaint tiles
 			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);
 
-			terraformer.Bake();
+			terraformer.BakeMap();
 
 			return map;
 		}

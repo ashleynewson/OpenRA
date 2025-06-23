@@ -75,18 +75,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 			public Symmetry.Mirror Mirror = Symmetry.Mirror.None;
 			public int Rotations = 1;
 
-			// TODO: Clean up what doesn't get used.
-			public int? LandTile;
-			public IReadOnlySet<byte> ClearTerrain;
-			public IReadOnlySet<byte> PlayableTerrain;
-
 			public Params() { }
 		}
 
 		public readonly Map Map;
 		public readonly ModData ModData;
 		public readonly List<ActorPlan> ActorPlans;
-		public readonly Params Param;
+		public readonly Symmetry.Mirror Mirror;
+		public readonly int Rotations;
 
 		readonly ITerrainInfo terrainInfo;
 
@@ -102,12 +98,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Map map,
 			ModData modData,
 			List<ActorPlan> actorPlans,
-			Params parameters)
+			Symmetry.Mirror mirror,
+			int rotations)
 		{
 			Map = map;
 			ModData = modData;
 			ActorPlans = actorPlans;
-			Param = parameters;
+			Mirror = mirror;
+			Rotations = rotations;
 
 			terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
 			templatedTerrainInfo = terrainInfo as ITemplatedTerrainInfo;
@@ -146,8 +144,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				noise,
-				Param.Rotations,
-				Param.Mirror,
+				Rotations,
+				Mirror,
 				noiseFeatureSize,
 				wavelength => ClumpinessAmplitude(wavelength, clumpiness));
 
@@ -300,8 +298,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				Symmetry.RotateAndMirrorOverCPos(
 					regionMask,
-					Param.Rotations,
-					Param.Mirror,
+					Rotations,
+					Mirror,
 					TestSymmetry);
 
 				for (var id = 0; id < symmetryScore.Length; id++)
@@ -396,8 +394,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 					var projections = Symmetry.RotateAndMirrorCPos(
 						chosenMPos.ToCPos(Map),
 						space,
-						Param.Rotations,
-						Param.Mirror);
+						Rotations,
+						Mirror);
 					foreach (var projection in projections)
 					{
 						if (space.Contains(projection))
@@ -444,9 +442,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// For awkward symmetries, we try harder to make sure roads are fairer.
 			// This can degrade the quantity of roads, though.
 			var imperfectSymmetry =
-				Param.Mirror != Symmetry.Mirror.None ||
-				Param.Rotations == 3 ||
-				Param.Rotations >= 5;
+				Mirror != Symmetry.Mirror.None ||
+				Rotations == 3 ||
+				Rotations >= 5;
 			var gridType = Map.Grid.Type;
 
 			// Enlargement must increase dimensions by multiple of 4 to maximize compatibility
@@ -523,7 +521,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						{
 							var cposPath = CellLayerUtils.FromMatrixPoints([path], space)[0];
 							var projectedPoints = cposPath
-								.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, Param.Rotations, Param.Mirror))
+								.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, Rotations, Mirror))
 								.ToArray();
 							var matrixPoints = CellLayerUtils.ToMatrixPoints([projectedPoints], space)[0];
 							if (!matrixPoints.All(p => !nearPath.ContainsXY(p) || nearPath[p]))
@@ -570,8 +568,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				pattern,
-				Param.Rotations,
-				Param.Mirror,
+				Rotations,
+				Mirror,
 				noiseFeatureSize,
 				wavelength => ClumpinessAmplitude(wavelength, clumpiness));
 			{
@@ -813,7 +811,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				var chosenMPos = PriorityMPos(n);
 				var chosenCPos = chosenMPos.ToCPos(gridType);
-				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Param.Rotations, Param.Mirror))
+				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Rotations, Mirror))
 					if (Map.Resources.Contains(cpos))
 						remaining -= AddResource(cpos);
 			}
@@ -834,7 +832,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (mask != null)
 				zoneable = CellLayerUtils.Intersect([zoneable, mask]);
 
-			if (Param.Rotations > 1 || Param.Mirror != Symmetry.Mirror.None)
+			if (Rotations > 1 || Mirror != Symmetry.Mirror.None)
 			{
 				// Reserve the center of the map - otherwise it will mess with symmetries
 				CellLayerUtils.OverCircle(
@@ -872,8 +870,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var newLayer = new CellLayer<T>(layer.GridType, layer.Size);
 			Symmetry.RotateAndMirrorOverCPos(
 				layer,
-				Param.Rotations,
-				Param.Mirror,
+				Rotations,
+				Mirror,
 				(sources, destination)
 					=> newLayer[destination] = sources
 						.Select(source => layer.TryGetValue(source, out var value) ? value : outsideValue)
@@ -980,8 +978,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				decorationNoise,
-				Param.Rotations,
-				Param.Mirror,
+				Rotations,
+				Mirror,
 				featureSize,
 				wavelength => 1);
 
@@ -989,8 +987,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			NoiseUtils.SymmetricFractalNoiseIntoCellLayer(
 				random,
 				densityNoise,
-				Param.Rotations,
-				Param.Mirror,
+				Rotations,
+				Mirror,
 				1024,
 				NoiseUtils.PinkAmplitude);
 			CellLayerUtils.CalibrateQuantileInPlace(
@@ -1123,8 +1121,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var projectionSpacing = new CellLayer<int>(Map);
 			Symmetry.RotateAndMirrorOverCPos(
 				projectionSpacing,
-				Param.Rotations,
-				Param.Mirror,
+				Rotations,
+				Mirror,
 				(projections, cpos) =>
 					projectionSpacing[cpos] = Symmetry.ProjectionProximity(projections) / 2);
 			return projectionSpacing;
@@ -1169,8 +1167,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var incompatibilities = new CellLayer<bool>(Map);
 			Symmetry.RotateAndMirrorOverCPos(
 				incompatibilities,
-				Param.Rotations,
-				Param.Mirror,
+				Rotations,
+				Mirror,
 				(CPos[] sources, CPos destination) =>
 				{
 					if (!dominant[destination])
@@ -1381,7 +1379,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			CheckHasMapShapeOrNull(zoneable);
 			var projections = Symmetry.RotateAndMirrorActorPlan(
-				actorPlan, Param.Rotations, Param.Mirror);
+				actorPlan, Rotations, Mirror);
 			ActorPlans.AddRange(projections);
 			if (zoneable != null)
 				foreach (var projection in projections)
@@ -1572,10 +1570,22 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return true;
 		}
 
+		/// <summary>Perform some basic initialization of a map.</summary>
+		public static void InitMap(Map map, ModData modData, MapGenerationArgs args)
+		{
+			var maxTerrainHeight = map.Grid.MaximumTerrainHeight;
+			var tl = new PPos(1, 1 + maxTerrainHeight);
+			var br = new PPos(map.MapSize.Width - 1, map.MapSize.Height + maxTerrainHeight - 1);
+			map.SetBounds(tl, br);
+			map.Title = args.Title;
+			map.Author = args.Author;
+			map.RequiresMod = modData.Manifest.Id;
+		}
+
 		/// <summary>
 		/// Commits draft data to the map, such as player and actor definitions.
 		/// </summary>
-		public void Bake()
+		public void BakeMap()
 		{
 			var playerCount = ActorsOfType("mpspawn").Count();
 			Map.PlayerDefinitions = new MapPlayers(Map.Rules, playerCount).ToMiniYaml();
