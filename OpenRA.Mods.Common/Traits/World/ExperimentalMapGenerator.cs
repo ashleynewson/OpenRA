@@ -591,11 +591,7 @@ namespace OpenRA.Mods.Common.Traits
 			var pickAnyRandom = new MersenneTwister(random.Next());
 
 			foreach (var mpos in map.AllCells.MapCoords)
-			{
 				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
-				map.Resources[mpos] = new ResourceTile(0, 0);
-				map.Height[mpos] = 0;
-			}
 
 			var elevation = NoiseUtils.SymmetricFractalNoise(
 				waterRandom,
@@ -607,10 +603,7 @@ namespace OpenRA.Mods.Common.Traits
 			MatrixUtils.NormalizeRangeInPlace(elevation, 1024);
 
 			if (param.TerrainSmoothing > 0)
-			{
-				var radius = param.TerrainSmoothing;
-				elevation = MatrixUtils.BinomialBlur(elevation, radius);
-			}
+				elevation = MatrixUtils.BinomialBlur(elevation, param.TerrainSmoothing);
 
 			MatrixUtils.CalibrateQuantileInPlace(
 				elevation,
@@ -699,7 +692,7 @@ namespace OpenRA.Mods.Common.Traits
 						outside: true,
 						action: (xy, _) => cliffPlan[xy] = false);
 
-				for (var altitude = 1; altitude <= param.MaximumAltitude; altitude++)
+				for (var altitude = 0; altitude < param.MaximumAltitude; altitude++)
 				{
 					// Limit mountain area to the existing mountain space (starting with all available land)
 					var roominess = MatrixUtils.ChebyshevRoom(cliffPlan, true);
