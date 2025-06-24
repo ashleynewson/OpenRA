@@ -644,24 +644,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 				}
 			}
 
-			foreach (var bias in resourceBiases)
-			{
-				if (bias.ExclusionRadius == null)
-					continue;
-
-				foreach (var resourceType in resourceTypes)
-				{
-					var strength = strengths[resourceType];
-					CellLayerUtils.OverCircle(
-						cellLayer: strength,
-						wCenter: bias.WPos,
-						wRadius: bias.ExclusionRadius.Value,
-						outside: false,
-						action: (mpos, _, _, wrSq) =>
-							strength[mpos] = -int.MaxValue);
-				}
-			}
-
 			var maxStrength1024ths = new CellLayer<int>(Map);
 			maxStrength1024ths.Clear(1);
 			var bestResource = new CellLayer<ResourceTypeInfo>(Map);
@@ -695,6 +677,23 @@ namespace OpenRA.Mods.Common.MapGenerator
 				foreach (var (cpos, _) in actorPlan.Footprint())
 					if (plan.Contains(cpos))
 						plan[cpos] = -int.MaxValue;
+
+			foreach (var bias in resourceBiases)
+			{
+				if (bias.ExclusionRadius == null)
+					continue;
+
+				foreach (var resourceType in resourceTypes)
+				{
+					CellLayerUtils.OverCircle(
+						cellLayer: plan,
+						wCenter: bias.WPos,
+						wRadius: bias.ExclusionRadius.Value,
+						outside: false,
+						action: (mpos, _, _, wrSq) =>
+							plan[mpos] = -int.MaxValue);
+				}
+			}
 
 			plan = ImproveSymmetry(plan, -int.MaxValue, int.Min);
 
