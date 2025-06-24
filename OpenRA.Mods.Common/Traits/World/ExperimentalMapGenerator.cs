@@ -483,29 +483,19 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Map Generate(ModData modData, MapGenerationArgs args)
 		{
-			const int ExternalBias = 4096;
-
 			var terrainInfo = modData.DefaultTerrainInfo[args.Tileset];
 			var size = args.Size;
 
 			var map = new Map(modData, terrainInfo, size);
 			Terraformer.InitMap(map, modData, args);
 
-			var minSpan = Math.Min(size.Width, size.Height);
-			var mapCenter1024ths = new int2(size.Width * 512, size.Height * 512);
-			var wMapCenter = CellLayerUtils.Center(map.Tiles);
-			var matrixMapCenter1024ths = CellLayerUtils.CellBounds(map).Size.ToInt2() * 512;
-			var cellBounds = CellLayerUtils.CellBounds(map);
-			var minCSpan = Math.Min(cellBounds.Size.Width, cellBounds.Size.Height);
-
-			var actorPlans = new List<ActorPlan>();
-
 			var param = new Parameters(map, args.Settings);
 
+			var actorPlans = new List<ActorPlan>();
 			var terraformer = new Terraformer(map, modData, actorPlans, param.Mirror, param.Rotations);
 
-			var externalCircleRadius = minCSpan / 2 - (param.MinimumLandSeaThickness + param.MinimumMountainThickness);
-			if (externalCircleRadius <= 0)
+			var externalCircleRadius = CellLayerUtils.Radius(map.Tiles) - new WDist((param.MinimumLandSeaThickness + param.MinimumMountainThickness) * 1024);
+			if (externalCircleRadius.Length <= 0)
 				throw new MapGenerationException("map is too small for circular shaping");
 
 			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
@@ -593,37 +583,42 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var mpos in map.AllCells.MapCoords)
 				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
 
-			var elevation = NoiseUtils.SymmetricFractalNoise(
+			var elevation = terraformer.ElevationNoise(
 				waterRandom,
-				cellBounds.Size.ToInt2(),
-				param.Rotations,
-				param.Mirror,
 				param.TerrainFeatureSize,
-				NoiseUtils.PinkAmplitude);
-			MatrixUtils.NormalizeRangeInPlace(elevation, 1024);
+				param.TerrainSmoothing);
 
-			if (param.TerrainSmoothing > 0)
-				elevation = MatrixUtils.BinomialBlur(elevation, param.TerrainSmoothing);
+			Matrix<bool> mapShape;
+			if (param.ExternalCircularBias == 0)
+				mapShape = new Matrix<bool>(CellLayerUtils.CellBounds(map).Size.ToInt2()).Fill(true);
+			else
+				mapShape = CellLayerUtils.ToMatrix(terraformer.CenteredCircle(true, false, externalCircleRadius), false);
 
-			MatrixUtils.CalibrateQuantileInPlace(
-				elevation,
-				0,
-				param.Water, FractionMax);
+			var landPlan = terraformer.SliceElevation(elevation, mapShape, Terraformer.FractionMax - param.Water);
 
-			if (param.ExternalCircularBias != 0)
-				MatrixUtils.OverCircle(
-					matrix: elevation,
-					centerIn1024ths: mapCenter1024ths,
-					radiusIn1024ths: externalCircleRadius * 1024,
-					outside: true,
-					action: (xy, _) => elevation[xy] = param.ExternalCircularBias * ExternalBias);
+			if (param.ExternalCircularBias > 0)
+			{
+				for (var n = 0; n < landPlan.Data.Length; n++)
+					landPlan[n] |= !mapShape[n];
+				var ring = terraformer.CenteredCircle(false, true, externalCircleRadius + new WDist(param.MinimumMountainThickness * 1024));
+				var path = TilingPath.QuickCreate(
+					map,
+					param.SegmentedBrushes,
+					CellLayerUtils.BordersToPoints(ring)[0],
+					(param.MinimumMountainThickness - 1) / 2,
+					param.CliffSegmentTypes[0],
+					param.CliffSegmentTypes[0]);
+				var brush = path.Tile(cliffTilingRandom)
+					?? throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
+				brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile, pickAnyRandom);
+			}
 
-			var landPlan = MatrixUtils.BooleanBlotch(
-				elevation.Map(v => v >= 0),
+			landPlan = MatrixUtils.BooleanBlotch(
+				landPlan,
 				param.TerrainSmoothing,
-				param.SmoothingThreshold, FractionMax,
+				param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
 				param.MinimumLandSeaThickness,
-				/*bias=*/param.Water < FractionMax / 2);
+				/*bias=*/param.Water <= FractionMax / 2);
 
 			var beaches = CellLayerUtils.FromMatrixPoints(
 				MatrixUtils.BordersToPoints(landPlan),
@@ -644,35 +639,10 @@ namespace OpenRA.Mods.Common.Traits
 				beachPaths,
 				landPlan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 				[new MultiBrush().WithTemplate(map, param.WaterTile, CVec.Zero)],
-				[new MultiBrush().WithTemplate(map, param.LandTile, CVec.Zero)])
+				null)
 					?? throw new MapGenerationException("Could not fit tiles for beach");
 
-			if (param.ExternalCircularBias > 0)
-			{
-				var cliffRing = new CellLayer<bool>(map);
-				CellLayerUtils.OverCircle(
-					cellLayer: cliffRing,
-					wCenter: wMapCenter,
-					wRadius: new WDist((externalCircleRadius + param.MinimumMountainThickness) * 1024),
-					outside: true,
-					action: (mpos, _, _, _) => cliffRing[mpos] = true);
-				foreach (var cliff in CellLayerUtils.BordersToPoints(cliffRing))
-				{
-					var cliffPath = TilingPath.QuickCreate(
-						map,
-						param.SegmentedBrushes,
-						cliff,
-						(param.MinimumMountainThickness - 1) / 2,
-						param.CliffSegmentTypes[0],
-						param.ClearSegmentTypes[0])
-							.ExtendEdge(4);
-					var brush = cliffPath.Tile(cliffTilingRandom)
-						?? throw new MapGenerationException("Could not fit tiles for exterior circle cliffs");
-					brush.Paint(map, actorPlans, CPos.Zero, MultiBrush.Replaceability.Tile, pickAnyRandom);
-				}
-			}
-
-			if (param.Mountains > 0 || param.ExternalCircularBias == 1)
+			if (param.Mountains > 0)
 			{
 				var roughnessMatrix = MatrixUtils.GridVariance(
 					elevation,
@@ -682,40 +652,19 @@ namespace OpenRA.Mods.Common.Traits
 					0,
 					FractionMax - param.Roughness, FractionMax);
 				var cliffMask = roughnessMatrix.Map(v => v >= 0);
-				var mountainElevation = elevation.Clone();
-				var cliffPlan = landPlan;
-				if (param.ExternalCircularBias > 0)
-					MatrixUtils.OverCircle(
-						matrix: cliffPlan,
-						centerIn1024ths: matrixMapCenter1024ths,
-						radiusIn1024ths: externalCircleRadius * 1024,
-						outside: true,
-						action: (xy, _) => cliffPlan[xy] = false);
+				var cliffPlan = Matrix<bool>.Zip(landPlan, mapShape, (a, b) => a && b);
 
 				for (var altitude = 0; altitude < param.MaximumAltitude; altitude++)
 				{
-					// Limit mountain area to the existing mountain space (starting with all available land)
-					var roominess = MatrixUtils.ChebyshevRoom(cliffPlan, true);
-					var available = 0;
-					var total = size.Width * size.Height;
-					for (var n = 0; n < mountainElevation.Data.Length; n++)
-					{
-						if (roominess.Data[n] < param.MinimumTerrainContourSpacing)
-							mountainElevation.Data[n] = -1;
-						else
-							available++;
-
-						total++;
-					}
-
-					MatrixUtils.CalibrateQuantileInPlace(
-						mountainElevation,
-						0,
-						total - available * param.Mountains / FractionMax, total);
+					cliffPlan = terraformer.SliceElevation(
+						elevation,
+						cliffPlan,
+						param.Mountains,
+						param.TerrainSmoothing);
 					cliffPlan = MatrixUtils.BooleanBlotch(
-						mountainElevation.Map(v => v >= 0),
+						cliffPlan,
 						param.TerrainSmoothing,
-						param.SmoothingThreshold, FractionMax,
+						param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
 						param.MinimumMountainThickness,
 						/*bias=*/false);
 					var unmaskedCliffs = MatrixUtils.BordersToPoints(cliffPlan);
@@ -771,18 +720,10 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				// For circle-in-mountains, the outside is unplayable and should never count as
 				// the largest/preferred region.
-				var poison = new CellLayer<bool>(map);
+				CellLayer<bool> poison = null;
 				if (param.ExternalCircularBias > 0)
-				{
-					if (map.Grid.Type != MapGridType.Rectangular)
-						throw new NotImplementedException();
-					CellLayerUtils.OverCircle(
-						cellLayer: poison,
-						wCenter: wMapCenter,
-						wRadius: new WDist((minSpan - 2) * 512),
-						outside: true,
-						action: (mpos, _, _, _) => poison[mpos] = true);
-				}
+					poison = terraformer.CenteredCircle(
+						false, true, CellLayerUtils.Radius(map.Tiles) - new WDist(1024));
 
 				var playability = terraformer.ChoosePlayableRegion(playabilityMap, poison)
 					?? throw new MapGenerationException("could not find a playable region");

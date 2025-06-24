@@ -25,7 +25,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 	public class Terraformer
 	{
 		/// <summary>Common denominator for fractional arguments.</summary>
-		const int FractionMax = 1000;
+		public const int FractionMax = 1000;
 
 		/// <summary>Biases or excludes resources at a location during resource planning.</summary>
 		public sealed class ResourceBias
@@ -124,6 +124,93 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Create a matrix containing a generated terrain elevation map.
+		/// </summary>
+		/// <param name="random">Random source for terrain noise.</param>
+		/// <param name="noiseFeatureSize">Largest interval for fractal noise.</param>
+		/// <param name="smoothing">Range in cells for smoothing.</param>
+		public Matrix<int> ElevationNoise(
+			MersenneTwister random,
+			int noiseFeatureSize,
+			int smoothing)
+		{
+			var cellBounds = CellLayerUtils.CellBounds(Map);
+			var elevation = NoiseUtils.SymmetricFractalNoise(
+				random,
+				cellBounds.Size.ToInt2(),
+				Rotations,
+				Mirror,
+				noiseFeatureSize,
+				NoiseUtils.PinkAmplitude);
+			MatrixUtils.NormalizeRangeInPlace(elevation, 1024);
+
+			if (smoothing > 0)
+				elevation = MatrixUtils.BinomialBlur(elevation, smoothing);
+
+			return elevation;
+		}
+
+		/// <summary>
+		/// Given elevation noise, partition it into a boolean Matrix where false represents low
+		/// elevation and true represents high elevation.
+		/// </summary>
+		/// <param name="elevation">Terrain elevation noise.</param>
+		/// <param name="mask">
+		/// A mask (usually a previous slice) within which the new slice is constrained to and
+		/// derived from. Can be null to imply all space is available.
+		/// </param>
+		/// <param name="fraction">Target fraction (out of FractionMax) of masked terrain to be carried over to the new slice.</param>
+		/// <param name="minimumContourSpacing">Minimum distance between the contours of the mask and the new slice.</param>
+		public Matrix<bool> SliceElevation(
+			Matrix<int> elevation,
+			Matrix<bool> mask,
+			int fraction,
+			int minimumContourSpacing = 0)
+		{
+			CheckHasMapShape(elevation);
+			CheckHasMapShapeOrNull(mask);
+
+			if (mask == null)
+				return MatrixUtils.CalibratedBooleanThreshold(elevation, fraction, FractionMax);
+
+			var filteredElevation = elevation.Clone();
+			var roominess = MatrixUtils.ChebyshevRoom(mask, true);
+			var available = 0;
+			var total = filteredElevation.Data.Length;
+			for (var n = 0; n < total; n++)
+			{
+				if (mask[n])
+					available++;
+				else
+					filteredElevation.Data[n] = int.MinValue;
+			}
+
+			var slice = MatrixUtils.CalibratedBooleanThreshold(
+				filteredElevation, available * fraction / FractionMax, total);
+
+			// Calibration isn't perfect. Make sure constraints are still met.
+			var minimumRoom = minimumContourSpacing + 1;
+			for (var n = 0; n < total; n++)
+				slice.Data[n] &= roominess.Data[n] >= minimumRoom;
+
+			return slice;
+		}
+
+		/// <summary>Create map-shaped CellLayer preinitialized with a circle.</summary>
+		public CellLayer<T> CenteredCircle<T>(T inside, T outside, WDist radius)
+		{
+			var circle = new CellLayer<T>(Map);
+			circle.Clear(outside);
+			CellLayerUtils.OverCircle(
+				cellLayer: circle,
+				wCenter: wMapCenter,
+				wRadius: radius,
+				outside: false,
+				action: (mpos, _, _, _) => circle[mpos] = inside);
+			return circle;
+		}
+
+		/// <summary>
 		/// Creates a boolean fractal noise pattern obeying symmetry requirements.
 		/// <param name="random">Random source</param>
 		/// <param name="noiseFeatureSize">Largest interval for fractal noise.</param>
@@ -150,7 +237,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				wavelength => ClumpinessAmplitude(wavelength, clumpiness));
 
 			return CellLayerUtils.CalibratedBooleanThreshold(
-				noise, FractionMax - fraction, FractionMax);
+				noise, fraction, FractionMax);
 		}
 
 		/// <summary>
@@ -1599,10 +1686,24 @@ namespace OpenRA.Mods.Common.MapGenerator
 				CheckHasMapShape(layer);
 		}
 
+		public void CheckHasMapShapeOrNull<T>(Matrix<T> layer)
+		{
+			if (layer != null)
+				CheckHasMapShape(layer);
+		}
+
 		public void CheckHasMapShape<T>(CellLayer<T> layer)
 		{
 			if (!CellLayerUtils.AreSameShape(layer, Map.Tiles))
 				throw new ArgumentException("CellLayer has different shape to map");
+		}
+
+		public void CheckHasMapShape<T>(Matrix<T> matrix)
+		{
+			var cellBounds = CellLayerUtils.CellBounds(Map);
+			var size = cellBounds.Size.ToInt2();
+			if (matrix.Size != size)
+				throw new ArgumentException("Matrix has different shape to map");
 		}
 
 		public T Required<T>(T value) where T : class

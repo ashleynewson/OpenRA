@@ -158,14 +158,14 @@
 					Label: label-cnc-map-generator-choice-terrain-type-mountains
 					Settings:
 						Water: 0
-						Mountains: 1000
+						Mountains: 900
 						Roughness: 600
 						MinimumTerrainContourSpacing: 5
 				Choice@MountainLakes:
 					Label: label-cnc-map-generator-choice-terrain-type-mountain-lakes
 					Settings:
 						Water: 200
-						Mountains: 1000
+						Mountains: 900
 						Roughness: 850
 						MinimumTerrainContourSpacing: 5
 			MultiChoiceOption@Shape:

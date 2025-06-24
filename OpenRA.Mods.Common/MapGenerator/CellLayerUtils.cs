@@ -60,6 +60,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
+		/// <summary>
+		/// Return the radius of the largest circle that can be contained in the cell layer.
+		/// </summary>
+		public static WDist Radius<T>(CellLayer<T> cellLayer)
+		{
+			var center = Center(cellLayer);
+			return new WDist(Math.Min(center.X, center.Y));
+		}
+
 		/// <summary>Get the WPos of the -X-Y corner of a CPos cell.</summary>
 		public static WPos CornerToWPos(CPos cpos, MapGridType gridType)
 		{
@@ -321,7 +330,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			var sorted = Entries(input);
 			Array.Sort(sorted);
-			var threshold = sorted[(long)sorted.Length * count / outOf];
+			var threshold = sorted[(long)sorted.Length * (outOf - count) / outOf];
 			foreach (var mpos in input.CellRegion.MapCoords)
 				output[mpos] = input[mpos] >= threshold;
 

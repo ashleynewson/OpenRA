@@ -739,7 +739,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			var sorted = (int[])input.Data.Clone();
 			Array.Sort(sorted);
-			var threshold = sorted[(long)sorted.Length * count / outOf];
+			var threshold = sorted[(long)sorted.Length * (outOf - count) / outOf];
 			return input.Map(v => v >= threshold);
 		}
 
