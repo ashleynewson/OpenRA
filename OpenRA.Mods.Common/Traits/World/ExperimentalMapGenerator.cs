@@ -217,15 +217,9 @@ namespace OpenRA.Mods.Common.Traits
 			[FieldLoader.Ignore]
 			public readonly IReadOnlySet<byte> PlayableTerrain;
 			[FieldLoader.Ignore]
-			public readonly IReadOnlySet<byte> PartiallyPlayableTerrain;
-			[FieldLoader.Ignore]
-			public readonly IReadOnlySet<byte> UnplayableTerrain;
-			[FieldLoader.Ignore]
 			public readonly IReadOnlySet<byte> DominantTerrain;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlySet<byte> ZoneableTerrain;
-			[FieldLoader.Ignore]
-			public readonly IReadOnlySet<string> PartiallyPlayableCategories;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<string> ClearSegmentTypes;
 			[FieldLoader.Ignore]
@@ -305,14 +299,8 @@ namespace OpenRA.Mods.Common.Traits
 
 				ClearTerrain = ParseTerrainIndexes("ClearTerrain");
 				PlayableTerrain = ParseTerrainIndexes("PlayableTerrain");
-				PartiallyPlayableTerrain = ParseTerrainIndexes("PartiallyPlayableTerrain");
-				UnplayableTerrain = ParseTerrainIndexes("UnplayableTerrain");
 				DominantTerrain = ParseTerrainIndexes("DominantTerrain");
 				ZoneableTerrain = ParseTerrainIndexes("ZoneableTerrain");
-
-				PartiallyPlayableCategories = my.NodeWithKey("PartiallyPlayableCategories").Value.Value
-					.Split(',', StringSplitOptions.RemoveEmptyEntries)
-					.ToImmutableHashSet();
 
 				ClearSegmentTypes = ParseSegmentTypes("ClearSegmentTypes");
 				BeachSegmentTypes = ParseSegmentTypes("BeachSegmentTypes");
@@ -494,15 +482,11 @@ namespace OpenRA.Mods.Common.Traits
 			var actorPlans = new List<ActorPlan>();
 			var terraformer = new Terraformer(map, modData, actorPlans, param.Mirror, param.Rotations);
 
+			var waterIsPlayable = param.PlayableTerrain.Contains(terrainInfo.GetTerrainIndex(new TerrainTile(param.WaterTile, 0)));
+
 			var externalCircleRadius = CellLayerUtils.Radius(map.Tiles) - new WDist((param.MinimumLandSeaThickness + param.MinimumMountainThickness) * 1024);
 			if (param.ExternalCircularBias != 0 && externalCircleRadius.Length <= 0)
 				throw new MapGenerationException("map is too small for circular shaping");
-
-			var playabilityMap = terraformer.PlayabilityMap(
-				param.PlayableTerrain,
-				param.PartiallyPlayableTerrain,
-				param.UnplayableTerrain,
-				param.PartiallyPlayableCategories);
 
 			CellLayer<MultiBrush.Replaceability> PlayableToReplaceable()
 			{
@@ -689,7 +673,7 @@ namespace OpenRA.Mods.Common.Traits
 				terraformer.PaintActors(symmetryTilingRandom, asymmetries, param.ForestObstacles);
 			}
 
-			CellLayer<bool> playableArea;
+			CellLayer<bool> playable;
 			{
 				// For circle-in-mountains, the outside is unplayable and should never count as
 				// the largest/preferred region.
@@ -698,11 +682,13 @@ namespace OpenRA.Mods.Common.Traits
 					poison = terraformer.CenteredCircle(
 						false, true, CellLayerUtils.Radius(map.Tiles) - new WDist(1024));
 
-				var playability = terraformer.ChoosePlayableRegion(playabilityMap, poison)
-					?? throw new MapGenerationException("could not find a playable region");
+				playable = terraformer.ChoosePlayableRegion(
+					terraformer.CheckSpace(param.PlayableTerrain, true, false, true),
+					poison)
+						?? throw new MapGenerationException("could not find a playable region");
 
 				var minimumPlayableSpace = (int)(param.Players * Math.PI * param.SpawnBuildSize * param.SpawnBuildSize);
-				if (playability.Count(p => p == PlayableSpace.Playability.Playable) < minimumPlayableSpace)
+				if (playable.Count(p => p) < minimumPlayableSpace)
 					throw new MapGenerationException("playable space is too small");
 
 				if (param.DenyWalledAreas)
@@ -710,21 +696,24 @@ namespace OpenRA.Mods.Common.Traits
 					// Beach tiles are particularly problematic. If they're for unplayable bodies
 					// of water, they should be obliterated. If they're just surrounded by rocks,
 					// trees, etc, they should be filled in with actors.
-					terraformer.FillUnplayableSideAndBorder(
-						playability,
-						landBeachWater,
-						Terraformer.Side.Out,
-						cpos => map.Tiles[cpos] = terraformer.PickTile(pickAnyRandom, param.LandTile));
+					if (waterIsPlayable)
+					{
+						var mask = CellLayerUtils.Clone(playable);
+						terraformer.ZoneFromOutOfBounds(mask, true);
+						terraformer.FillUnmaskedSideAndBorder(
+							mask,
+							landBeachWater,
+							Terraformer.Side.Out,
+							cpos => map.Tiles[cpos] = terraformer.PickTile(pickAnyRandom, param.LandTile));
+					}
 
 					var replace = PlayableToReplaceable();
 					foreach (var mpos in map.AllCells.MapCoords)
-						if (playability[mpos] != PlayableSpace.Playability.Unplayable || !map.Contains(mpos))
+						if (playable[mpos] || !map.Contains(mpos))
 							replace[mpos] = MultiBrush.Replaceability.None;
 
 					MultiBrush.PaintArea(map, actorPlans, replace, param.UnplayableObstacles, debrisTilingRandom);
 				}
-
-				playableArea = CellLayerUtils.Map(playability, p => p == PlayableSpace.Playability.Playable);
 			}
 
 			if (param.Roads)
@@ -765,7 +754,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (param.CreateEntities)
 			{
-				var zoneable = terraformer.GetZoneable(param.ZoneableTerrain, playableArea);
+				var zoneable = terraformer.GetZoneable(param.ZoneableTerrain, playable);
 
 				var zoneableArea = zoneable.Count(v => v);
 				var symmetryCount = Symmetry.RotateAndMirrorProjectionCount(param.Rotations, param.Mirror);
@@ -886,7 +875,7 @@ namespace OpenRA.Mods.Common.Traits
 
 					var (plan, typePlan) = terraformer.PlanResources(
 						resourcePattern,
-						playableArea,
+						playable,
 						param.DefaultResource,
 						resourceBiases);
 					terraformer.GrowResources(

@@ -60,6 +60,20 @@ namespace OpenRA.Mods.Common.MapGenerator
 			{ }
 		}
 
+		/// <summary>
+		/// Metadata for the values in a CellLayer matching an ID.
+		/// </summary>
+		public sealed class Region
+		{
+			public const int NullId = -1;
+
+			/// <summary>Region ID.</summary>
+			public int Id;
+
+			/// <summary>Area of the region.</summary>
+			public int Area;
+		}
+
 		public enum Side : sbyte
 		{
 			Out = -1,
@@ -121,51 +135,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public IEnumerable<ActorPlan> ActorsOfType(string type)
 		{
 			return ActorPlans.Where(a => a.Reference.Type == type);
-		}
-
-		/// <summary>
-		/// Generate a dictionary mapping individual TerrainTiles to their playability.
-		/// </summary>
-		/// <param name="playable">Set of playable terrain type indices.</param>
-		/// <param name="partiallyPlayable">Set of partially playable terrain type indices.</param>
-		/// <param name="unplayable">Set of unplayable terrain type indices.</param>
-		/// <param name="partiallyPlayableCategories">Set of terrain categories where otherwise unplayable tiles become partially playable.</param>
-		public Dictionary<TerrainTile, PlayableSpace.Playability> PlayabilityMap(
-			IReadOnlySet<byte> playable,
-			IReadOnlySet<byte> partiallyPlayable,
-			IReadOnlySet<byte> unplayable,
-			IReadOnlySet<string> partiallyPlayableCategories)
-		{
-			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
-			foreach (var kv in templatedTerrainInfo.Templates)
-			{
-				var id = kv.Key;
-				var template = kv.Value;
-				for (var ti = 0; ti < template.TilesCount; ti++)
-				{
-					if (template[ti] == null)
-						continue;
-					var tile = new TerrainTile(id, (byte)ti);
-					var type = terrainInfo.GetTerrainIndex(tile);
-
-					if (playable.Contains(type))
-						playabilityMap[tile] = PlayableSpace.Playability.Playable;
-					else if (partiallyPlayable.Contains(type))
-						playabilityMap[tile] = PlayableSpace.Playability.Partial;
-					else if (unplayable.Contains(type))
-						playabilityMap[tile] = PlayableSpace.Playability.Unplayable;
-					else
-						throw new MapGenerationException($"Terrain index {type} has unknown playability.");
-
-					if (playabilityMap[tile] == PlayableSpace.Playability.Unplayable
-						&& partiallyPlayableCategories.Overlaps(template.Categories))
-					{
-						playabilityMap[tile] = PlayableSpace.Playability.Partial;
-					}
-				}
-			}
-
-			return playabilityMap;
 		}
 
 		/// <summary>
@@ -394,26 +363,79 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Given a space CellLayer, identifies the separate true regions. Cells are part of the
+		/// same region if they are connected by an offset in spread.
+		/// </summary>
+		public (Region[] Regions, CellLayer<int> RegionMap) FindRegions(
+			CellLayer<bool> space,
+			ImmutableArray<CVec> spread)
+		{
+			CheckHasMapShape(space);
+
+			var regions = new List<Region>();
+			var regionMap = new CellLayer<int>(Map);
+			regionMap.Clear(Region.NullId);
+
+			void Fill(Region region, CPos start)
+			{
+				bool? Filler(CPos cpos, bool _)
+				{
+					var mpos = cpos.ToMPos(Map);
+					if (regionMap[mpos] == Region.NullId && space[mpos])
+					{
+						regionMap[mpos] = region.Id;
+						region.Area++;
+						return true;
+					}
+
+					return null;
+				}
+
+				CellLayerUtils.FloodFill(
+					space,
+					[(start, true)],
+					Filler,
+					spread);
+			}
+
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (regionMap[mpos] == Region.NullId && space[mpos])
+				{
+					var region = new Region()
+					{
+						Id = regions.Count,
+						Area = 0,
+					};
+
+					regions.Add(region);
+					var cpos = mpos.ToCPos(Map);
+					Fill(region, cpos);
+				}
+
+			return (regions.ToArray(), regionMap);
+		}
+
+		/// <summary>
 		/// Finds the largest, symmetrical, unpoisoned playable region on the map.
 		/// Returns a CellLayer describing the playable region, or null if there is no suitable
 		/// playable region.
 		/// </summary>
-		/// <param name="playabilityMap">Rules for which tiles are playable.</param>
-		/// <param name="poison">Any regions with a poisoned fully playable cell are disqualified.</param>
-		public CellLayer<PlayableSpace.Playability> ChoosePlayableRegion(
-			IReadOnlyDictionary<TerrainTile, PlayableSpace.Playability> playabilityMap,
+		/// <param name="playable">Whether given cells are playable.</param>
+		/// <param name="poison">Any regions with a poisoned cell are disqualified. Can be null.</param>
+		public CellLayer<bool> ChoosePlayableRegion(
+			CellLayer<bool> playable,
 			CellLayer<bool> poison = null)
 		{
 			CheckHasMapShapeOrNull(poison);
 
-			var (regions, regionMask, playability) = PlayableSpace.FindPlayableRegions(Map, ActorPlans, playabilityMap);
+			var (regions, regionMask) = FindRegions(playable, DirectionExts.Spread8CVec);
 			var disqualifications = new HashSet<int>();
 
 			if (poison != null)
 				foreach (var mpos in Map.AllCells.MapCoords)
 					if (poison[mpos]
-							&& regionMask[mpos] != PlayableSpace.NullRegion
-							&& playability[mpos] == PlayableSpace.Playability.Playable)
+							&& regionMask[mpos] != Region.NullId
+							&& playable[mpos])
 						disqualifications.Add(regionMask[mpos]);
 
 			// Disqualify regions that violate any symmetry requirements.
@@ -422,7 +444,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				void TestSymmetry(CPos[] sources, CPos destination)
 				{
 					var id = regionMask[destination];
-					if (playability[destination] != PlayableSpace.Playability.Playable)
+					if (!playable[destination])
 						return;
 					if (sources.All(source => regionMask.TryGetValue(source, out var sourceId) && sourceId == id))
 						symmetryScore[id]++;
@@ -435,49 +457,23 @@ namespace OpenRA.Mods.Common.MapGenerator
 					TestSymmetry);
 
 				for (var id = 0; id < symmetryScore.Length; id++)
-					if (symmetryScore[id] < regions[id].PlayableArea / 2)
+					if (symmetryScore[id] < regions[id].Area / 2)
 						disqualifications.Add(id);
 			}
 
-			PlayableSpace.Region largest = null;
+			Region largest = null;
 			foreach (var region in regions)
 			{
 				if (disqualifications.Contains(region.Id))
 					continue;
-				if (largest == null || region.PlayableArea > largest.PlayableArea)
+				if (largest == null || region.Area > largest.Area)
 					largest = region;
 			}
 
 			if (largest == null)
 				return null;
 
-			bool? AdoptPartiallyPlayableIntoLargest(CPos cpos, bool first)
-			{
-				if (first)
-					return false;
-				else if (regionMask[cpos] == largest.Id || playability[cpos] != PlayableSpace.Playability.Partial)
-					return null;
-
-				regionMask[cpos] = largest.Id;
-				largest.Area++;
-				return false;
-			}
-
-			// Adopt any partially playable tiles connected to the largest region into the largest region.
-			// This avoids potentially debris-filling connected oceans for mods where water is unplayable.
-			CellLayerUtils.FloodFill(
-				regionMask,
-				Map.AllCells
-					.Where(cpos => regionMask[cpos] == largest.Id)
-					.Select(cpos => (cpos, true)),
-				AdoptPartiallyPlayableIntoLargest,
-				DirectionExts.Spread4CVec);
-
-			foreach (var mpos in Map.AllCells.MapCoords)
-				if (regionMask[mpos] != largest.Id)
-					playability[mpos] = PlayableSpace.Playability.Unplayable;
-
-			return playability;
+			return CellLayerUtils.Create(Map, (MPos mpos) => regionMask[mpos] == largest.Id);
 		}
 
 		/// <summary>
@@ -1017,7 +1013,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public CellLayer<bool> CheckSpace(
 			IReadOnlySet<byte> allowedTerrain,
 			bool checkActors = false,
-			bool checkResources = false)
+			bool checkResources = false,
+			bool checkBounds = false)
 		{
 			var space = new CellLayer<bool>(Map);
 			if (allowedTerrain != null)
@@ -1036,6 +1033,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (checkResources)
 				ZoneFromResources(space, false);
 
+			if (checkBounds)
+				ZoneFromOutOfBounds(space, false);
+
 			return space;
 		}
 
@@ -1046,7 +1046,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public CellLayer<bool> CheckSpace(
 			ushort requiredTile,
 			bool checkActors = false,
-			bool checkResources = false)
+			bool checkResources = false,
+			bool checkBounds = false)
 		{
 			var space = new CellLayer<bool>(Map);
 			foreach (var mpos in Map.AllCells.MapCoords)
@@ -1058,7 +1059,17 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (checkResources)
 				ZoneFromResources(space, false);
 
+			if (checkBounds)
+				ZoneFromOutOfBounds(space, false);
+
 			return space;
+		}
+
+		public void ZoneFromOutOfBounds<T>(CellLayer<T> zoneable, T value)
+		{
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (!Map.Contains(mpos))
+					zoneable[mpos] = value;
 		}
 
 		/// <summary>Sets all zoneable cells where the map has actor footprints to false.</summary>
@@ -1315,13 +1326,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// regions. For example, this can be used to un-paint an unplayable body of water along
 		/// with its beaches.
 		/// </summary>
-		public void FillUnplayableSideAndBorder(
-			CellLayer<PlayableSpace.Playability> playability,
+		public void FillUnmaskedSideAndBorder(
+			CellLayer<bool> mask,
 			CellLayer<Side> sides,
 			Side fillSide,
 			Action<CPos> fillAction)
 		{
-			CheckHasMapShape(playability);
+			CheckHasMapShape(mask);
 			CheckHasMapShape(sides);
 
 			if (fillSide == Side.None)
@@ -1330,7 +1341,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var notFillSide = fillSide == Side.In ? Side.Out : Side.In;
 			var fillSeeds = CellLayerUtils.Create(Map, (MPos mpos) =>
 				sides[mpos] == fillSide &&
-				playability[mpos] == PlayableSpace.Playability.Unplayable &&
+				!mask[mpos] &&
 				Map.Contains(mpos));
 			fillSeeds = ImproveSymmetry(fillSeeds, false, (a, b) => a || b);
 			var fillable = CellLayerUtils.Map(sides, side => side != notFillSide);
@@ -1706,7 +1717,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			var maxTerrainHeight = map.Grid.MaximumTerrainHeight;
 			var tl = new PPos(1, 1 + maxTerrainHeight);
-			var br = new PPos(map.MapSize.Width - 1, map.MapSize.Height + maxTerrainHeight - 1);
+			var br = new PPos(map.MapSize.Width - 2, map.MapSize.Height + maxTerrainHeight - 2);
 			map.SetBounds(tl, br);
 			map.Title = args.Title;
 			map.Author = args.Author;
