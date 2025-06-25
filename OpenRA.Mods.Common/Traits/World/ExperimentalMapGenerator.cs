@@ -495,41 +495,14 @@ namespace OpenRA.Mods.Common.Traits
 			var terraformer = new Terraformer(map, modData, actorPlans, param.Mirror, param.Rotations);
 
 			var externalCircleRadius = CellLayerUtils.Radius(map.Tiles) - new WDist((param.MinimumLandSeaThickness + param.MinimumMountainThickness) * 1024);
-			if (externalCircleRadius.Length <= 0)
+			if (param.ExternalCircularBias != 0 && externalCircleRadius.Length <= 0)
 				throw new MapGenerationException("map is too small for circular shaping");
 
-			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
-
-			var templatedTerrainInfo = (ITemplatedTerrainInfo)terrainInfo;
-			foreach (var kv in templatedTerrainInfo.Templates)
-			{
-				var id = kv.Key;
-				var template = kv.Value;
-				for (var ti = 0; ti < template.TilesCount; ti++)
-				{
-					if (template[ti] == null)
-						continue;
-					var tile = new TerrainTile(id, (byte)ti);
-					var type = terrainInfo.GetTerrainIndex(tile);
-
-					if (param.PlayableTerrain.Contains(type))
-						playabilityMap[tile] = PlayableSpace.Playability.Playable;
-					else if (param.PartiallyPlayableTerrain.Contains(type))
-						playabilityMap[tile] = PlayableSpace.Playability.Partial;
-					else if (param.UnplayableTerrain.Contains(type))
-						playabilityMap[tile] = PlayableSpace.Playability.Unplayable;
-					else
-						throw new MapGenerationException($"Terrain index {type} has unknown playability.");
-
-					if (id != param.LandTile
-						&& id != param.WaterTile
-						&& param.PartiallyPlayableCategories.Overlaps(template.Categories)
-						&& playabilityMap[tile] == PlayableSpace.Playability.Unplayable)
-					{
-						playabilityMap[tile] = PlayableSpace.Playability.Partial;
-					}
-				}
-			}
+			var playabilityMap = terraformer.PlayabilityMap(
+				param.PlayableTerrain,
+				param.PartiallyPlayableTerrain,
+				param.UnplayableTerrain,
+				param.PartiallyPlayableCategories);
 
 			CellLayer<MultiBrush.Replaceability> PlayableToReplaceable()
 			{

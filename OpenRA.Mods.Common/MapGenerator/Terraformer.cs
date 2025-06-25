@@ -124,6 +124,51 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Generate a dictionary mapping individual TerrainTiles to their playability.
+		/// </summary>
+		/// <param name="playable">Set of playable terrain type indices.</param>
+		/// <param name="partiallyPlayable">Set of partially playable terrain type indices.</param>
+		/// <param name="unplayable">Set of unplayable terrain type indices.</param>
+		/// <param name="partiallyPlayableCategories">Set of terrain categories where otherwise unplayable tiles become partially playable.</param>
+		public Dictionary<TerrainTile, PlayableSpace.Playability> PlayabilityMap(
+			IReadOnlySet<byte> playable,
+			IReadOnlySet<byte> partiallyPlayable,
+			IReadOnlySet<byte> unplayable,
+			IReadOnlySet<string> partiallyPlayableCategories)
+		{
+			var playabilityMap = new Dictionary<TerrainTile, PlayableSpace.Playability>();
+			foreach (var kv in templatedTerrainInfo.Templates)
+			{
+				var id = kv.Key;
+				var template = kv.Value;
+				for (var ti = 0; ti < template.TilesCount; ti++)
+				{
+					if (template[ti] == null)
+						continue;
+					var tile = new TerrainTile(id, (byte)ti);
+					var type = terrainInfo.GetTerrainIndex(tile);
+
+					if (playable.Contains(type))
+						playabilityMap[tile] = PlayableSpace.Playability.Playable;
+					else if (partiallyPlayable.Contains(type))
+						playabilityMap[tile] = PlayableSpace.Playability.Partial;
+					else if (unplayable.Contains(type))
+						playabilityMap[tile] = PlayableSpace.Playability.Unplayable;
+					else
+						throw new MapGenerationException($"Terrain index {type} has unknown playability.");
+
+					if (playabilityMap[tile] == PlayableSpace.Playability.Unplayable
+						&& partiallyPlayableCategories.Overlaps(template.Categories))
+					{
+						playabilityMap[tile] = PlayableSpace.Playability.Partial;
+					}
+				}
+			}
+
+			return playabilityMap;
+		}
+
+		/// <summary>
 		/// Create a matrix containing a generated terrain elevation map.
 		/// </summary>
 		/// <param name="random">Random source for terrain noise.</param>
