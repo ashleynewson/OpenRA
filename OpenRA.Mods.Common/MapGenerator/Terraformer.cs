@@ -92,6 +92,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			public Params() { }
 		}
 
+		public readonly MapGenerationArgs MapGenerationArgs;
 		public readonly Map Map;
 		public readonly ModData ModData;
 		public readonly List<ActorPlan> ActorPlans;
@@ -109,12 +110,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 		readonly ITemplatedTerrainInfo templatedTerrainInfo;
 
 		public Terraformer(
+			MapGenerationArgs mapGenerationArgs,
 			Map map,
 			ModData modData,
 			List<ActorPlan> actorPlans,
 			Symmetry.Mirror mirror,
 			int rotations)
 		{
+			MapGenerationArgs = mapGenerationArgs;
 			Map = map;
 			ModData = modData;
 			ActorPlans = actorPlans;
@@ -1713,15 +1716,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>Perform some basic initialization of a map.</summary>
-		public static void InitMap(Map map, ModData modData, MapGenerationArgs args)
+		public void InitMap()
 		{
-			var maxTerrainHeight = map.Grid.MaximumTerrainHeight;
+			var maxTerrainHeight = Map.Grid.MaximumTerrainHeight;
 			var tl = new PPos(1, 1 + maxTerrainHeight);
-			var br = new PPos(map.MapSize.Width - 2, map.MapSize.Height + maxTerrainHeight - 2);
-			map.SetBounds(tl, br);
-			map.Title = args.Title;
-			map.Author = args.Author;
-			map.RequiresMod = modData.Manifest.Id;
+			var br = new PPos(Map.MapSize.Width - 2, Map.MapSize.Height + maxTerrainHeight - 2);
+			Map.SetBounds(tl, br);
+			Map.Title = MapGenerationArgs.Title;
+			Map.Author = MapGenerationArgs.Author;
+			Map.RequiresMod = ModData.Manifest.Id;
 		}
 
 		/// <summary>

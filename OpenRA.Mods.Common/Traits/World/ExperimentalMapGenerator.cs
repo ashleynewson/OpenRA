@@ -475,12 +475,11 @@ namespace OpenRA.Mods.Common.Traits
 			var size = args.Size;
 
 			var map = new Map(modData, terrainInfo, size);
-			Terraformer.InitMap(map, modData, args);
+			var actorPlans = new List<ActorPlan>();
 
 			var param = new Parameters(map, args.Settings);
 
-			var actorPlans = new List<ActorPlan>();
-			var terraformer = new Terraformer(map, modData, actorPlans, param.Mirror, param.Rotations);
+			var terraformer = new Terraformer(args, map, modData, actorPlans, param.Mirror, param.Rotations);
 
 			var waterIsPlayable = param.PlayableTerrain.Contains(terrainInfo.GetTerrainIndex(new TerrainTile(param.WaterTile, 0)));
 
@@ -536,6 +535,8 @@ namespace OpenRA.Mods.Common.Traits
 			var decorationRandom = new MersenneTwister(random.Next());
 			var decorationTilingRandom = new MersenneTwister(random.Next());
 			var pickAnyRandom = new MersenneTwister(random.Next());
+
+			terraformer.InitMap();
 
 			foreach (var mpos in map.AllCells.MapCoords)
 				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
