@@ -60,6 +60,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
+		public static WPos Center(Map map)
+		{
+			return Center(map.Tiles);
+		}
+
 		/// <summary>
 		/// Return the radius of the largest circle that can be contained in the cell layer.
 		/// </summary>
@@ -67,6 +72,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			var center = Center(cellLayer);
 			return new WDist(Math.Min(center.X, center.Y));
+		}
+
+		public static WDist Radius(Map map)
+		{
+			return Radius(map.Tiles);
 		}
 
 		/// <summary>Get the WPos of the -X-Y corner of a CPos cell.</summary>

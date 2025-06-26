@@ -24,6 +24,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public static int PinkAmplitude(int wavelength) => wavelength;
 
 		/// <summary>
+		/// <code>amplitude = wavelength ** (1 / (2 ** clumpiness))</code>
+		/// Setting clumpiness to 0 is equivalent to pink noise.
+		/// </summary>
+		public static int ClumpinessAmplitude(int wavelength, int clumpiness)
+		{
+			var amplitude = wavelength;
+			for (var i = 0; i < clumpiness; i++)
+				amplitude = Exts.ISqrt(amplitude);
+			return amplitude;
+		}
+
+		/// <summary>
 		/// <para>
 		/// Create noise by combining multiple layers of Perlin noise of halving wavelengths.
 		/// </para>

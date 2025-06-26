@@ -483,7 +483,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			var waterIsPlayable = param.PlayableTerrain.Contains(terrainInfo.GetTerrainIndex(new TerrainTile(param.WaterTile, 0)));
 
-			var externalCircleRadius = CellLayerUtils.Radius(map.Tiles) - new WDist((param.MinimumLandSeaThickness + param.MinimumMountainThickness) * 1024);
+			var externalCircleRadius = CellLayerUtils.Radius(map) - new WDist((param.MinimumLandSeaThickness + param.MinimumMountainThickness) * 1024);
 			if (param.ExternalCircularBias != 0 && externalCircleRadius.Length <= 0)
 				throw new MapGenerationException("map is too small for circular shaping");
 
@@ -842,7 +842,7 @@ namespace OpenRA.Mods.Common.Traits
 				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
 				if (targetResourceValue > 0)
 				{
-					var resourcePattern = terraformer.GenerateResourcePattern(
+					var resourcePattern = terraformer.ResourceNoise(
 						resourceRandom,
 						param.ResourceFeatureSize,
 						param.OreClumpiness,
