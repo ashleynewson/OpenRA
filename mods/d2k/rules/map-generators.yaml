@@ -1,0 +1,47 @@
+^MapGenerators:
+	D2kMapGenerator@d2k:
+		Type: d2k
+		Name: map-generator-d2k
+		Tilesets: ARRAKIS
+		Settings:
+			MultiChoiceOption@hidden_defaults:
+				Choice@hidden_defaults:
+					Settings:
+						Mirror: None
+						Rotations: 1
+			IntegerOption@Seed:
+				Label: label-d2k-map-generator-option-seed
+				Parameter: Seed
+				Default: 0
+	ClearMapGenerator@clear:
+		Type: clear
+		Name: map-generator-clear
+		Tilesets: ARRAKIS
+		Settings:
+			MultiChoiceOption@Tile:
+				Label: label-clear-map-generator-option-tile
+				Choice@Sand:
+					Label: label-clear-map-generator-choice-tile-sand
+					Tileset: ARRAKIS
+					Settings:
+						Tile: 0
+				Choice@Concrete:
+					Label: label-clear-map-generator-choice-tile-concrete
+					Tileset: ARRAKIS
+					Settings:
+						Tile: 88
+				Choice@Dune:
+					Label: label-clear-map-generator-choice-tile-dune
+					Tileset: ARRAKIS
+					Settings:
+						Tile: 241
+				Choice@Rock:
+					Label: label-clear-map-generator-choice-tile-rock
+					Tileset: ARRAKIS
+					Settings:
+						Tile: 266
+				Choice@Platform:
+					Label: label-clear-map-generator-choice-tile-platform
+					Tileset: ARRAKIS
+					Settings:
+						Tile: 1017

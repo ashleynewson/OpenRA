@@ -103,6 +103,9 @@ faction-smugglers =
 faction-fremen =
     .name = Fremen
 
+map-generator-d2k = D2K RMG
+map-generator-clear = Clear Terrain
+
 ## defaults.yaml
 notification-unit-lost = Unit lost.
 notification-unit-promoted = Unit promoted.
@@ -665,3 +668,19 @@ bot-vidius =
 
 bot-gladius =
     .name = Gladius
+
+## map-generators.yaml
+label-random-map = Random Map
+label-clear-map-generator-option-tile = Tile
+label-clear-map-generator-choice-tile-sand =
+   .label = Sand
+label-clear-map-generator-choice-tile-concrete =
+   .label = Concrete
+label-clear-map-generator-choice-tile-dune =
+   .label = Dune
+label-clear-map-generator-choice-tile-rock =
+   .label = Rock
+label-clear-map-generator-choice-tile-platform =
+   .label = Platform
+
+label-d2k-map-generator-option-seed = Seed
