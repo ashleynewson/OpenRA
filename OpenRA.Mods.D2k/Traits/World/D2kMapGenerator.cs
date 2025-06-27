@@ -67,7 +67,7 @@ namespace OpenRA.Mods.D2k.Traits
 				.Options.SelectMany(o => o.GetFluentReferences()).ToList();
 		}
 
-		const int FractionMax = 1000;
+		const int FractionMax = Terraformer.FractionMax;
 
 		sealed class Parameters
 		{
@@ -78,13 +78,35 @@ namespace OpenRA.Mods.D2k.Traits
 			[FieldLoader.LoadUsing(nameof(MirrorLoader))]
 			public readonly Symmetry.Mirror Mirror = default;
 
+			[FieldLoader.Require]
+			public readonly int TerrainFeatureSize = default;
+			[FieldLoader.Require]
+			public readonly int TerrainSmoothing = default;
+			[FieldLoader.Require]
+			public readonly int SmoothingThreshold = default;
+			[FieldLoader.Require]
+			public readonly int Roughness = default;
+			[FieldLoader.Require]
+			public readonly int RoughnessRadius = default;
+			[FieldLoader.Require]
+			public readonly int Rock = default;
+			[FieldLoader.Require]
+			public readonly int MinimumRockSandThickness = default;
+
+			[FieldLoader.Require]
+			public readonly ushort SandTile = default;
+			[FieldLoader.Require]
+			public readonly ushort RockTile = default;
+			[FieldLoader.Require]
+			public readonly string RockSmoothSegmentType = default;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<MultiBrush> SegmentedBrushes;
+
 			public Parameters(Map map, MiniYaml my)
 			{
 				FieldLoader.Load(this, my);
 
-				var terrainInfo = (ITemplatedTerrainInfo)map.Rules.TerrainInfo;
-
-				Validate(terrainInfo);
+				SegmentedBrushes = MultiBrush.LoadCollection(map, "Segmented");
 			}
 
 			static object MirrorLoader(MiniYaml my)
@@ -116,10 +138,6 @@ namespace OpenRA.Mods.D2k.Traits
 							throw new YamlException($"Invalid resource spawn weight `{subMy.Value}`");
 					});
 			}
-
-			public void Validate(ITemplatedTerrainInfo terrainInfo)
-			{
-			}
 		}
 
 		public IMapGeneratorSettings GetSettings()
@@ -148,8 +166,56 @@ namespace OpenRA.Mods.D2k.Traits
 			// derivatives may be deleted but should be replaced with their unused call to
 			// random.Next(). All generators should be created unconditionally.
 			var random = new MersenneTwister(param.Seed);
+			var pickAnyRandom = new MersenneTwister(random.Next());
+			var elevationRandom = new MersenneTwister(random.Next());
+			var rockTilingRandom = new MersenneTwister(random.Next());
 
 			terraformer.InitMap();
+
+			foreach (var mpos in map.AllCells.MapCoords)
+				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.SandTile);
+
+			var elevation = terraformer.ElevationNoise(
+				elevationRandom,
+				param.TerrainFeatureSize,
+				param.TerrainSmoothing);
+			var roughnessMatrix = MatrixUtils.GridVariance(
+				elevation,
+				param.RoughnessRadius);
+			MatrixUtils.CalibrateQuantileInPlace(
+				roughnessMatrix,
+				0,
+				FractionMax - param.Roughness, FractionMax);
+
+			var rockPlan = terraformer.SliceElevation(elevation, null, FractionMax - param.Rock);
+			rockPlan = MatrixUtils.BooleanBlotch(
+				rockPlan,
+				param.TerrainSmoothing,
+				param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
+				param.MinimumRockSandThickness,
+				/*bias=*/param.Rock > FractionMax / 2);
+
+			var rock = CellLayerUtils.FromMatrixPoints(
+				MatrixUtils.BordersToPoints(rockPlan),
+				map.Tiles);
+			var rockPaths = rock
+				.Select(beach =>
+					TilingPath.QuickCreate(
+							map,
+							param.SegmentedBrushes,
+							beach,
+							(param.MinimumRockSandThickness - 1) / 2,
+							param.RockSmoothSegmentType,
+							param.RockSmoothSegmentType)
+								.ExtendEdge(4))
+				.ToArray();
+			var rockSmoothSand = terraformer.PaintLoopsAndFill(
+				rockTilingRandom,
+				rockPaths,
+				rockPlan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
+				null,
+				[new MultiBrush().WithTemplate(map, param.RockTile, CVec.Zero)])
+					?? throw new MapGenerationException("Could not fit tiles for beach");
 
 			terraformer.BakeMap();
 

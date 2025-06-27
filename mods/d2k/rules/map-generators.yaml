@@ -7,8 +7,18 @@
 			MultiChoiceOption@hidden_defaults:
 				Choice@hidden_defaults:
 					Settings:
-						Mirror: None
 						Rotations: 1
+						Mirror: None
+						TerrainFeatureSize: 20480
+						TerrainSmoothing: 4
+						SmoothingThreshold: 833
+						Roughness: 500
+						RoughnessRadius: 5
+						Rock: 500
+						MinimumRockSandThickness: 5
+						SandTile: 0
+						RockTile: 266
+						RockSmoothSegmentType: RockSmooth
 			IntegerOption@Seed:
 				Label: label-d2k-map-generator-option-seed
 				Parameter: Seed

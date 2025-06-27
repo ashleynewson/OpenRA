@@ -66,7 +66,7 @@ namespace OpenRA.Mods.Common.Traits
 				.Options.SelectMany(o => o.GetFluentReferences()).ToList();
 		}
 
-		const int FractionMax = 1000;
+		const int FractionMax = Terraformer.FractionMax;
 		const int EntityBonusMax = 1000000;
 
 		sealed class Parameters
@@ -518,7 +518,7 @@ namespace OpenRA.Mods.Common.Traits
 			// random.Next(). All generators should be created unconditionally.
 			var random = new MersenneTwister(param.Seed);
 
-			var waterRandom = new MersenneTwister(random.Next());
+			var elevationRandom = new MersenneTwister(random.Next());
 			var beachTilingRandom = new MersenneTwister(random.Next());
 			var cliffTilingRandom = new MersenneTwister(random.Next());
 			var forestRandom = new MersenneTwister(random.Next());
@@ -542,7 +542,7 @@ namespace OpenRA.Mods.Common.Traits
 				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
 
 			var elevation = terraformer.ElevationNoise(
-				waterRandom,
+				elevationRandom,
 				param.TerrainFeatureSize,
 				param.TerrainSmoothing);
 
@@ -552,7 +552,7 @@ namespace OpenRA.Mods.Common.Traits
 			else
 				mapShape = CellLayerUtils.ToMatrix(terraformer.CenteredCircle(true, false, externalCircleRadius), false);
 
-			var landPlan = terraformer.SliceElevation(elevation, mapShape, Terraformer.FractionMax - param.Water);
+			var landPlan = terraformer.SliceElevation(elevation, mapShape, FractionMax - param.Water);
 
 			if (param.ExternalCircularBias > 0)
 			{
