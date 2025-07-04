@@ -541,7 +541,7 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var mpos in map.AllCells.MapCoords)
 				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
 
-			var elevation = terraformer.ElevationNoise(
+			var elevation = terraformer.ElevationNoiseMatrix(
 				elevationRandom,
 				param.TerrainFeatureSize,
 				param.TerrainSmoothing);
@@ -605,11 +605,9 @@ namespace OpenRA.Mods.Common.Traits
 				var roughnessMatrix = MatrixUtils.GridVariance(
 					elevation,
 					param.RoughnessRadius);
-				MatrixUtils.CalibrateQuantileInPlace(
+				var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
 					roughnessMatrix,
-					0,
-					FractionMax - param.Roughness, FractionMax);
-				var cliffMask = roughnessMatrix.Map(v => v >= 0);
+					param.Roughness, FractionMax);
 				var cliffPlan = Matrix<bool>.Zip(landPlan, mapShape, (a, b) => a && b);
 
 				for (var altitude = 0; altitude < param.MaximumAltitude; altitude++)

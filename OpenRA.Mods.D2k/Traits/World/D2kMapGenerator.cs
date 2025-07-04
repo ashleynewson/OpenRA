@@ -92,6 +92,10 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly int Rock = default;
 			[FieldLoader.Require]
 			public readonly int MinimumRockSandThickness = default;
+			[FieldLoader.Require]
+			public readonly int MinimumRockSmoothLength = default;
+			[FieldLoader.Require]
+			public readonly int MinimumSandRockCliffLength = default;
 
 			[FieldLoader.Require]
 			public readonly ushort SandTile = default;
@@ -99,6 +103,8 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly ushort RockTile = default;
 			[FieldLoader.Require]
 			public readonly string RockSmoothSegmentType = default;
+			[FieldLoader.Require]
+			public readonly string SandRockCliffSegmentType = default;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> SegmentedBrushes;
 
@@ -175,43 +181,71 @@ namespace OpenRA.Mods.D2k.Traits
 			foreach (var mpos in map.AllCells.MapCoords)
 				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.SandTile);
 
-			var elevation = terraformer.ElevationNoise(
+			var elevation = terraformer.ElevationNoiseMatrix(
 				elevationRandom,
 				param.TerrainFeatureSize,
 				param.TerrainSmoothing);
 			var roughnessMatrix = MatrixUtils.GridVariance(
 				elevation,
 				param.RoughnessRadius);
-			MatrixUtils.CalibrateQuantileInPlace(
-				roughnessMatrix,
-				0,
-				FractionMax - param.Roughness, FractionMax);
+			var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
+					roughnessMatrix,
+					param.Roughness, FractionMax);
+			// var cliffMask = terraformer.BooleanNoiseMatrix(
+			// 	elevationRandom,
+			// 	4096,
+			// 	param.Roughness,
+			// 	FractionMax);
 
-			var rockPlan = terraformer.SliceElevation(elevation, null, FractionMax - param.Rock);
+			var rockPlan = terraformer.SliceElevation(elevation, null, param.Rock);
 			rockPlan = MatrixUtils.BooleanBlotch(
 				rockPlan,
 				param.TerrainSmoothing,
 				param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
 				param.MinimumRockSandThickness,
-				/*bias=*/param.Rock > FractionMax / 2);
+				true);
 
-			var rock = CellLayerUtils.FromMatrixPoints(
-				MatrixUtils.BordersToPoints(rockPlan),
-				map.Tiles);
-			var rockPaths = rock
-				.Select(beach =>
-					TilingPath.QuickCreate(
-							map,
-							param.SegmentedBrushes,
-							beach,
-							(param.MinimumRockSandThickness - 1) / 2,
-							param.RockSmoothSegmentType,
-							param.RockSmoothSegmentType)
-								.ExtendEdge(4))
-				.ToArray();
+			var rockContours = MatrixUtils.BordersToPoints(rockPlan);
+			var rockPaths = new List<TilingPath>();
+			var rockSmoothRule = new Terraformer.PathPartitionRule()
+			{
+				SegmentType = param.RockSmoothSegmentType,
+				MinimumLength = param.MinimumRockSmoothLength,
+				MaximumDeviation = 10,
+			};
+			var sandRockCliffRule = new Terraformer.PathPartitionRule()
+			{
+				SegmentType = param.SandRockCliffSegmentType,
+				MinimumLength = param.MinimumSandRockCliffLength,
+				MaximumDeviation = 10,
+			};
+			var partitionMask = cliffMask.Map(masked => masked ? sandRockCliffRule : rockSmoothRule);
+			var tilingPaths = terraformer.PartitionPaths(
+				rockContours,
+				[rockSmoothRule, sandRockCliffRule],
+				partitionMask,
+				param.SegmentedBrushes,
+				/*minStraight=*/3);
+
+			// foreach (var tilingPath in tilingPaths)
+			// 	foreach (var point in tilingPath.Points)
+			// 		if (map.Tiles.Contains(point))
+			// 			map.Tiles[point] = new TerrainTile(1017, 0);
+
+			foreach (var tilingPath in tilingPaths)
+			{
+				tilingPath
+					.OptimizeLoop()
+					.ExtendEdge(4);
+					// .Runway(3);
+				// var brush = tilingPath.Tile(rockTilingRandom);
+				// if (brush != null)
+				// 	terraformer.PaintTiling(rockTilingRandom, brush);
+			}
+
 			var rockSmoothSand = terraformer.PaintLoopsAndFill(
 				rockTilingRandom,
-				rockPaths,
+				tilingPaths,
 				rockPlan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 				null,
 				[new MultiBrush().WithTemplate(map, param.RockTile, CVec.Zero)])

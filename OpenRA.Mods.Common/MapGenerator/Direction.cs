@@ -325,5 +325,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 			else
 				throw new ArgumentException("None or bad direction");
 		}
+
+		public static Direction Rotate(this Direction direction, int eighths)
+		{
+			if (direction >= Direction.R && direction <= Direction.RU)
+				return (Direction)(((int)direction + eighths) & 7);
+			else
+				throw new ArgumentException("None or bad direction");
+		}
 	}
 }

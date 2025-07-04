@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
@@ -1458,6 +1459,167 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public TilingPath SetAutoEndDeviation()
 		{
 			MaxEndDeviation = int.MaxValue;
+			return this;
+		}
+
+		public TilingPath Runway(int length)
+		{
+			if (length <= 0)
+				return this;
+
+			if (Points == null || Points.Length < 2)
+			{
+				Points = null;
+				return this;
+			}
+
+			var startDirection = Start.Direction ?? DirectionExts.FromCVec(Points[1] - Points[0]);
+			var endDirection = End.Direction ?? DirectionExts.FromCVec(IsLoop ? Points[1] - Points[0] : Points[^1] - Points[^2]);
+
+			List<CPos> startSteps1 = [Points[0]];
+			List<CPos> startSteps2 = [Points[0]];
+			List<CPos> endSteps1 = [Points[^1]];
+			List<CPos> endSteps2 = [Points[^1]];
+			var startDirection1 = startDirection;
+			var startDirection2 = startDirection;
+			var endDirection1 = endDirection;
+			var endDirection2 = endDirection;
+
+			for (var side = 0; side < 4; side++)
+			{
+				for (var i = 0; i < length; i++)
+				{
+					startSteps1.Add(startSteps1[^1] + startDirection1.ToCVec());
+					startSteps2.Add(startSteps2[^1] + startDirection2.ToCVec());
+					endSteps1.Add(endSteps1[^1] - endDirection1.ToCVec());
+					endSteps2.Add(endSteps2[^1] - endDirection2.ToCVec());
+				}
+
+				startDirection1 = startDirection1.Rotate(2);
+				startDirection2 = startDirection2.Rotate(-2);
+				endDirection1 = endDirection1.Rotate(2);
+				endDirection2 = endDirection2.Rotate(-2);
+			}
+
+			// startSteps1.RemoveAt(startSteps1.Count - 1);
+			// startSteps2.RemoveAt(startSteps2.Count - 1);
+			// endSteps1.RemoveAt(endSteps1.Count - 1);
+			// endSteps2.RemoveAt(endSteps2.Count - 1);
+
+			// var startSeekers1 = startSteps1.Skip(length).ToHashSet();
+			// var startSeekers2 = startSteps2.Skip(length).ToHashSet();
+			// var endSeekers1 = endSteps1.Skip(length).ToHashSet();
+			// var endSeekers2 = endSteps2.Skip(length).ToHashSet();
+			// if (!Points.Any(p => startSeekers1.Contains(p) || startSeekers2.Contains(p)) ||
+			// 	!Points.Any(p => endSeekers1.Contains(p) || endSeekers2.Contains(p)))
+			// {
+			// 	Points = null;
+			// 	return this;
+			// }
+
+			// var startSeekers = startSteps1.Zip(startSteps2).SelectMany(t => new CPos[] { t.First, t.Second });
+			// var endSeekers = startSteps1.Zip(startSteps2).SelectMany(t => new CPos[] { t.First, t.Second });
+			// var startSeekers2 = startSteps2.Skip(length).ToHashSet();
+			// var endSeekers1 = endSteps1.Skip(length).ToHashSet();
+			// var endSeekers2 = endSteps2.Skip(length).ToHashSet();
+			// if (!Points.Any(p => startSeekers1.Contains(p) || startSeekers2.Contains(p)) ||
+			// 	!Points.Any(p => endSeekers1.Contains(p) || endSeekers2.Contains(p)))
+			// {
+			// 	Points = null;
+			// 	return this;
+			// }
+
+			var pointSet = Points.ToHashSet();
+
+			var startLink1 = startSteps1.Skip(length).First(pointSet.Contains);
+			var startLink2 = startSteps2.Skip(length).First(pointSet.Contains);
+			var endLink1 = endSteps1.Skip(length).First(pointSet.Contains);
+			var endLink2 = endSteps2.Skip(length).First(pointSet.Contains);
+
+			List<CPos> chosenStartSteps;
+			List<CPos> chosenEndSteps;
+			CPos chosenStartLink;
+			CPos chosenEndLink;
+
+			if (startLink1 == startSteps1[0] && startLink2 == startSteps2[0])
+			{
+				Points = null;
+				return this;
+			}
+			else if (startLink2 == startSteps2[0])
+			{
+				chosenStartSteps = startSteps1;
+				chosenStartLink = startLink1;
+			}
+			else if (startLink1 == startSteps1[0])
+			{
+				chosenStartSteps = startSteps2;
+				chosenStartLink = startLink2;
+			}
+			else if (Points.TakeWhile(p => p != startLink1).Count() <= Points.TakeWhile(p => p != startLink2).Count())
+			{
+				chosenStartSteps = startSteps1;
+				chosenStartLink = startLink1;
+			}
+			else
+			{
+				chosenStartSteps = startSteps2;
+				chosenStartLink = startLink2;
+			}
+
+			if (endLink1 == endSteps1[0] && endLink2 == endSteps2[0])
+			{
+				Points = null;
+				return this;
+			}
+			else if (endLink2 == endSteps2[0])
+			{
+				chosenEndSteps = endSteps1;
+				chosenEndLink = endLink1;
+			}
+			else if (endLink1 == endSteps1[0])
+			{
+				chosenEndSteps = endSteps2;
+				chosenEndLink = endLink2;
+			}
+			else if (Points.TakeWhile(p => p != endLink1).Count() >= Points.TakeWhile(p => p != endLink2).Count())
+			{
+				chosenEndSteps = endSteps1;
+				chosenEndLink = endLink1;
+			}
+			else
+			{
+				chosenEndSteps = endSteps2;
+				chosenEndLink = endLink2;
+			}
+
+			// TODO: Special case: overlapping runways
+			// TODO: Special case: overlapping sideways
+
+			// There might be overlap. The start might be after the end.
+			var startIndex = Points.TakeWhile(p => p != chosenStartLink).Count();
+			var endIndex = Points.TakeWhile(p => p != chosenEndLink).Count();
+			if (startIndex > endIndex)
+			{
+				Points = null;
+				return this;
+			}
+
+			chosenEndSteps.Reverse();
+			Points = chosenStartSteps.TakeWhile(p => p != chosenStartLink)
+				.Concat(Points[startIndex..endIndex])
+				.Concat(chosenEndSteps.SkipWhile(p => p != chosenEndLink))
+				.ToArray();
+
+			// var endLink = Points.Last(startSeekers.Contains);
+			// var startLinkI = Points.TakeWhile(p => p != startLink).Count();
+			// var endLinkI = Points.TakeWhile(p => p != startLink).Count();
+
+			// var startSteps = startSteps1.Contains(startLink) ?
+
+			// endSteps1.Reverse();
+			// endSteps2.Reverse();
+
 			return this;
 		}
 	}
