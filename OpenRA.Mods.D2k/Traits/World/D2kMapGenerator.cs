@@ -191,11 +191,6 @@ namespace OpenRA.Mods.D2k.Traits
 			var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
 					roughnessMatrix,
 					param.Roughness, FractionMax);
-			// var cliffMask = terraformer.BooleanNoiseMatrix(
-			// 	elevationRandom,
-			// 	4096,
-			// 	param.Roughness,
-			// 	FractionMax);
 
 			var rockPlan = terraformer.SliceElevation(elevation, null, param.Rock);
 			rockPlan = MatrixUtils.BooleanBlotch(
@@ -207,13 +202,13 @@ namespace OpenRA.Mods.D2k.Traits
 
 			var rockContours = MatrixUtils.BordersToPoints(rockPlan);
 			var rockPaths = new List<TilingPath>();
-			var rockSmoothRule = new Terraformer.PathPartitionRule()
+			var rockSmoothRule = new Terraformer.PathPartitionZone()
 			{
 				SegmentType = param.RockSmoothSegmentType,
 				MinimumLength = param.MinimumRockSmoothLength,
 				MaximumDeviation = 10,
 			};
-			var sandRockCliffRule = new Terraformer.PathPartitionRule()
+			var sandRockCliffRule = new Terraformer.PathPartitionZone()
 			{
 				SegmentType = param.SandRockCliffSegmentType,
 				MinimumLength = param.MinimumSandRockCliffLength,
@@ -227,20 +222,11 @@ namespace OpenRA.Mods.D2k.Traits
 				param.SegmentedBrushes,
 				/*minStraight=*/3);
 
-			// foreach (var tilingPath in tilingPaths)
-			// 	foreach (var point in tilingPath.Points)
-			// 		if (map.Tiles.Contains(point))
-			// 			map.Tiles[point] = new TerrainTile(1017, 0);
-
 			foreach (var tilingPath in tilingPaths)
 			{
 				tilingPath
 					.OptimizeLoop()
 					.ExtendEdge(4);
-					// .Runway(3);
-				// var brush = tilingPath.Tile(rockTilingRandom);
-				// if (brush != null)
-				// 	terraformer.PaintTiling(rockTilingRandom, brush);
 			}
 
 			var rockSmoothSand = terraformer.PaintLoopsAndFill(

@@ -74,7 +74,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			public int Area;
 		}
 
-		public sealed class PathPartitionRule
+		public sealed class PathPartitionZone
 		{
 			public bool ShouldTile = true;
 			public string SegmentType = null;
@@ -84,11 +84,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		sealed class PartitionRange
 		{
-			public PathPartitionRule Rule;
+			public PathPartitionZone Rule;
 			public int Start;
 			public int Length;
 
-			public PartitionRange(PathPartitionRule rule, int start, int length)
+			public PartitionRange(PathPartitionZone rule, int start, int length)
 			{
 				Rule = rule;
 				Start = start;
@@ -983,35 +983,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// Setting to 0 is equivalent to pink noise.
 		/// </param>
 		/// </summary>
-		public Matrix<bool> BooleanNoiseMatrix(
-			MersenneTwister random,
-			int noiseFeatureSize,
-			int fraction,
-			int clumpiness = 0)
-		{
-			var noise = NoiseUtils.SymmetricFractalNoise(
-				random,
-				CellLayerUtils.CellBounds(Map).Size.ToInt2(),
-				Rotations,
-				Mirror,
-				noiseFeatureSize,
-				wavelength => NoiseUtils.ClumpinessAmplitude(wavelength, clumpiness));
-
-			return MatrixUtils.CalibratedBooleanThreshold(
-				noise, fraction, FractionMax);
-		}
-
-		/// <summary>
-		/// Creates a boolean fractal noise pattern obeying symmetry requirements.
-		/// <param name="random">Random source</param>
-		/// <param name="noiseFeatureSize">Largest interval for fractal noise.</param>
-		/// <param name="fraction">Target fraction of true values (from 0 to FractionMax).</param>
-		/// <param name="clumpiness">
-		/// The number of times to square root the noise wavelength to arrive at the amplitude.
-		/// In other words, amplitude = wavelength ** (1 / (2 ** clumpiness))
-		/// Setting to 0 is equivalent to pink noise.
-		/// </param>
-		/// </summary>
 		public CellLayer<bool> BooleanNoise(
 			MersenneTwister random,
 			int noiseFeatureSize,
@@ -1137,219 +1108,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return slice;
 		}
 
-		// // TODO: Make sure interfaces are on straights.
-		// public List<TilingPath> PartitionPath(
-		// 	int2[] path,
-		// 	Matrix<PathPartitionRule> partitionMask,
-		// 	IReadOnlyList<MultiBrush> brushes,
-		// 	bool ignoreFailures = false)
-		// {
-		// 	if (path.Length < 2)
-		// 		throw new ArgumentException("path is too short");
-
-		// 	var isLoop = path[0] == path[^1];
-
-		// 	var assignments = new PathPartitionRule[isLoop ? path.Length - 1 : path.Length];
-		// 	for (var i = 0; i < assignments.Length; i++)
-		// 	{
-		// 		if (partitionMask.ContainsXY(path[i]))
-		// 			assignments[i] = partitionMask[path[i]];
-		// 	}
-
-		// 	List<PartitionRange> ScanRanges()
-		// 	{
-		// 		int firstPartitionStart;
-		// 		if (isLoop)
-		// 		{
-		// 			var previous = assignments[^1];
-		// 			for (firstPartitionStart = 0; firstPartitionStart < assignments.Length; firstPartitionStart++)
-		// 				if (assignments[firstPartitionStart] != previous)
-		// 					break;
-
-		// 			if (firstPartitionStart == assignments.Length)
-		// 			{
-		// 				// The whole path is one partition. Just use it.
-		// 				return [new PartitionRange(assignments[0], 0, path.Length)];
-		// 			}
-		// 		}
-		// 		else
-		// 		{
-		// 			firstPartitionStart = 0;
-		// 		}
-
-		// 		var ranges = new List<PartitionRange>();
-
-		// 		var partitionStart = firstPartitionStart;
-		// 		var cursor = firstPartitionStart + 1;
-		// 		while (true)
-		// 		{
-		// 			if (isLoop && cursor == assignments.Length)
-		// 				cursor = 0;
-
-		// 			var crossedPartitionBoundary =
-		// 				(!isLoop && cursor == assignments.Length)
-		// 				|| assignments[cursor] != assignments[partitionStart];
-		// 			if (crossedPartitionBoundary)
-		// 			{
-		// 				var partitionLength = (assignments.Length + cursor - partitionStart) % assignments.Length;
-		// 				ranges.Add(new PartitionRange(assignments[partitionStart], partitionStart, partitionLength));
-
-		// 				partitionStart = cursor;
-		// 			}
-
-		// 			if (cursor == (isLoop ? firstPartitionStart : assignments.Length))
-		// 				break;
-
-		// 			cursor++;
-		// 		}
-
-		// 		return ranges;
-		// 	}
-
-		// 	void ForRange(int start, int length, Action<int> action)
-		// 	{
-		// 		for (var i = 0; i < length; i++)
-		// 			action((start + i) % assignments.Length);
-		// 	}
-
-		// 	void ReplaceRange(PathPartitionRule rule, int start, int length)
-		// 		=> ForRange(start, length, i => assignments[i] = rule);
-
-		// 	List<PartitionRange> ranges;
-		// 	while (true)
-		// 	{
-		// 		// foreach (var assignment in assignments)
-		// 		// 	Console.Error.Write(assignment.SegmentType == "SandRockCliff" ? "X" : "-");
-		// 		// Console.Error.WriteLine();
-
-		// 		ranges = ScanRanges();
-
-		// 		// Nullify shortest too-short ranges (if no nulls already exist).
-		// 		if (!ranges.Any(r => r.Rule == null))
-		// 		{
-		// 			var shortRanges = ranges
-		// 				.Where(range => range.Length < range.Rule.MinimumLength)
-		// 				.ToList();
-		// 			if (shortRanges.Count > 0)
-		// 			{
-		// 				var shortest = shortRanges.Min(range => range.Length);
-		// 				foreach (var range in shortRanges)
-		// 					if (range.Length == shortest)
-		// 						ReplaceRange(null, range.Start, range.Length);
-		// 			}
-		// 		}
-
-		// 		ranges = ScanRanges();
-		// 		if (ranges.Count == 1 && ranges[0].Rule == null)
-		// 			return ignoreFailures ? [] : null;
-
-		// 		// Donate null ranges.
-		// 		var anyReplaced = false;
-		// 		for (var i = 0; i < ranges.Count; i++)
-		// 		{
-		// 			if (ranges[i].Rule == null)
-		// 			{
-		// 				var prev = (ranges.Count + i - 1) % ranges.Count;
-		// 				var next = (i + 1) % ranges.Count;
-		// 				if (isLoop || (i > 0 && i < ranges.Count - 1))
-		// 				{
-		// 					var prevDonate = (ranges[i].Length + 1) / 2;
-		// 					var nextDonate = ranges[i].Length / 2;
-		// 					ranges[prev].Length += prevDonate;
-		// 					ranges[next].Start = (assignments.Length + ranges[next].Start - nextDonate) % assignments.Length;
-		// 					ranges[next].Length += nextDonate;
-		// 				}
-		// 				else if (i > 0)
-		// 				{
-		// 					ranges[prev].Length += ranges[i].Length;
-		// 				}
-		// 				else
-		// 				{
-		// 					ranges[next].Start -= ranges[i].Length;
-		// 					ranges[next].Length += ranges[i].Length;
-		// 				}
-
-		// 				anyReplaced = true;
-		// 			}
-		// 		}
-
-		// 		if (!anyReplaced)
-		// 			break;
-
-		// 		// Write back non-null ranges
-		// 		foreach (var range in ranges)
-		// 			if (range.Rule != null)
-		// 				ReplaceRange(range.Rule, range.Start, range.Length);
-		// 	}
-
-		// 	if (ranges.Count == 1)
-		// 	{
-		// 		return [
-		// 			new TilingPath(
-		// 				Map,
-		// 				CellLayerUtils.FromMatrixPoints([path], Map.Tiles)[0],
-		// 				ranges[0].Rule.MaximumDeviation,
-		// 				ranges[0].Rule.SegmentType,
-		// 				ranges[0].Rule.SegmentType,
-		// 				TilingPath.PermittedSegments.FromType(brushes, [ranges[0].Rule.SegmentType]))];
-		// 	}
-
-		// 	var partitions = new List<TilingPath>();
-		// 	var previousIncludedInterface = isLoop && ranges[^1].Rule.ShouldTile;
-		// 	for (var rangeI = 0; rangeI < ranges.Count; rangeI++)
-		// 	{
-		// 		var range = ranges[rangeI];
-		// 		if (!range.Rule.ShouldTile)
-		// 		{
-		// 			previousIncludedInterface = false;
-		// 			continue;
-		// 		}
-
-		// 		var innerType = range.Rule.SegmentType;
-		// 		var startType = (!previousIncludedInterface && (isLoop || rangeI > 0))
-		// 			? ranges[(ranges.Count + rangeI - 1) % ranges.Count].Rule.SegmentType
-		// 			: innerType;
-		// 		var endType = (isLoop || rangeI < ranges.Count - 1)
-		// 			? ranges[(rangeI + 1) % ranges.Count].Rule.SegmentType
-		// 			: innerType;
-		// 		Direction? startDirection = (isLoop || rangeI > 0)
-		// 			? DirectionExts.FromInt2(
-		// 				path[(range.Start + 1) % assignments.Length]
-		// 					- path[range.Start])
-		// 			: null;
-		// 		Direction? endDirection = (isLoop || rangeI < ranges.Count - 1)
-		// 			? DirectionExts.FromInt2(
-		// 				path[(range.Length + range.Start + 1) % assignments.Length]
-		// 					- path[(range.Length + range.Start) % assignments.Length])
-		// 			: null;
-
-		// 		var points = new List<int2>();
-		// 		ForRange(range.Start, range.Length + 1, i => points.Add(path[i]));
-
-		// 		var tilingPath = new TilingPath(
-		// 			Map,
-		// 			CellLayerUtils.FromMatrixPoints([points.ToArray()], Map.Tiles)[0],
-		// 			range.Rule.MaximumDeviation,
-		// 			startType,
-		// 			endType,
-		// 			TilingPath.PermittedSegments.FromTypes(brushes, [startType], [innerType], [endType]));
-		// 		tilingPath.Start.Direction = startDirection;
-		// 		tilingPath.End.Direction = endDirection;
-
-		// 		partitions.Add(tilingPath);
-		// 		previousIncludedInterface = true;
-		// 	}
-
-		// 	return partitions;
-		// }
-
+		/// <summary>
+		/// If given a looped path, normalizes it such that symmetry projected paths should have
+		/// symmetry projected start/end points. Note that this method isn't meaningful for loops
+		/// which would overlap with their symmetry projections. For non-looped paths, returns the
+		/// input unchanged.
+		/// </summary>
 		public int2[] NormalizeLoopStart(int2[] path)
 		{
 			if (path.Length < 2)
 				throw new ArgumentException("path is too short");
 
 			if (path[0] != path[^1])
-				throw new ArgumentException("path is not a loop");
+				return path;
 
 			var gridType = Map.Grid.Type;
 			var center = CellLayerUtils.Center(Map);
@@ -1359,6 +1130,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 				.Select(cpos => CellLayerUtils.CornerToWPos(cpos, gridType))
 				.ToList();
 
+			// Choose the closest to the map center and makes it the start/end of the loop.
+			// If there are ties, pick the first closest point that follows from the furthest
+			// point(s), ensuring consistency for symmetries.
 			var distances = wpath.ConvertAll(w => (w - center).LengthSquared);
 			var closest = distances.Min();
 			var furthest = distances.Max();
@@ -1370,29 +1144,62 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return path[closestI..^1].Concat(path[0..(closestI + 1)]).ToArray();
 		}
 
+		/// <summary>
+		/// Given a matrix-style path, divide it into a chain of smaller paths and convert them to
+		/// TilingPaths with segment types that best match a matrix of zones.
+		/// </summary>
+		/// <param name="path">The path to be divided.</param>
+		/// <param name="allZones">The full set of zones, in order of preference for ties.</param>
+		/// <param name="zoneMask">
+		/// Matrix which assigns zones to matching points in the path.
+		/// Null values can be used to describe locations with no zoning preference.
+		/// </param>
+		/// <param name="brushes">Segmented brushes for TilingPath creation.</param>
+		/// <param name="minimumStraight">
+		/// If greater than zero, sub-paths are only allowed to change over in straight sections
+		/// and the starts/ends must be this number of points deep within a straight section.
+		/// </param>
 		public List<TilingPath> PartitionPath(
 			int2[] path,
-			IReadOnlyList<PathPartitionRule> rules,
-			Matrix<PathPartitionRule> partitionMask,
+			IReadOnlyList<PathPartitionZone> allZones,
+			Matrix<PathPartitionZone> zoneMask,
 			IReadOnlyList<MultiBrush> brushes,
-			int minStraight)
+			int minimumStraight)
 		{
-			if (rules.Count == 0)
+			// Algorithmic Overview:
+			//
+			// First, find the straight-enough sections that can support changes between sub-paths.
+			// We then find a best fit for subpaths that change over in these straights, according
+			// to their minimum lengths and zone matching.
+			//
+			// A best fit is found using a Dijkstra's Algorithm-based best-first search. (Bottom-up
+			// dynamic programming). The sub problems are just spans of the whole path, and are
+			// built up towards the full path by adding on and scoring sub-paths.
+			//
+			// The minimum cost of a sub-path is the minimum possible number of mismatched zones if
+			// an optimal zone is chosen.
+			//
+			// If there are multiple best solutions (with equal costs), there is a preference to
+			// solutions with more sub-paths.
+			if (allZones.Count == 0)
 				throw new ArgumentException("no rules provided");
 
 			if (path.Length < 2)
 				throw new ArgumentException("path is too short");
+
+			if (minimumStraight < 0)
+				throw new ArgumentException("minimumStraight was not >= 0");
 
 			var isLoop = path[0] == path[^1];
 
 			if (isLoop)
 				path = NormalizeLoopStart(path);
 
-			var zones = new PathPartitionRule[isLoop ? path.Length - 1 : path.Length];
+			var zones = new PathPartitionZone[isLoop ? path.Length - 1 : path.Length];
 			for (var i = 0; i < zones.Length; i++)
 			{
-				if (partitionMask.ContainsXY(path[i]))
-					zones[i] = partitionMask[path[i]];
+				if (zoneMask.ContainsXY(path[i]))
+					zones[i] = zoneMask[path[i]];
 			}
 
 			// from must be >= 0.
@@ -1412,11 +1219,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// Can also be used to get lengths
 			int Idx(int i) => (i + zones.Length) % zones.Length;
 
-			var minLength = Math.Max(1, rules.Min(r => r.MinimumLength));
+			var minLength = Math.Max(1, allZones.Min(r => r.MinimumLength));
 
-			int Vote(int from, int length, bool checkMinLength, List<PathPartitionRule> majorities = null)
+			int Vote(int from, int length, bool checkMinLength, List<PathPartitionZone> majorities = null)
 			{
-				var votes = new Dictionary<PathPartitionRule, int>();
+				var votes = new Dictionary<PathPartitionZone, int>();
 				var wildcards = 0;
 				foreach (var i in Range(from, length))
 				{
@@ -1442,7 +1249,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					if (checkMinLength)
 					{
-						var filteredRules = rules.Where(r => r.MinimumLength >= length).ToList();
+						var filteredRules = allZones.Where(r => r.MinimumLength >= length).ToList();
 						if (filteredRules.Count == 0)
 							return int.MaxValue;
 
@@ -1450,7 +1257,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 					}
 					else
 					{
-						majorities?.AddRange(rules);
+						majorities?.AddRange(allZones);
 					}
 
 					return 0;
@@ -1464,9 +1271,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return length - best - wildcards;
 			}
 
-			PathPartitionRule fallbackPath;
+			PathPartitionZone fallbackPath;
 
-			List<TilingPath> SinglePath(PathPartitionRule rule)
+			List<TilingPath> SinglePath(PathPartitionZone rule)
 			{
 				return [
 					new TilingPath(
@@ -1479,7 +1286,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			{
-				var majorities = new List<PathPartitionRule>();
+				var majorities = new List<PathPartitionZone>();
 				if (Vote(0, zones.Length, false, majorities) == 0)
 					return SinglePath(majorities[0]);
 
@@ -1501,62 +1308,28 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (!isLoop)
 				straight[0] = straight[^1] = true;
 
-			// // Note that loops can't be all straight.
-			// var runLengths = new int[zones.Length];
-			// {
-			// 	var start = 0;
-			// 	if (isLoop)
-			// 		while (straight[start]) start++;
-
-			// 	// Forward runs
-			// 	var run = 0;
-			// 	foreach (var i in Range(start, zones.Length))
-			// 	{
-			// 		if (straight[i])
-			// 			run++;
-			// 		else
-			// 			run = 0;
-
-			// 		runLengths[i] = run;
-			// 	}
-
-			// 	// Backward runs
-			// 	run = 0;
-			// 	foreach (var i in ReverseRange(start, zones.Length))
-			// 	{
-			// 		if (straight[i])
-			// 			run++;
-			// 		else
-			// 			run = 0;
-
-			// 		runLengths[i] = Math.Min(runLengths[i], run);
-			// 	}
-			// }
-
-			// var validTerminal = runLengths.Select(l => l >= minStraight).ToList();
-
 			// Note that loops can't be all straight.
 			var validTerminal = new bool[zones.Length];
 			Array.Fill(validTerminal, true);
 			{
 				// Forward run
 				var run = isLoop
-					? ReverseRange(zones.Length - minStraight, minStraight).TakeWhile(i => straight[i]).Count()
+					? ReverseRange(zones.Length - minimumStraight, minimumStraight).TakeWhile(i => straight[i]).Count()
 					: 0;
 				foreach (var i in Range(0, zones.Length))
 				{
 					run = straight[i] ? (run + 1) : 0;
-					validTerminal[i] &= run >= minStraight;
+					validTerminal[i] &= run >= minimumStraight;
 				}
 
 				// Backward run
 				run = isLoop
-					? Range(zones.Length, minStraight).TakeWhile(i => straight[i]).Count()
+					? Range(zones.Length, minimumStraight).TakeWhile(i => straight[i]).Count()
 					: 0;
 				foreach (var i in ReverseRange(0, zones.Length))
 				{
 					run = straight[i] ? (run + 1) : 0;
-					validTerminal[i] &= run >= minStraight;
+					validTerminal[i] &= run >= minimumStraight;
 				}
 			}
 
@@ -1578,23 +1351,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			var solutions = new List<(int Cost, List<int> Solution)>();
 
-			// var rulesOfLength = new List<PathPartitionRule>[path.Length];
-			// {
-			// 	var acceptableRules = new List<PathPartitionRule>();
-			// 	var orderedRules = new Queue<PathPartitionRule>();
-			// 	var lastLength = 0;
-			// 	foreach (var rule in rules.OrderBy(r => r.MinimumLength).ToList())
-			// 	{
-			// 		var
-			// 		if (orderedRules.Count)
-			// 	}
-			// }
-
 			// An optimization would be to include the start point in a combined search.
 			// This is simpler though.
 			foreach (var offset in validStarts)
 			{
-				var end = path.Length - 1; // isLoop ? zones.Length : zones.Length - 1;
+				var end = path.Length - 1;
 				var costs = new int[end + 1];
 				Array.Fill(costs, int.MaxValue);
 
@@ -1627,8 +1388,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 							costPriorities[to] = costs[to] = toCost;
 						}
-
-						// UpdateFrom(from, fromCost);
 					}
 				}
 
@@ -1674,8 +1433,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return SinglePath(fallbackPath);
 
 			var bestCost = solutions.Min(t => t.Cost);
-			var boundaries = solutions.First(t => t.Cost == bestCost).Solution;
-			var ranges = new (int Start, int Length, PathPartitionRule Rule)[boundaries.Count - 1];
+			var bestCostSolutions = solutions.Where(t => t.Cost == bestCost).ToList();
+			var mostBoundaries = bestCostSolutions.Max(t => t.Solution.Count);
+			var boundaries = bestCostSolutions.First(t => t.Solution.Count == mostBoundaries).Solution;
+			var ranges = new (int Start, int Length, PathPartitionZone Rule)[boundaries.Count - 1];
 			{
 				for (var i = 0; i < ranges.Length; i++)
 				{
@@ -1688,7 +1449,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 					if (length + 1 == path.Length)
 						return SinglePath(fallbackPath);
 
-					var possibleRules = new List<PathPartitionRule>();
+					var possibleRules = new List<PathPartitionZone>();
 					Vote(from, length, true, possibleRules);
 					ranges[i] = (from, length, possibleRules[0]);
 				}
@@ -1744,23 +1505,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return partitions;
 		}
 
+		/// <summary>Wrapper around PartitionPath to process multiple paths at once.</summary>
 		public List<TilingPath> PartitionPaths(
 			IEnumerable<int2[]> paths,
-			IReadOnlyList<PathPartitionRule> rules,
-			Matrix<PathPartitionRule> partitionMask,
+			IReadOnlyList<PathPartitionZone> rules,
+			Matrix<PathPartitionZone> partitionMask,
 			IReadOnlyList<MultiBrush> brushes,
 			int minStraight)
 		{
-			var partitions = new List<TilingPath>();
-			foreach (var path in paths)
-			{
-				var results = PartitionPath(path, rules, partitionMask, brushes, minStraight);
-				if (results == null)
-					return null;
-				partitions.AddRange(results);
-			}
-
-			return partitions;
+			return paths
+				.SelectMany(path => PartitionPath(
+					path, rules, partitionMask, brushes, minStraight))
+				.ToList();
 		}
 
 		/// <summary>
