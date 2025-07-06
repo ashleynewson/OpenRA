@@ -12,16 +12,26 @@
 						TerrainFeatureSize: 10240
 						TerrainSmoothing: 4
 						SmoothingThreshold: 833
-						Roughness: 350
+						RockRoughness: 350
+						SandRoughness: 500
 						RoughnessRadius: 5
 						Rock: 350
+						SandCliffs: 500
+						MinimumRockStraight: 3
+						MinimumSandCliffStraight: 1
 						MinimumRockSandThickness: 6
+						MinimumSandCliffThickness: 5
 						MinimumRockSmoothLength: 10
 						MinimumSandRockCliffLength: 10
+						MinimumSandSandCliffLength: 10
+						MinimumSandLength: 2
+						SandContourSpacing: 5
 						SandTile: 0
 						RockTile: 266
 						RockSmoothSegmentType: RockSmooth
 						SandRockCliffSegmentType: SandRockCliff
+						SandSandCliffSegmentType: SandSandCliff
+						SandSegmentType: Sand
 			MultiIntegerChoiceOption@Players:
 				Label: label-ra-map-generator-option-players
 				Parameter: Players

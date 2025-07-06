@@ -1182,7 +1182,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// If there are multiple best solutions (with equal costs), there is a preference to
 			// solutions with more sub-paths.
 			if (allZones.Count == 0)
-				throw new ArgumentException("no rules provided");
+				throw new ArgumentException("no zones provided");
 
 			if (path.Length < 2)
 				throw new ArgumentException("path is too short");
@@ -1249,11 +1249,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					if (checkMinLength)
 					{
-						var filteredRules = allZones.Where(r => r.MinimumLength >= length).ToList();
-						if (filteredRules.Count == 0)
+						var filteredZones = allZones.Where(r => r.MinimumLength >= length).ToList();
+						if (filteredZones.Count == 0)
 							return int.MaxValue;
 
-						majorities?.AddRange(filteredRules);
+						majorities?.AddRange(filteredZones);
 					}
 					else
 					{
@@ -1273,16 +1273,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			PathPartitionZone fallbackPath;
 
-			List<TilingPath> SinglePath(PathPartitionZone rule)
+			List<TilingPath> SinglePath(PathPartitionZone zone)
 			{
-				return [
-					new TilingPath(
-						Map,
-						CellLayerUtils.FromMatrixPoints([path], Map.Tiles)[0],
-						rule.MaximumDeviation,
-						rule.SegmentType,
-						rule.SegmentType,
-						TilingPath.PermittedSegments.FromType(brushes, [rule.SegmentType]))];
+				if (zone.ShouldTile)
+					return [
+						new TilingPath(
+							Map,
+							CellLayerUtils.FromMatrixPoints([path], Map.Tiles)[0],
+							zone.MaximumDeviation,
+							zone.SegmentType,
+							zone.SegmentType,
+							TilingPath.PermittedSegments.FromType(brushes, [zone.SegmentType]))];
+				else
+					return [];
 			}
 
 			{
@@ -1436,49 +1439,62 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var bestCostSolutions = solutions.Where(t => t.Cost == bestCost).ToList();
 			var mostBoundaries = bestCostSolutions.Max(t => t.Solution.Count);
 			var boundaries = bestCostSolutions.First(t => t.Solution.Count == mostBoundaries).Solution;
-			var ranges = new (int Start, int Length, PathPartitionZone Rule)[boundaries.Count - 1];
+			var ranges = new List<(int Start, int Length, PathPartitionZone Zone)>();
+			PathPartitionZone lastZone = null;
+			for (var i = 0; i < boundaries.Count - 1; i++)
 			{
-				for (var i = 0; i < ranges.Length; i++)
-				{
-					var from = boundaries[i];
-					var to = boundaries[i + 1];
-					if (from == to)
-						return SinglePath(fallbackPath);
+				var from = boundaries[i];
+				var to = boundaries[i + 1];
+				if (from == to)
+					return SinglePath(fallbackPath);
 
-					var length = Idx(to - from);
-					if (length + 1 == path.Length)
-						return SinglePath(fallbackPath);
+				var length = Idx(to - from);
+				if (length + 1 == path.Length)
+					return SinglePath(fallbackPath);
 
-					var possibleRules = new List<PathPartitionZone>();
-					Vote(from, length, true, possibleRules);
-					ranges[i] = (from, length, possibleRules[0]);
-				}
+				var possibleZones = new List<PathPartitionZone>();
+				Vote(from, length, true, possibleZones);
+				if (possibleZones[0] != lastZone)
+					ranges.Add((from, length, possibleZones[0]));
+				else
+					ranges[^1] = (ranges[^1].Start, ranges[^1].Length + length, lastZone);
+
+				lastZone = possibleZones[0];
 			}
 
-			var partitions = new List<TilingPath>();
-			var previousIncludedInterface = isLoop && ranges[^1].Rule.ShouldTile;
-			for (var rangeI = 0; rangeI < ranges.Length; rangeI++)
+			if (isLoop && ranges.Count >= 2 && ranges[0].Zone == ranges[^1].Zone)
 			{
-				var (start, length, rule) = ranges[rangeI];
-				if (!rule.ShouldTile)
+				ranges[0] = (ranges[^1].Start, ranges[^1].Length + ranges[0].Length, ranges[^1].Zone);
+				ranges.RemoveAt(ranges.Count - 1);
+			}
+
+			if (ranges.Count == 1)
+				return SinglePath(fallbackPath);
+
+			var partitions = new List<TilingPath>();
+			var previousIncludedInterface = isLoop && ranges[^1].Zone.ShouldTile;
+			for (var rangeI = 0; rangeI < ranges.Count; rangeI++)
+			{
+				var (start, length, zone) = ranges[rangeI];
+				if (!zone.ShouldTile)
 				{
 					previousIncludedInterface = false;
 					continue;
 				}
 
-				var innerType = rule.SegmentType;
+				var innerType = zone.SegmentType;
 				var startType = (!previousIncludedInterface && (isLoop || rangeI > 0))
-					? ranges[(ranges.Length + rangeI - 1) % ranges.Length].Rule.SegmentType
+					? ranges[(ranges.Count + rangeI - 1) % ranges.Count].Zone.SegmentType
 					: innerType;
-				var endType = (isLoop || rangeI < ranges.Length - 1)
-					? ranges[(rangeI + 1) % ranges.Length].Rule.SegmentType
+				var endType = (isLoop || rangeI < ranges.Count - 1)
+					? ranges[(rangeI + 1) % ranges.Count].Zone.SegmentType
 					: innerType;
 				Direction? startDirection = (isLoop || rangeI > 0)
 					? DirectionExts.FromInt2(
 						path[(start + 1) % zones.Length]
 							- path[start])
 					: null;
-				Direction? endDirection = (isLoop || rangeI < ranges.Length - 1)
+				Direction? endDirection = (isLoop || rangeI < ranges.Count - 1)
 					? DirectionExts.FromInt2(
 						path[(length + start + 1) % zones.Length]
 							- path[(length + start) % zones.Length])
@@ -1491,7 +1507,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				var tilingPath = new TilingPath(
 					Map,
 					CellLayerUtils.FromMatrixPoints([points.ToArray()], Map.Tiles)[0],
-					rule.MaximumDeviation,
+					zone.MaximumDeviation,
 					startType,
 					endType,
 					TilingPath.PermittedSegments.FromTypes(brushes, [startType], [innerType], [endType]));
@@ -1508,14 +1524,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>Wrapper around PartitionPath to process multiple paths at once.</summary>
 		public List<TilingPath> PartitionPaths(
 			IEnumerable<int2[]> paths,
-			IReadOnlyList<PathPartitionZone> rules,
+			IReadOnlyList<PathPartitionZone> zones,
 			Matrix<PathPartitionZone> partitionMask,
 			IReadOnlyList<MultiBrush> brushes,
 			int minStraight)
 		{
 			return paths
 				.SelectMany(path => PartitionPath(
-					path, rules, partitionMask, brushes, minStraight))
+					path, zones, partitionMask, brushes, minStraight))
 				.ToList();
 		}
 
