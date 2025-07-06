@@ -200,13 +200,7 @@ namespace OpenRA.Mods.Common.Traits
 			public readonly IReadOnlyDictionary<ushort, IReadOnlyList<MultiBrush>> RepaintTiles;
 
 			[FieldLoader.Ignore]
-			public readonly IReadOnlyDictionary<string, ResourceTypeInfo> ResourceTypes;
-			[FieldLoader.Ignore]
 			public readonly ResourceTypeInfo DefaultResource;
-			[FieldLoader.Ignore]
-			public readonly IReadOnlyDictionary<ResourceTypeInfo, int> ResourceValues;
-			[FieldLoader.Ignore]
-			public readonly IReadOnlySet<(ResourceTypeInfo, byte)> AllowedTerrainResourceCombos;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyDictionary<string, ResourceTypeInfo> ResourceSpawnSeeds;
 			[FieldLoader.LoadUsing(nameof(ResourceSpawnWeightsLoader))]
@@ -249,22 +243,15 @@ namespace OpenRA.Mods.Common.Traits
 					v => MultiBrush.LoadCollection(map, v.Value) as IReadOnlyList<MultiBrush>);
 				RepaintTiles ??= ImmutableDictionary<ushort, IReadOnlyList<MultiBrush>>.Empty;
 
-				ResourceTypes = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes;
-				if (!ResourceTypes.TryGetValue(my.NodeWithKey("DefaultResource").Value.Value, out DefaultResource))
+				var resourceTypes = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes;
+				if (!resourceTypes.TryGetValue(my.NodeWithKey("DefaultResource").Value.Value, out DefaultResource))
 					throw new YamlException("DefaultResource is not valid");
 				var playerResourcesInfo = map.Rules.Actors[SystemActors.Player].TraitInfoOrDefault<PlayerResourcesInfo>();
-				ResourceValues = playerResourcesInfo.ResourceValues
-					.ToDictionary(kv => ResourceTypes[kv.Key], kv => kv.Value);
-				AllowedTerrainResourceCombos = ResourceTypes
-					.Values
-					.SelectMany(resourceTypeInfo => resourceTypeInfo.AllowedTerrainTypes
-						.Select(terrainName => (resourceTypeInfo, terrainInfo.GetTerrainIndex(terrainName))))
-					.ToImmutableHashSet();
 				try
 				{
 					ResourceSpawnSeeds = my.NodeWithKey("ResourceSpawnSeeds").Value
 						.ToDictionary(subMy => subMy.Value)
-						.ToDictionary(kv => kv.Key, kv => ResourceTypes[kv.Value]);
+						.ToDictionary(kv => kv.Key, kv => resourceTypes[kv.Value]);
 				}
 				catch (KeyNotFoundException e)
 				{
@@ -767,7 +754,7 @@ namespace OpenRA.Mods.Common.Traits
 				for (var iteration = 0; iteration < symmetryPlayers; iteration++)
 				{
 					var chosenCPos = terraformer.ChooseSpawnInZoneable(
-						random,
+						playerRandom,
 						zoneable,
 						param.CentralSpawnReservationFraction,
 						param.MinimumSpawnRadius,
@@ -874,7 +861,7 @@ namespace OpenRA.Mods.Common.Traits
 
 					var (plan, typePlan) = terraformer.PlanResources(
 						resourcePattern,
-						playable,
+						CellLayerUtils.Intersect([playable, terraformer.CheckSpace(null, true)]),
 						param.DefaultResource,
 						resourceBiases);
 					terraformer.GrowResources(

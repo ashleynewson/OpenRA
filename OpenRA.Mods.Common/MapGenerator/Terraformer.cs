@@ -363,7 +363,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			CheckHasMapShapeOrNull(mask);
 
-			var zoneable = CheckSpace(zoneableTerrain, true, true);
+			var zoneable = CheckSpace(zoneableTerrain, true, true, true);
 			if (mask != null)
 				zoneable = CellLayerUtils.Intersect([zoneable, mask]);
 
@@ -1964,11 +1964,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 			foreach (var mpos in Map.AllCells.MapCoords)
 				if (!mask[mpos] || !allowedTerrainResourceCombos.Contains((bestResource[mpos], Map.GetTerrainIndex(mpos))))
 					plan[mpos] = -int.MaxValue;
-
-			foreach (var actorPlan in ActorPlans)
-				foreach (var (cpos, _) in actorPlan.Footprint())
-					if (plan.Contains(cpos))
-						plan[cpos] = -int.MaxValue;
 
 			foreach (var bias in resourceBiases)
 			{

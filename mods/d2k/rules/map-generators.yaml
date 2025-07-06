@@ -10,6 +10,7 @@
 						Rotations: 1
 						Mirror: None
 						TerrainFeatureSize: 10240
+						ResourceFeatureSize: 20480
 						TerrainSmoothing: 4
 						SmoothingThreshold: 833
 						RockRoughness: 350
@@ -26,8 +27,29 @@
 						MinimumSandSandCliffLength: 10
 						MinimumSandLength: 2
 						SandContourSpacing: 5
+
+						CreateEntities: True
+						AreaEntityBonus: 0
+						PlayerCountEntityBonus: 1000000
+						MinimumSpawnRockArea: 200
+						CentralSpawnReservationFraction: 250
+						SpawnRegionSize: 12
+						SpawnBuildSize: 8
+						MinimumSpawnRadius: 3
+						SpawnReservation: 16
+						MaximumResourceSpawns: 5
+						ResourceSpawnReservation: 8
+						ResourcesPerPlayer: 125000
+						ResourceUniformity: 250
+						ResourceClumpiness: 2
+						ResourceSpawn: spicebloom.spawnpoint
+						Resource: Spice
+
 						SandTile: 0
 						RockTile: 266
+						PlayableTerrain: Clear,Concrete,Dune,Rock,Rough,Sand,Spice,SpiceSand,Transition
+						RockZoneableTerrain: Rock
+						SandZoneableTerrain: SpiceSand
 						RockSmoothSegmentType: RockSmooth
 						SandRockCliffSegmentType: SandRockCliff
 						SandSandCliffSegmentType: SandSandCliff

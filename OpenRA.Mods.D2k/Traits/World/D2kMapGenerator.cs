@@ -69,6 +69,7 @@ namespace OpenRA.Mods.D2k.Traits
 		}
 
 		const int FractionMax = Terraformer.FractionMax;
+		const int EntityBonusMax = 1000000;
 
 		sealed class Parameters
 		{
@@ -80,7 +81,11 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly Symmetry.Mirror Mirror = default;
 
 			[FieldLoader.Require]
+			public readonly int Players = default;
+			[FieldLoader.Require]
 			public readonly int TerrainFeatureSize = default;
+			[FieldLoader.Require]
+			public readonly int ResourceFeatureSize = default;
 			[FieldLoader.Require]
 			public readonly int TerrainSmoothing = default;
 			[FieldLoader.Require]
@@ -115,9 +120,46 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly int SandContourSpacing = default;
 
 			[FieldLoader.Require]
+			public readonly bool CreateEntities = default;
+			[FieldLoader.Require]
+			public readonly int AreaEntityBonus = default;
+			[FieldLoader.Require]
+			public readonly int PlayerCountEntityBonus = default;
+			[FieldLoader.Require]
+			public readonly int MinimumSpawnRockArea = default;
+			[FieldLoader.Require]
+			public readonly int CentralSpawnReservationFraction = default;
+			[FieldLoader.Require]
+			public readonly int SpawnRegionSize = default;
+			[FieldLoader.Require]
+			public readonly int MinimumSpawnRadius = default;
+			[FieldLoader.Require]
+			public readonly int SpawnReservation = default;
+			[FieldLoader.Require]
+			public readonly int MaximumResourceSpawns = default;
+			[FieldLoader.Require]
+			public readonly int ResourceSpawnReservation = default;
+			[FieldLoader.Require]
+			public readonly int ResourcesPerPlayer = default;
+			[FieldLoader.Require]
+			public readonly int ResourceUniformity = default;
+			[FieldLoader.Require]
+			public readonly int ResourceClumpiness = default;
+			[FieldLoader.Require]
+			public readonly string ResourceSpawn = default;
+			[FieldLoader.Ignore]
+			public readonly ResourceTypeInfo Resource = default;
+
+			[FieldLoader.Require]
 			public readonly ushort SandTile = default;
 			[FieldLoader.Require]
 			public readonly ushort RockTile = default;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> PlayableTerrain;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> RockZoneableTerrain = default;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlySet<byte> SandZoneableTerrain = default;
 			[FieldLoader.Require]
 			public readonly string RockSmoothSegmentType = default;
 			[FieldLoader.Require]
@@ -133,6 +175,23 @@ namespace OpenRA.Mods.D2k.Traits
 			{
 				FieldLoader.Load(this, my);
 
+				var terrainInfo = (ITemplatedTerrainInfo)map.Rules.TerrainInfo;
+
+				IReadOnlySet<byte> ParseTerrainIndexes(string key)
+				{
+					return my.NodeWithKey(key).Value.Value
+						.Split(',', StringSplitOptions.RemoveEmptyEntries)
+						.Select(terrainInfo.GetTerrainIndex)
+						.ToImmutableHashSet();
+				}
+
+				var resourceTypes = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes;
+				if (!resourceTypes.TryGetValue(my.NodeWithKey("Resource").Value.Value, out Resource))
+					throw new YamlException("Resource is not valid");
+
+				PlayableTerrain = ParseTerrainIndexes("PlayableTerrain");
+				RockZoneableTerrain = ParseTerrainIndexes("RockZoneableTerrain");
+				SandZoneableTerrain = ParseTerrainIndexes("SandZoneableTerrain");
 				SegmentedBrushes = MultiBrush.LoadCollection(map, "Segmented");
 			}
 
@@ -142,28 +201,6 @@ namespace OpenRA.Mods.D2k.Traits
 					return mirror;
 				else
 					throw new YamlException($"Invalid Mirror value `{my.NodeWithKey("Mirror").Value.Value}`");
-			}
-
-			static IReadOnlyDictionary<string, int> BuildingWeightsLoader(MiniYaml my)
-			{
-				return my.NodeWithKey("BuildingWeights").Value.ToDictionary(subMy =>
-					{
-						if (Exts.TryParseInt32Invariant(subMy.Value, out var f))
-							return f;
-						else
-							throw new YamlException($"Invalid building weight `{subMy.Value}`");
-					});
-			}
-
-			static IReadOnlyDictionary<string, int> ResourceSpawnWeightsLoader(MiniYaml my)
-			{
-				return my.NodeWithKey("ResourceSpawnWeights").Value.ToDictionary(subMy =>
-					{
-						if (Exts.TryParseInt32Invariant(subMy.Value, out var f))
-							return f;
-						else
-							throw new YamlException($"Invalid resource spawn weight `{subMy.Value}`");
-					});
 			}
 		}
 
@@ -222,6 +259,9 @@ namespace OpenRA.Mods.D2k.Traits
 			var elevationRandom = new MersenneTwister(random.Next());
 			var rockTilingRandom = new MersenneTwister(random.Next());
 			var sandSandCliffTilingRandom = new MersenneTwister(random.Next());
+			var playerRandom = new MersenneTwister(random.Next());
+			var expansionRandom = new MersenneTwister(random.Next());
+			var resourceRandom = new MersenneTwister(random.Next());
 
 			terraformer.InitMap();
 
@@ -236,6 +276,7 @@ namespace OpenRA.Mods.D2k.Traits
 				elevation,
 				param.RoughnessRadius);
 
+			// Rock generation
 			CellLayer<Terraformer.Side> rockSmoothSand;
 			{
 				var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
@@ -270,6 +311,7 @@ namespace OpenRA.Mods.D2k.Traits
 						?? throw new MapGenerationException("Could not fit tiles for rock platforms");
 			}
 
+			// Sand cliff generation
 			{
 				var inverseElevation = elevation.Map(v => -v);
 				var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
@@ -304,6 +346,118 @@ namespace OpenRA.Mods.D2k.Traits
 						.Tile(sandSandCliffTilingRandom)
 							?? throw new MapGenerationException("Could not fit tiles for sand-sand cliffs");
 					terraformer.PaintTiling(pickAnyRandom, brush);
+				}
+			}
+
+			// TODO: sand/rock details
+
+			CellLayer<bool> playable;
+			{
+				playable = terraformer.ChoosePlayableRegion(
+					terraformer.CheckSpace(param.PlayableTerrain, true, false, true),
+					null)
+						?? throw new MapGenerationException("could not find a playable region");
+
+				// TODO: obstruction
+			}
+
+			if (param.CreateEntities)
+			{
+				var rockZoneable = terraformer.GetZoneable(param.RockZoneableTerrain, playable);
+				var (regions, regionMask) = terraformer.FindRegions(rockZoneable, DirectionExts.Spread8CVec);
+				var acceptableRegions = regions
+					.Where(r => r.Area >= param.MinimumSpawnRockArea)
+					.Select(r => r.Id)
+					.ToHashSet();
+				if (acceptableRegions.Count == 0)
+					throw new MapGenerationException("rocks are not big enough for players");
+
+				rockZoneable = CellLayerUtils.Intersect([
+					rockZoneable,
+					CellLayerUtils.Map(regionMask, r => acceptableRegions.Contains(r))]);
+
+				var sandZoneable = terraformer.GetZoneable(param.SandZoneableTerrain, playable);
+				var spiceZoneable = CellLayerUtils.Clone(sandZoneable);
+				var sandZoneableArea = sandZoneable.Count(v => v);
+
+				var symmetryCount = Symmetry.RotateAndMirrorProjectionCount(param.Rotations, param.Mirror);
+				var entityMultiplier =
+					(long)sandZoneableArea * param.AreaEntityBonus +
+					(long)param.Players * param.PlayerCountEntityBonus;
+				var perSymmetryEntityMultiplier = entityMultiplier / symmetryCount;
+
+				// Spawn generation
+				var symmetryPlayers = param.Players / symmetryCount;
+				for (var iteration = 0; iteration < symmetryPlayers; iteration++)
+				{
+					var chosenCPos = terraformer.ChooseSpawnInZoneable(
+						playerRandom,
+						rockZoneable,
+						param.CentralSpawnReservationFraction,
+						param.MinimumSpawnRadius,
+						param.SpawnRegionSize,
+						param.SpawnReservation)
+							?? throw new MapGenerationException("Not enough room for player spawns");
+
+					var spawn = new ActorPlan(map, "mpspawn")
+					{
+						Location = chosenCPos,
+					};
+
+					terraformer.ProjectPlaceDezoneActor(spawn, rockZoneable, new WDist(param.SpawnReservation * 1024));
+				}
+
+				// Bloom spawn generation
+				{
+					var targetResourceSpawnCount = (int)(param.MaximumResourceSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
+					for (var i = 0; i < targetResourceSpawnCount; i++)
+					{
+						var added = terraformer.AddActor(
+							expansionRandom,
+							sandZoneable,
+							param.ResourceSpawn,
+							new WDist(param.ResourceSpawnReservation * 1024));
+						if (!added)
+						{
+							if (i == 0)
+								throw new MapGenerationException("failed to place any spice blooms");
+
+							break;
+						}
+					}
+				}
+
+				// Grow resources
+				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
+				if (targetResourceValue > 0)
+				{
+					var resourcePattern = terraformer.ResourceNoise(
+						resourceRandom,
+						param.ResourceFeatureSize,
+						param.ResourceClumpiness,
+						param.ResourceUniformity * 1024 / FractionMax);
+
+					var resourceBiases = new List<Terraformer.ResourceBias>();
+
+					// Bias towards resource spawns
+					resourceBiases.AddRange(
+						terraformer.ActorsOfType(param.ResourceSpawn)
+							.Select(a => new Terraformer.ResourceBias(a)
+							{
+								BiasRadius = new WDist(16 * 1024),
+								Bias = (value, rSq) => value + (int)(1024 * 1024 / (1024 + Exts.ISqrt(rSq))),
+							}));
+
+					var (plan, typePlan) = terraformer.PlanResources(
+						resourcePattern,
+						spiceZoneable,
+						param.Resource,
+						resourceBiases);
+					terraformer.GrowResources(
+						plan,
+						typePlan,
+						targetResourceValue);
+					terraformer.ZoneFromResources(sandZoneable, false);
 				}
 			}
 
