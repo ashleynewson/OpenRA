@@ -10,6 +10,7 @@
 						Rotations: 1
 						Mirror: None
 						TerrainFeatureSize: 10240
+						SandDetailFeatureSize: 10240
 						ResourceFeatureSize: 20480
 						TerrainSmoothing: 4
 						SmoothingThreshold: 833
@@ -27,6 +28,10 @@
 						MinimumSandSandCliffLength: 10
 						MinimumSandLength: 2
 						SandContourSpacing: 5
+						SandDetail: 200
+						SandDetailClumpiness: 1
+						SandDetailCutout: 2
+						MaximumSandDetailCutoutSpacing: 12
 
 						CreateEntities: True
 						AreaEntityBonus: 0
@@ -54,6 +59,7 @@
 						SandRockCliffSegmentType: SandRockCliff
 						SandSandCliffSegmentType: SandSandCliff
 						SandSegmentType: Sand
+						SandDetailBrushes: Rough-Sand-Detail
 			MultiIntegerChoiceOption@Players:
 				Label: label-ra-map-generator-option-players
 				Parameter: Players

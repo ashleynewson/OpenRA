@@ -85,6 +85,8 @@ namespace OpenRA.Mods.D2k.Traits
 			[FieldLoader.Require]
 			public readonly int TerrainFeatureSize = default;
 			[FieldLoader.Require]
+			public readonly int SandDetailFeatureSize = default;
+			[FieldLoader.Require]
 			public readonly int ResourceFeatureSize = default;
 			[FieldLoader.Require]
 			public readonly int TerrainSmoothing = default;
@@ -118,6 +120,14 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly int MinimumSandLength = default;
 			[FieldLoader.Require]
 			public readonly int SandContourSpacing = default;
+			[FieldLoader.Require]
+			public readonly int SandDetail = default;
+			[FieldLoader.Require]
+			public readonly int SandDetailClumpiness = default;
+			[FieldLoader.Require]
+			public readonly int SandDetailCutout = default;
+			[FieldLoader.Require]
+			public readonly int MaximumSandDetailCutoutSpacing = default;
 
 			[FieldLoader.Require]
 			public readonly bool CreateEntities = default;
@@ -170,6 +180,8 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly string SandSegmentType = default;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> SegmentedBrushes;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<MultiBrush> SandDetailBrushes;
 
 			public Parameters(Map map, MiniYaml my)
 			{
@@ -193,6 +205,7 @@ namespace OpenRA.Mods.D2k.Traits
 				RockZoneableTerrain = ParseTerrainIndexes("RockZoneableTerrain");
 				SandZoneableTerrain = ParseTerrainIndexes("SandZoneableTerrain");
 				SegmentedBrushes = MultiBrush.LoadCollection(map, "Segmented");
+				SandDetailBrushes = MultiBrush.LoadCollection(map, my.NodeWithKey("SandDetailBrushes").Value.Value);
 			}
 
 			static object MirrorLoader(MiniYaml my)
@@ -262,6 +275,9 @@ namespace OpenRA.Mods.D2k.Traits
 			var playerRandom = new MersenneTwister(random.Next());
 			var expansionRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
+			var sandDetailRandom = new MersenneTwister(random.Next());
+			var topologyRandom = new MersenneTwister(random.Next());
+			var sandDetailTilingRandom = new MersenneTwister(random.Next());
 
 			terraformer.InitMap();
 
@@ -349,7 +365,30 @@ namespace OpenRA.Mods.D2k.Traits
 				}
 			}
 
-			// TODO: sand/rock details
+			// Sand Detail
+			{
+				var space = terraformer.CheckSpace(param.PlayableTerrain);
+				var passages = terraformer.PlanPassages(
+					topologyRandom,
+					terraformer.ImproveSymmetry(space, true, (a, b) => a && b),
+					param.SandDetailCutout,
+					param.MaximumSandDetailCutoutSpacing);
+				var plan = terraformer.BooleanNoise(
+					sandDetailRandom,
+					param.SandDetailFeatureSize,
+					param.SandDetail,
+					param.SandDetailClumpiness);
+				plan = CellLayerUtils.Subtract([
+					CellLayerUtils.Intersect([
+						plan,
+						terraformer.CheckSpace(param.SandTile, true)]),
+					passages]);
+				terraformer.PaintArea(
+					sandDetailTilingRandom,
+					CellLayerUtils.Map(plan, p => p ? MultiBrush.Replaceability.Any : MultiBrush.Replaceability.None),
+					param.SandDetailBrushes,
+					true);
+			}
 
 			CellLayer<bool> playable;
 			{
@@ -426,6 +465,8 @@ namespace OpenRA.Mods.D2k.Traits
 						}
 					}
 				}
+
+				// TODO: Worms
 
 				// Grow resources
 				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
