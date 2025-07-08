@@ -146,6 +146,10 @@ namespace OpenRA.Mods.D2k.Traits
 			[FieldLoader.Require]
 			public readonly int SpawnReservation = default;
 			[FieldLoader.Require]
+			public readonly int BiasedResourceSpawns = default;
+			[FieldLoader.Require]
+			public readonly int ResourceSpawnSpacing = default;
+			[FieldLoader.Require]
 			public readonly int MaximumResourceSpawns = default;
 			[FieldLoader.Require]
 			public readonly int ResourceSpawnReservation = default;
@@ -454,8 +458,37 @@ namespace OpenRA.Mods.D2k.Traits
 					terraformer.ProjectPlaceDezoneActor(spawn, rockZoneable, new WDist(param.SpawnReservation * 1024));
 				}
 
-				// Bloom spawn generation
+				// Spice bloom spawn generation
 				{
+					// Biased blooms
+					var walkingDistances = terraformer.TargetWalkingDistance(
+						playable,
+						terraformer.ErodeZones(sandZoneable, param.ResourceSpawnSpacing),
+						terraformer.ActorsOfType("mpspawn").Select(a => a.Location),
+						new WDist(0),
+						new WDist(1024000));
+					for (var i = 0; i < param.BiasedResourceSpawns; i++)
+					{
+						var (chosenMpos, score) = CellLayerUtils.FindRandomBest(
+							walkingDistances,
+							expansionRandom,
+							(a, b) => a.CompareTo(b));
+						if (score == -int.MaxValue)
+							throw new MapGenerationException("failed to place spice blooms near players");
+
+						terraformer.ProjectPlaceDezoneActor(
+							new ActorPlan(map, param.ResourceSpawn)
+							{
+								Location = chosenMpos.ToCPos(map),
+							},
+							sandZoneable,
+							new WDist(param.ResourceSpawnReservation * 1024));
+						foreach (var mpos in map.AllCells.MapCoords)
+							if (!sandZoneable[mpos])
+								walkingDistances[mpos] = -int.MaxValue;
+					}
+
+					// Unbiases blooms
 					var targetResourceSpawnCount = (int)(param.MaximumResourceSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
 					for (var i = 0; i < targetResourceSpawnCount; i++)
 					{

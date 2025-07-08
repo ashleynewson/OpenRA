@@ -42,6 +42,8 @@
 						SpawnBuildSize: 8
 						MinimumSpawnRadius: 3
 						SpawnReservation: 16
+						BiasedResourceSpawns: 2
+						ResourceSpawnSpacing: 2
 						MaximumResourceSpawns: 5
 						ResourceSpawnReservation: 8
 						ResourcesPerPlayer: 125000
