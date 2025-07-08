@@ -11,23 +11,28 @@
 						Mirror: None
 						TerrainFeatureSize: 10240
 						SandDetailFeatureSize: 10240
+						DuneFeatureSize: 10240
 						ResourceFeatureSize: 20480
 						TerrainSmoothing: 4
+						DuneSmoothing: 2
 						SmoothingThreshold: 833
 						RockRoughness: 350
 						SandRoughness: 500
 						RoughnessRadius: 5
 						Rock: 350
 						SandCliffs: 500
+						Dunes: 200
 						MinimumRockStraight: 3
 						MinimumSandCliffStraight: 1
 						MinimumRockSandThickness: 6
 						MinimumSandCliffThickness: 5
+						MinimumDuneThickness: 2
 						MinimumRockSmoothLength: 10
 						MinimumSandRockCliffLength: 10
 						MinimumSandSandCliffLength: 10
 						MinimumSandLength: 2
 						SandContourSpacing: 5
+						DuneContourSpacing: 2
 						SandDetail: 200
 						SandDetailClumpiness: 1
 						SandDetailCutout: 2
@@ -64,7 +69,9 @@
 						SandRockCliffSegmentType: SandRockCliff
 						SandSandCliffSegmentType: SandSandCliff
 						SandSegmentType: Sand
+						DuneSegmentType: Dune
 						SandDetailBrushes: Rough-Sand-Detail
+						DuneBrushes: Dune
 			MultiIntegerChoiceOption@Players:
 				Label: label-ra-map-generator-option-players
 				Parameter: Players

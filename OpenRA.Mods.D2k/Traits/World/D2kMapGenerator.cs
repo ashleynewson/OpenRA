@@ -87,9 +87,13 @@ namespace OpenRA.Mods.D2k.Traits
 			[FieldLoader.Require]
 			public readonly int SandDetailFeatureSize = default;
 			[FieldLoader.Require]
+			public readonly int DuneFeatureSize = default;
+			[FieldLoader.Require]
 			public readonly int ResourceFeatureSize = default;
 			[FieldLoader.Require]
 			public readonly int TerrainSmoothing = default;
+			[FieldLoader.Require]
+			public readonly int DuneSmoothing = default;
 			[FieldLoader.Require]
 			public readonly int SmoothingThreshold = default;
 			[FieldLoader.Require]
@@ -103,6 +107,8 @@ namespace OpenRA.Mods.D2k.Traits
 			[FieldLoader.Require]
 			public readonly int SandCliffs = default;
 			[FieldLoader.Require]
+			public readonly int Dunes = default;
+			[FieldLoader.Require]
 			public readonly int MinimumRockStraight = default;
 			[FieldLoader.Require]
 			public readonly int MinimumSandCliffStraight = default;
@@ -110,6 +116,8 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly int MinimumRockSandThickness = default;
 			[FieldLoader.Require]
 			public readonly int MinimumSandCliffThickness = default;
+			[FieldLoader.Require]
+			public readonly int MinimumDuneThickness = default;
 			[FieldLoader.Require]
 			public readonly int MinimumRockSmoothLength = default;
 			[FieldLoader.Require]
@@ -120,6 +128,8 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly int MinimumSandLength = default;
 			[FieldLoader.Require]
 			public readonly int SandContourSpacing = default;
+			[FieldLoader.Require]
+			public readonly int DuneContourSpacing = default;
 			[FieldLoader.Require]
 			public readonly int SandDetail = default;
 			[FieldLoader.Require]
@@ -188,10 +198,14 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly string SandSandCliffSegmentType = default;
 			[FieldLoader.Require]
 			public readonly string SandSegmentType = default;
+			[FieldLoader.Require]
+			public readonly string DuneSegmentType = default;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> SegmentedBrushes;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> SandDetailBrushes;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<MultiBrush> DuneBrushes;
 
 			public Parameters(Map map, MiniYaml my)
 			{
@@ -216,6 +230,7 @@ namespace OpenRA.Mods.D2k.Traits
 				SandZoneableTerrain = ParseTerrainIndexes("SandZoneableTerrain");
 				SegmentedBrushes = MultiBrush.LoadCollection(map, "Segmented");
 				SandDetailBrushes = MultiBrush.LoadCollection(map, my.NodeWithKey("SandDetailBrushes").Value.Value);
+				DuneBrushes = MultiBrush.LoadCollection(map, my.NodeWithKey("DuneBrushes").Value.Value);
 			}
 
 			static object MirrorLoader(MiniYaml my)
@@ -288,6 +303,8 @@ namespace OpenRA.Mods.D2k.Traits
 			var sandDetailRandom = new MersenneTwister(random.Next());
 			var topologyRandom = new MersenneTwister(random.Next());
 			var sandDetailTilingRandom = new MersenneTwister(random.Next());
+			var duneRandom = new MersenneTwister(random.Next());
+			var duneTilingRandom = new MersenneTwister(random.Next());
 
 			terraformer.InitMap();
 
@@ -400,7 +417,47 @@ namespace OpenRA.Mods.D2k.Traits
 					true);
 			}
 
-			// TODO: Dunes
+			// Dunes
+			{
+				var duneNoise = terraformer.ElevationNoiseMatrix(
+					duneRandom,
+					param.DuneFeatureSize,
+					param.DuneSmoothing);
+				var duneable = terraformer.CheckSpace(param.SandTile, true);
+				duneable = terraformer.ImproveSymmetry(duneable, true, (a, b) => a && b);
+				var plan = terraformer.SliceElevation(
+					duneNoise,
+					CellLayerUtils.ToMatrix(duneable, true),
+					param.Dunes,
+					param.DuneContourSpacing);
+				plan = MatrixUtils.BooleanBlotch(
+					plan,
+					param.DuneSmoothing,
+					param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
+					param.MinimumDuneThickness,
+					false);
+				var contours = CellLayerUtils.FromMatrixPoints(
+					MatrixUtils.BordersToPoints(plan),
+					map.Tiles);
+				var tilingPaths = contours
+					.Select(contour =>
+						TilingPath.QuickCreate(
+								map,
+								param.SegmentedBrushes,
+								contour,
+								(param.MinimumDuneThickness - 1) / 2,
+								param.DuneSegmentType,
+								param.DuneSegmentType)
+									.ExtendEdge(4))
+					.ToArray();
+				_ = terraformer.PaintLoopsAndFill(
+					duneTilingRandom,
+					tilingPaths,
+					plan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
+					null,
+					param.DuneBrushes)
+						?? throw new MapGenerationException("Could not fit tiles for rock platforms");
+			}
 
 			CellLayer<bool> playable;
 			{
@@ -425,7 +482,7 @@ namespace OpenRA.Mods.D2k.Traits
 
 				rockZoneable = CellLayerUtils.Intersect([
 					rockZoneable,
-					CellLayerUtils.Map(regionMask, r => acceptableRegions.Contains(r))]);
+					CellLayerUtils.Map(regionMask, acceptableRegions.Contains)]);
 
 				var sandZoneable = terraformer.GetZoneable(param.SandZoneableTerrain, playable);
 				var spiceZoneable = CellLayerUtils.Clone(sandZoneable);
