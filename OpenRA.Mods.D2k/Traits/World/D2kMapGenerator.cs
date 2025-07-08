@@ -465,8 +465,6 @@ namespace OpenRA.Mods.D2k.Traits
 					terraformer.CheckSpace(param.PlayableTerrain, true, false, true),
 					null)
 						?? throw new MapGenerationException("could not find a playable region");
-
-				// TODO: obstruction
 			}
 
 			if (param.CreateEntities)
@@ -555,19 +553,14 @@ namespace OpenRA.Mods.D2k.Traits
 							param.ResourceSpawn,
 							new WDist(param.ResourceSpawnReservation * 1024));
 						if (!added)
-						{
-							if (i == 0)
-								throw new MapGenerationException("failed to place any spice blooms");
-
 							break;
-						}
 					}
 				}
 
 				// Worms
 				{
-					var targetResourceSpawnCount = (int)(param.MaximumWormSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
-					for (var i = 0; i < targetResourceSpawnCount; i++)
+					var targetWormSpawnCount = (int)(param.MaximumWormSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
+					for (var i = 0; i < targetWormSpawnCount; i++)
 					{
 						var added = terraformer.AddActor(
 							expansionRandom,
