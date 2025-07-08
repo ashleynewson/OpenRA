@@ -49,6 +49,9 @@
 						ResourceClumpiness: 2
 						ResourceSpawn: spicebloom.spawnpoint
 						Resource: Spice
+						WormSpawn: wormspawner
+						MaximumWormSpawns: 1
+						WormSpawnReservation: 16
 
 						SandTile: 0
 						RockTile: 266

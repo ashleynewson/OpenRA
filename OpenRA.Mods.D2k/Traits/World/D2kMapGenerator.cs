@@ -159,6 +159,12 @@ namespace OpenRA.Mods.D2k.Traits
 			public readonly string ResourceSpawn = default;
 			[FieldLoader.Ignore]
 			public readonly ResourceTypeInfo Resource = default;
+			[FieldLoader.Require]
+			public readonly string WormSpawn = default;
+			[FieldLoader.Require]
+			public readonly int MaximumWormSpawns = default;
+			[FieldLoader.Require]
+			public readonly int WormSpawnReservation = default;
 
 			[FieldLoader.Require]
 			public readonly ushort SandTile = default;
@@ -390,6 +396,8 @@ namespace OpenRA.Mods.D2k.Traits
 					true);
 			}
 
+			// TODO: Dunes
+
 			CellLayer<bool> playable;
 			{
 				playable = terraformer.ChoosePlayableRegion(
@@ -466,7 +474,20 @@ namespace OpenRA.Mods.D2k.Traits
 					}
 				}
 
-				// TODO: Worms
+				// Worms
+				{
+					var targetResourceSpawnCount = (int)(param.MaximumWormSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
+					for (var i = 0; i < targetResourceSpawnCount; i++)
+					{
+						var added = terraformer.AddActor(
+							expansionRandom,
+							sandZoneable,
+							param.WormSpawn,
+							new WDist(param.WormSpawnReservation * 1024));
+						if (!added)
+							break;
+					}
+				}
 
 				// Grow resources
 				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
