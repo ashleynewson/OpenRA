@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Xml.Schema;
 using OpenRA.Mods.Common.MapGenerator;
 using OpenRA.Mods.Common.Terrain;
 using OpenRA.Mods.Common.Traits;
@@ -459,13 +458,10 @@ namespace OpenRA.Mods.D2k.Traits
 						?? throw new MapGenerationException("Could not fit tiles for rock platforms");
 			}
 
-			CellLayer<bool> playable;
-			{
-				playable = terraformer.ChoosePlayableRegion(
-					terraformer.CheckSpace(param.PlayableTerrain, true, false, true),
-					null)
-						?? throw new MapGenerationException("could not find a playable region");
-			}
+			var playable = terraformer.ChoosePlayableRegion(
+				terraformer.CheckSpace(param.PlayableTerrain, true, false, true),
+				null)
+					?? throw new MapGenerationException("could not find a playable region");
 
 			if (param.CreateEntities)
 			{
