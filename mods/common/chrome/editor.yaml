@@ -1165,3 +1165,79 @@ ScrollPanel@TILING_PATH_TOOL_PANEL:
 			Width: PARENT_WIDTH - 35
 			Height: 25
 			Text: button-tiling-path-paint
+		Checkbox@SHOW_PREVIEW:
+			X: 5
+			Width: PARENT_WIDTH - 35
+			Height: 25
+			Text: checkbox-tiling-path-show-preview
+		Container@DEVELOPER_TOOLS:
+			Visible: False
+			X: 5
+			Width: PARENT_WIDTH - 35
+			Height: 275
+			Children:
+				LabelForInput@LABEL_IGNORED:
+					Y: 0
+					Width: PARENT_WIDTH
+					Height: 20
+					Text: label-tiling-path-ignored-tile
+					For: IGNORED_TILE
+				TextField@IGNORED_TILE:
+					Y: 25
+					Width: PARENT_WIDTH
+					Height: 25
+				Container@START_OVERRIDE:
+					Y: 55
+					Width: PARENT_WIDTH - 35
+					Height: 50
+					Children:
+						LabelForInput@LABEL:
+							Y: 0
+							Width: PARENT_WIDTH
+							Height: 20
+							Text: label-tiling-path-override-start
+							For: INPUT
+						TextField@INPUT:
+							Y: 20
+							Width: PARENT_WIDTH
+							Height: 25
+				Container@INNER_OVERRIDE:
+					Y: 110
+					Width: PARENT_WIDTH - 35
+					Height: 50
+					Children:
+						LabelForInput@LABEL:
+							Y: 0
+							Width: PARENT_WIDTH
+							Height: 20
+							Text: label-tiling-path-override-inner
+							For: INPUT
+						TextField@INPUT:
+							Y: 20
+							Width: PARENT_WIDTH
+							Height: 25
+				Container@END_OVERRIDE:
+					Y: 165
+					Width: PARENT_WIDTH - 35
+					Height: 50
+					Children:
+						LabelForInput@LABEL:
+							Y: 0
+							Width: PARENT_WIDTH
+							Height: 20
+							Text: label-tiling-path-override-end
+							For: INPUT
+						TextField@INPUT:
+							Y: 20
+							Width: PARENT_WIDTH
+							Height: 25
+				Checkbox@EXPLICIT_INNER:
+					Y: 220
+					Width: PARENT_WIDTH - 35
+					Height: 25
+					Text: checkbox-tiling-path-explicit-inner
+				Button@DUMP:
+					Y: 250
+					Width: PARENT_WIDTH
+					Height: 25
+					Text: button-tiling-path-dump
