@@ -20475,3 +20475,245 @@ Templates:
 				MaxColor: 585349
 				ZOffset: -12
 				ZRamp: 0
+MultiBrushCollections:
+	Segmented:
+		MultiBrush@CliffSet_60:
+			Template: 60
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.U
+				Points: 2,2, 1,2, 1,1, 0,1, 0,0
+		MultiBrush@CliffSet_61:
+			Template: 61
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.U
+				Points: 1,1, 0,1, 0,0
+		MultiBrush@CliffSet_62:
+			Template: 62
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.L
+				Points: 2,2, 1,2, 1,1, 0,1
+		MultiBrush@CliffSet_63:
+			Template: 63
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.L
+				Points: 2,2, 1,2, 1,1, 0,1
+		MultiBrush@CliffSet_64:
+			Template: 64
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@CliffSet_65:
+			Template: 65
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@CliffSet_66:
+			Template: 66
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@CliffSet_67:
+			Template: 67
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.L
+				Points: 1,1, 0,1
+		MultiBrush@CliffSet_68:
+			Template: 68
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.L
+				Points: 2,0, 2,1, 1,1, 1,2, 0,2
+		MultiBrush@CliffSet_69:
+			Template: 69
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.L
+				Points: 2,0, 2,1, 1,1, 1,2, 0,2
+		MultiBrush@CliffSet_70:
+			Template: 70
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.L
+				Points: 2,0, 2,1, 1,1, 1,2, 0,2
+		MultiBrush@CliffSet_71:
+			Template: 71
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.L
+				Points: 1,0, 1,1, 0,1
+		MultiBrush@CliffSet_72:
+			Template: 72
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.L
+				Points: 1,0, 1,1, 0,1
+		MultiBrush@CliffSet_73:
+			Template: 73
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.L
+				Points: 1,0, 1,1, 0,1
+		MultiBrush@CliffSet_74:
+			Template: 74
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@CliffSet_75:
+			Template: 75
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@CliffSet_76:
+			Template: 76
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@CliffSet_77:
+			Template: 77
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.D
+				Points: 1,0, 1,1
+		MultiBrush@CliffSet_78:
+			Template: 78
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.D
+				Points: 1,0, 1,1, 2,1, 2,2
+		MultiBrush@CliffSet_79:
+			Template: 79
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.D
+				Points: 1,0, 1,1, 2,1, 2,2
+		MultiBrush@CliffSet_80:
+			Template: 80
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.D
+				Points: 0,0, 1,0, 1,1, 2,1, 2,2
+		MultiBrush@CliffSet_81:
+			Template: 81
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.D
+				Points: 0,0, 1,0, 1,1
+		MultiBrush@CliffSet_82:
+			Template: 82
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.R
+				Points: 0,0, 1,0, 2,0
+		MultiBrush@CliffSet_83:
+			Template: 83
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.R
+				Points: 0,0, 1,0, 2,0
+		MultiBrush@CliffSet_84:
+			Template: 84
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.R
+				Points: 0,0, 1,0, 2,0
+		MultiBrush@CliffSet_85:
+			Template: 85
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.R
+				Points: 0,0, 1,0
+		MultiBrush@CliffSet_86:
+			Template: 86
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.R
+				Points: 0,2, 0,1, 0,0, 1,0, 2,0
+		MultiBrush@CliffSet_87:
+			Template: 87
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.R
+				Points: 0,2, 0,1, 1,1, 1,0, 2,0
+		MultiBrush@CliffSet_88:
+			Template: 88
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.R
+				Points: 0,1, 0,0, 1,0
+		MultiBrush@CliffSet_89:
+			Template: 89
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.R
+				Points: 0,1, 0,0, 1,0
+		MultiBrush@CliffSet_90:
+			Template: 90
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.U
+				Points: 0,1, 0,0, 1,0
+		MultiBrush@CliffSet_91:
+			Template: 91
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.U
+				Points: 0,1, 1,1, 1,0
+		MultiBrush@CliffSet_92:
+			Template: 92
+			Segment:
+				Start: CliffSet.R
+				End: CliffSet.U
+				Points: 0,0
+		MultiBrush@CliffSet_93:
+			Template: 93
+			Segment:
+				Start: CliffSet.L
+				End: CliffSet.D
+				Points: 1,1
+		MultiBrush@CliffSet_94:
+			Template: 94
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.U
+				Points: 0,2, 0,1, 0,0
+		MultiBrush@CliffSet_95:
+			Template: 95
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.U
+				Points: 0,2, 0,1, 0,0
+		MultiBrush@CliffSet_96:
+			Template: 96
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.U
+				Points: 0,2, 0,1, 0,0
+		MultiBrush@CliffSet_97:
+			Template: 97
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.U
+				Points: 0,1, 0,0
+		MultiBrush@CliffSet_98:
+			Template: 98
+			Segment:
+				Start: CliffSet.U
+				End: CliffSet.L
+				Points: 0,1
+		MultiBrush@CliffSet_99:
+			Template: 99
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.R
+				Points: 1,0
