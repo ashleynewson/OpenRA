@@ -936,7 +936,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			MersenneTwister random,
 			MultiBrush brush)
 		{
-			brush.Paint(Map, ActorPlans, CPos.Zero, MultiBrush.Replaceability.Any, random);
+			brush.Paint(Map, ActorPlans, CPos.Zero, null, MultiBrush.Replaceability.Any, random);
 		}
 
 		/// <summary>
@@ -1595,7 +1595,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			foreach (var tiling in tilings)
-				tiling.Paint(Map, ActorPlans, CPos.Zero, MultiBrush.Replaceability.Any, random);
+				tiling.Paint(Map, ActorPlans, CPos.Zero, null, MultiBrush.Replaceability.Any, random);
 
 			if (inside == null && outside == null)
 				return null;

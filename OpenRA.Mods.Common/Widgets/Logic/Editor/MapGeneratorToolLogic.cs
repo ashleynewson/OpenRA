@@ -261,8 +261,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			var map = world.Map;
 			var terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
-			var size = new Size(map.Bounds.Width + 2, map.Bounds.Height + 2);
-			var args = settings.Compile(terrainInfo, size);
+			var args = settings.Compile(terrainInfo, map.MapSize);
 
 			// Run main generator logic. May throw.
 			var generateStopwatch = Stopwatch.StartNew();

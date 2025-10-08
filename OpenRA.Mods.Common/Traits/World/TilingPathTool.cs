@@ -357,7 +357,7 @@ namespace OpenRA.Mods.Common.Traits
 					.Where(multiBrush => multiBrush.Segment != null)
 					.ToImmutableArray();
 
-			IsEnabled = SegmentedBrushes.Length > 0 || IsDeveloper;
+			IsEnabled = SegmentedBrushes.Length > 0;
 			if (!IsEnabled)
 				return;
 
