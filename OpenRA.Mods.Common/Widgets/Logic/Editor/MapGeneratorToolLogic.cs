@@ -300,12 +300,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				previews.Add(kv.Key, preview);
 			}
 
-			var offset = map.CellContaining(map.ProjectedTopLeft) - generatedMap.CellContaining(generatedMap.ProjectedTopLeft);
-			var blitSource = new EditorBlitSource(generatedMap.AllCells, previews, tiles);
+			var cellBounds = CellLayerUtils.CellBounds(map);
+			var topLeft = new CPos(cellBounds.TopLeft.X, cellBounds.TopLeft.Y);
+			var bottomRight = new CPos(cellBounds.BottomRight.X, cellBounds.BottomRight.Y);
+			var cellRegion = new CellRegion(map.Grid.Type, topLeft, bottomRight);
+			var blitSource = new EditorBlitSource(cellRegion, previews, tiles);
 			var editorBlit = new EditorBlit(
 				MapBlitFilters.All,
 				resourceLayer,
-				new CPos(offset.X, offset.Y),
+				topLeft,
 				map,
 				blitSource,
 				editorActorLayer,
