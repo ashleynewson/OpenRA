@@ -746,6 +746,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				var mpos = (paintAt + xy).ToMPos(map);
 				if (map.Tiles.Contains(mpos))
 				{
+					// map.Ramp does not need to be updated here.
 					map.Tiles[mpos] = tile.Pick(random);
 					map.Height[mpos] = (byte)Math.Clamp(tile.HeightOffset + heightOffset, byte.MinValue, byte.MaxValue);
 				}

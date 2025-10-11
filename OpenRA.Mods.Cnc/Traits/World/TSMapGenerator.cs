@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.MapGenerator;
@@ -86,8 +87,53 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			terraformer.InitMap();
 
-			foreach (var mpos in map.AllCells.MapCoords)
-				map.Tiles[mpos] = terraformer.PickTile(random, tileType);
+			// foreach (var mpos in map.AllCells.MapCoords)
+			// 	map.Tiles[mpos] = terraformer.PickTile(random, tileType);
+
+			var templates = new ushort[] { 0, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 };
+			var brushes = templates
+				.Select(t => new MultiBrush().WithTemplate(map, t, CVec.Zero))
+				.ToList();
+			var tiler = new RampTiler(map, brushes);
+			var bounds = CellLayerUtils.CellBounds(map);
+			var cornerHeightsNoise =
+				NoiseUtils.FractalNoise(
+					random,
+					bounds.Size.ToInt2() + new int2(1, 1),
+					1024 * 32,
+					NoiseUtils.PinkAmplitude);
+			cornerHeightsNoise = MatrixUtils.NormalizeRangeInPlace(cornerHeightsNoise, 32);
+			var cornerHeights = MatrixUtils.BinomialBlur(cornerHeightsNoise, 0)
+				.Map(i => (byte)Math.Max(0, i));
+			var maskLayer = CellLayerUtils.Create(map, (MPos mpos) => map.Contains(mpos));
+			var mask = new Matrix<bool>(bounds.Size.ToInt2() + new int2(1, 1)).Fill(true);
+			// foreach (var cpos in map.AllEdgeCells)
+			// {
+			// 	var xy = new int2(cpos.X, cpos.Y) - bounds.TopLeft;
+			// 	mask[xy.X, xy.Y] = false;
+			// 	mask[xy.X + 1, xy.Y] = false;
+			// 	mask[xy.X + 1, xy.Y + 1] = false;
+			// 	mask[xy.X, xy.Y + 1] = false;
+			// 	cornerHeights[xy.X, xy.Y] = 0;
+			// 	cornerHeights[xy.X + 1, xy.Y] = 0;
+			// 	cornerHeights[xy.X + 1, xy.Y + 1] = 0;
+			// 	cornerHeights[xy.X, xy.Y + 1] = 0;
+			// }
+			for (var y = 0; y < mask.Size.Y; y++)
+			{
+				for (var x = 0; x < mask.Size.X; x++)
+				{
+					var cpos = new CPos(x + bounds.TopLeft.X, y + bounds.TopLeft.Y);
+					if (map.Contains(cpos))
+						mask[x, y] = true;
+					else
+						cornerHeights[x, y] = 0;
+				}
+			}
+
+			cornerHeights = tiler.ConstrainCornerHeights(cornerHeights, mask, RampTiler.AdjustmentMode.LowerMiddle);
+			var tiling = tiler.TileCorners(cornerHeights, null, random);
+			terraformer.PaintTiling(random, tiling);
 
 			terraformer.BakeMap();
 

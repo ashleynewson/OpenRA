@@ -18,31 +18,33 @@ namespace OpenRA.Mods.Common.MapGenerator
 {
 	public class RampTiler
 	{
-		readonly Map map;
+		public enum AdjustmentMode
+		{
+			/// <summary>Heights will only increase if absolutely necessary.</summary>
+			Minimal,
 
-		// Lookup from a binary-concatenation of corner heights (0, 1, or 2) to ramp types.
-		readonly Dictionary<int, List<byte>> rampLookup;
+			/// <summary>Heights will be a be a rounded down median of minimal and maximal.</summary>
+			LowerMiddle,
+
+			/// <summary>Heights will be a be a rounded up median of minimal and maximal.</summary>
+			UpperMiddle,
+
+			/// <summary>Heights will only decrease if absolutely necessary.</summary>
+			Maximal,
+		}
+
+		readonly Map map;
 
 		// Contains single-tile brushes with zero height offset.
 		readonly Dictionary<byte, (MultiBrush[] Brushes, int[] Weights)> brushLookup;
+
+		// Lookup from a binary-concatenation of corner heights (0, 1, or 2) to ramp types.
+		readonly Dictionary<int, List<byte>> rampLookup;
 
 		public RampTiler(Map map, IReadOnlyList<MultiBrush> brushes)
 		{
 			this.map = map;
 			var heightStep = map.Grid.TileScale / 2;
-			rampLookup = new();
-			for (var i = 0; i < map.Grid.Ramps.Length; i++) {
-				var ramp = map.Grid.Ramps[i];
-				var tl = ramp.Corners[0].Z / heightStep;
-				var tr = ramp.Corners[1].Z / heightStep;
-				var bl = ramp.Corners[2].Z / heightStep;
-				var br = ramp.Corners[3].Z / heightStep;
-				var lookup = tl | (tr << 2) | (bl << 4) | (br << 6);
-				if (!rampLookup.ContainsKey(lookup))
-					rampLookup.Add(lookup, new());
-
-				rampLookup[lookup].Add((byte)i);
-			}
 
 			var rampsToBrushes = new Dictionary<byte, List<MultiBrush>>();
 			foreach (var brush in brushes)
@@ -53,14 +55,150 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				var ramp = heightsAndRamps[0].Ramp;
 				if (!rampsToBrushes.ContainsKey(ramp))
-					rampsToBrushes.Add(ramp, new());
+					rampsToBrushes.Add(ramp, []);
 
 				rampsToBrushes[ramp].Add(brush);
 			}
+
 			brushLookup = rampsToBrushes
 				.ToDictionary(
 					kv => kv.Key,
 					kv => (kv.Value.ToArray(), kv.Value.Select(b => b.Weight).ToArray()));
+
+			rampLookup = [];
+
+			foreach (var rampType in brushLookup.Keys)
+			{
+				var cellRamp = map.Grid.Ramps[rampType];
+				var tl = cellRamp.Corners[0].Z / heightStep;
+				var tr = cellRamp.Corners[1].Z / heightStep;
+				var br = cellRamp.Corners[2].Z / heightStep;
+				var bl = cellRamp.Corners[3].Z / heightStep;
+				var lookup = tl | (tr << 2) | (br << 4) | (bl << 6);
+				if (!rampLookup.ContainsKey(lookup))
+					rampLookup.Add(lookup, []);
+
+				rampLookup[lookup].Add(rampType);
+			}
+		}
+
+		/// <summary>
+		/// Adjusts input cell corner heights such that all adjacent corners only have a height
+		/// difference of -1, 0, or 1.
+		/// </summary>
+		/// <param name="cornerHeights">Original corner heights.</param>
+		/// <param name="mask">Mask of corners that can be adjusted, or null if all can be adjusted.</param>
+		/// <param name="mode">Preferred direction to adjust heights.</param>
+		/// <returns>Adjusted corner heights, or null if there is no valid solution.</returns>
+		public Matrix<byte> ConstrainCornerHeights(
+			Matrix<byte> cornerHeights,
+			Matrix<bool> mask,
+			AdjustmentMode mode)
+		{
+			IEnumerable<(int2 XY, (byte Height, bool First) Prop)> MaskedSeeds()
+			{
+				for (var y = 0; y < cornerHeights.Size.Y; y++)
+					for (var x = 0; x < cornerHeights.Size.X; x++)
+						if (mask?[x, y] ?? true)
+							yield return (new int2(x, y), (cornerHeights[x, y], true));
+			}
+
+			IEnumerable<(int2 XY, (byte Height, bool First) Prop)> UnmaskedSeeds()
+			{
+				for (var y = 0; y < cornerHeights.Size.Y; y++)
+					for (var x = 0; x < cornerHeights.Size.X; x++)
+						if (!mask[x, y])
+							yield return (new int2(x, y), (cornerHeights[x, y], true));
+			}
+
+			Matrix<byte> GetMinimal(Matrix<byte> matrix, bool masked)
+			{
+				(byte Lower, bool First)? FillMinimal(int2 xy, (byte Lower, bool First) prop)
+				{
+					if (!prop.First && (!(mask?[xy] ?? true) || prop.Lower >= matrix[xy]))
+						return null;
+
+					matrix[xy] = prop.Lower;
+					if (prop.Lower == byte.MaxValue)
+						return null;
+
+					return ((byte)(prop.Lower + 1), false);
+				}
+
+				var seeds = masked ? MaskedSeeds() : UnmaskedSeeds();
+				MatrixUtils.FloodFill(
+					cornerHeights.Size,
+					seeds.OrderBy(s => s.Prop.Height),
+					FillMinimal,
+					DirectionExts.Spread4);
+				return matrix;
+			}
+
+			Matrix<byte> GetMaximal(Matrix<byte> matrix, bool masked)
+			{
+				(byte Upper, bool First)? FillMaximal(int2 xy, (byte Upper, bool First) prop)
+				{
+					if (!prop.First && (!(mask?[xy] ?? true) || prop.Upper <= matrix[xy]))
+						return null;
+
+					matrix[xy] = prop.Upper;
+					if (prop.Upper == byte.MinValue)
+						return null;
+
+					return ((byte)(prop.Upper - 1), false);
+				}
+
+				var seeds = masked ? MaskedSeeds() : UnmaskedSeeds();
+				MatrixUtils.FloodFill(
+					cornerHeights.Size,
+					seeds.OrderByDescending(s => s.Prop.Height),
+					FillMaximal,
+					DirectionExts.Spread4);
+				return matrix;
+			}
+
+			if (mask != null)
+			{
+				var floor = GetMaximal(new Matrix<byte>(cornerHeights.Size).Fill(byte.MinValue), false);
+				var ceiling = GetMinimal(new Matrix<byte>(cornerHeights.Size).Fill(byte.MaxValue), false);
+
+				cornerHeights = cornerHeights.Clone();
+				for (var y = 0; y < cornerHeights.Size.Y; y++)
+				{
+					for (var x = 0; x < cornerHeights.Size.X; x++)
+					{
+						if (!mask[x, y])
+							continue;
+
+						if (floor[x, y] > ceiling[x, y])
+							return null;
+						else if (cornerHeights[x, y] < floor[x, y])
+							cornerHeights[x, y] = floor[x, y];
+						else if (cornerHeights[x, y] > ceiling[x, y])
+							cornerHeights[x, y] = ceiling[x, y];
+					}
+				}
+			}
+
+			switch (mode)
+			{
+				case AdjustmentMode.Minimal:
+					return GetMinimal(cornerHeights.Clone(), true);
+				case AdjustmentMode.LowerMiddle:
+					return Matrix<byte>.Zip(
+						GetMinimal(cornerHeights.Clone(), true),
+						GetMaximal(cornerHeights.Clone(), true),
+						(a, b) => (byte)((a + b) / 2));
+				case AdjustmentMode.UpperMiddle:
+					return Matrix<byte>.Zip(
+						GetMinimal(cornerHeights.Clone(), true),
+						GetMaximal(cornerHeights.Clone(), true),
+						(a, b) => (byte)((a + b + 1) / 2));
+				case AdjustmentMode.Maximal:
+					return GetMaximal(cornerHeights.Clone(), true);
+				default:
+					throw new ArgumentException("invalid fitting mode");
+			}
 		}
 
 		public (CellLayer<byte> Heights, CellLayer<byte> Ramps) CornersToRampsAndHeights(
@@ -69,9 +207,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			MersenneTwister random)
 		{
 			// TODO: ensure map shape consistency (or just use grid).
-			CellLayer<byte> heights = new CellLayer<byte>(map);
-			CellLayer<byte> ramps = new CellLayer<byte>(map);
-			var matrixBounds = CellLayerUtils.CellBounds(mask);
+			var heights = new CellLayer<byte>(map);
+			var ramps = new CellLayer<byte>(map);
+			var matrixBounds = CellLayerUtils.CellBounds(map);
 
 			var masked =
 				mask != null
@@ -79,22 +217,27 @@ namespace OpenRA.Mods.Common.MapGenerator
 					: map.Tiles.CellRegion;
 			foreach (var cpos in masked)
 			{
-				var x = cpos.X + matrixBounds.X;
-				var y = cpos.Y + matrixBounds.Y;
+				var x = cpos.X - matrixBounds.X;
+				var y = cpos.Y - matrixBounds.Y;
 				var tl = cornerHeights[x, y];
 				var tr = cornerHeights[x + 1, y];
-				var bl = cornerHeights[x, y + 1];
 				var br = cornerHeights[x + 1, y + 1];
+				var bl = cornerHeights[x, y + 1];
 
 				var baseHeight = Math.Min(Math.Min(tl, tr), Math.Min(bl, br));
 				tl -= baseHeight;
 				tr -= baseHeight;
-				bl -= baseHeight;
 				br -= baseHeight;
-				if (tl > 2 || tr > 2 || bl > 2 || br > 2)
-					throw new ArgumentException("cornerHeights has adjacent cells with a height difference > 2");
+				bl -= baseHeight;
+				if (Math.Abs(tl - tr) > 1 ||
+					Math.Abs(tr - br) > 1 ||
+					Math.Abs(br - bl) > 1 ||
+					Math.Abs(bl - tl) > 1)
+				{
+					throw new ArgumentException("cornerHeights has adjacent cell corners with a height difference > 1");
+				}
 
-				var lookup = tl | (tr << 2) | (bl << 4) | (br << 6);
+				var lookup = tl | (tr << 2) | (br << 4) | (bl << 6);
 				if (!rampLookup.TryGetValue(lookup, out var validRamps))
 					return (null, null);
 
@@ -118,9 +261,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return Tile(heights, ramps, mask, random);
 		}
 
-
 		/// <summary>
-		/// Tile a heightmap using
+		/// Tile a heightmap with pre-computed ramps.
 		/// </summary>
 		/// <param name="heights">Heights for tiles.</param>
 		/// <param name="ramps">Ramps for tiles.</param>
