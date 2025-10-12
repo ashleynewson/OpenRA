@@ -20717,3 +20717,255 @@ MultiBrushCollections:
 				Start: CliffSet.D
 				End: CliffSet.R
 				Points: 1,0
+		MultiBrush@ShorePiece_108:
+			Template: 108
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@ShorePiece_109:
+			Template: 109
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@ShorePiece_110:
+			Template: 110
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@ShorePiece_111:
+			Template: 111
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.L
+				Points: 1,1, 0,1
+		MultiBrush@ShorePiece_112:
+			Template: 112
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.L
+				Points: 2,2, 1,2, 1,1, 0,1
+		MultiBrush@ShorePiece_113:
+			Template: 113
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.L
+				Points: 2,1, 1,1, 1,2, 0,2
+		MultiBrush@ShorePiece_114:
+			Template: 114
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.L
+				Points: 1,0, 1,1, 0,1
+		MultiBrush@ShorePiece_115:
+			Template: 115
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.L
+				Points: 1,0, 1,1, 0,1
+		MultiBrush@ShorePiece_116:
+			Template: 116
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@ShorePiece_117:
+			Template: 117
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@ShorePiece_118:
+			Template: 118
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@ShorePiece_119:
+			Template: 119
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 1,0, 1,1
+		MultiBrush@ShorePiece_120:
+			Template: 120
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 2,0, 2,1, 1,1, 1,2
+		MultiBrush@ShorePiece_121:
+			Template: 121
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 1,0, 1,1, 1,2, 2,2
+		MultiBrush@ShorePiece_122:
+			Template: 122
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.D
+				Points: 0,1, 1,1, 1,2
+		MultiBrush@ShorePiece_123:
+			Template: 123
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.D
+				Points: 0,1, 1,1, 1,2
+		MultiBrush@ShorePiece_124:
+			Template: 124
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.R
+				Points: 0,1, 1,1, 2,1
+		MultiBrush@ShorePiece_125:
+			Template: 125
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.R
+				Points: 0,1, 1,1, 2,1
+		MultiBrush@ShorePiece_126:
+			Template: 126
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.R
+				Points: 0,1, 1,1, 2,1
+		MultiBrush@ShorePiece_127:
+			Template: 127
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.R
+				Points: 0,1, 1,1
+		MultiBrush@ShorePiece_128:
+			Template: 128
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.R
+				Points: 0,2, 1,2, 1,1, 2,1
+		MultiBrush@ShorePiece_129:
+			Template: 129
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.R
+				Points: 0,1, 1,1, 1,2, 2,2
+		MultiBrush@ShorePiece_130:
+			Template: 130
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.R
+				Points: 1,2, 1,1, 2,1
+		MultiBrush@ShorePiece_131:
+			Template: 131
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.R
+				Points: 1,2, 1,1, 2,1
+		MultiBrush@ShorePiece_132:
+			Template: 132
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@ShorePiece_133:
+			Template: 133
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@ShorePiece_134:
+			Template: 134
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.U
+				Points: 1,2, 1,1, 1,0
+		MultiBrush@ShorePiece_135:
+			Template: 135
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.U
+				Points: 1,1, 1,0
+		MultiBrush@ShorePiece_136:
+			Template: 136
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.U
+				Points: 2,2, 2,1, 1,1, 1,0
+		MultiBrush@ShorePiece_137:
+			Template: 137
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.U
+				Points: 1,2, 1,1, 2,1, 2,0
+		MultiBrush@ShorePiece_138:
+			Template: 138
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.U
+				Points: 2,1, 1,1, 1,0
+		MultiBrush@ShorePiece_139:
+			Template: 139
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.U
+				Points: 2,1, 1,1, 1,0
+		MultiBrush@ShorePiece_140:
+			Template: 140
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.D
+				Points: 2,1, 1,1, 1,2
+		MultiBrush@ShorePiece_141:
+			Template: 141
+			Segment:
+				Start: ShorePiece.L
+				End: ShorePiece.D
+				Points: 2,1, 1,1, 1,2
+		MultiBrush@ShorePiece_142:
+			Template: 142
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.R
+				Points: 1,0, 1,1, 2,1
+		MultiBrush@ShorePiece_143:
+			Template: 143
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.R
+				Points: 1,0, 1,1, 2,1
+		MultiBrush@ShorePiece_144:
+			Template: 144
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.U
+				Points: 0,1, 1,1, 1,0
+		MultiBrush@ShorePiece_145:
+			Template: 145
+			Segment:
+				Start: ShorePiece.R
+				End: ShorePiece.U
+				Points: 0,1, 1,1, 1,0
+		MultiBrush@ShorePiece_146:
+			Template: 146
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.L
+				Points: 1,2, 1,1, 0,1
+		MultiBrush@ShorePiece_147:
+			Template: 147
+			Segment:
+				Start: ShorePiece.U
+				End: ShorePiece.L
+				Points: 1,2, 1,1, 0,1
+		MultiBrush@ShorePiece_148:
+			Template: 148
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 5,1, 5,2, 4,2, 3,2, 2,2, 1,2, 1,3, 1,4
+		MultiBrush@ShorePiece_149:
+			Template: 149
+			Segment:
+				Start: ShorePiece.D
+				End: ShorePiece.D
+				Points: 8,2, 8,3, 8,4, 7,4, 6,4, 5,4, 4,4, 4,3, 3,3, 3,4, 3,5

@@ -51,6 +51,9 @@ faction-nod =
      and the alien substance Tiberium. They employ stealth technology
      and guerrilla tactics to defeat those who oppose them.
 
+map-generator-ts = Tiberian Sun RMG
+map-generator-clear = Clear Terrain
+
 ## Structures
 notification-construction-complete = Construction complete.
 notification-unit-ready = Unit ready.
@@ -825,3 +828,33 @@ actor-cahosp =
 ## ai.yaml
 bot-test-ai =
     .name = Test AI
+
+## map-generators.yaml
+label-random-map = Random Map
+label-clear-map-generator-option-tile = Tile
+label-clear-map-generator-choice-tile-clear =
+   .label = Clear
+label-clear-map-generator-choice-tile-snow =
+   .label = Snow
+label-clear-map-generator-choice-tile-blank =
+   .label = Blank
+label-clear-map-generator-choice-tile-rough =
+   .label = Rough
+label-clear-map-generator-choice-tile-water =
+   .label = Water
+label-clear-map-generator-choice-tile-ground01 =
+   .label = Ground 01
+label-clear-map-generator-choice-tile-sand =
+   .label = Sand
+label-clear-map-generator-choice-tile-green =
+   .label = Green
+label-clear-map-generator-choice-tile-pavement =
+   .label = Pavement
+label-clear-map-generator-choice-tile-crystal =
+   .label = Crystal
+label-clear-map-generator-choice-tile-swamp =
+   .label = Swamp
+label-clear-map-generator-choice-tile-bluemold =
+   .label = Blue Mold
+
+label-ts-map-generator-option-seed = Seed
