@@ -21002,3 +21002,276 @@ MultiBrushCollections:
 				Start: ShorePiece.D
 				End: ShorePiece.D
 				Points: 8,2, 8,3, 8,4, 7,4, 6,4, 5,4, 4,4, 4,3, 3,3, 3,4, 3,5
+		MultiBrush@CliffWaterPieces_167:
+			Template: 167
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.U
+				Points: 2,2, 1,2, 1,1, 0,1, 0,0
+		MultiBrush@CliffWaterPieces_168:
+			Template: 168
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.U
+				Points: 1,1, 0,1, 0,0
+		MultiBrush@CliffWaterPieces_169:
+			Template: 169
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.L
+				Points: 2,2, 1,2, 1,1, 0,1
+		MultiBrush@CliffWaterPieces_170:
+			Template: 170
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.L
+				Points: 2,2, 1,2, 1,1, 0,1
+		MultiBrush@CliffWaterPieces_171:
+			Template: 171
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@CliffWaterPieces_172:
+			Template: 172
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@CliffWaterPieces_173:
+			Template: 173
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.L
+				Points: 2,1, 1,1, 0,1
+		MultiBrush@CliffWaterPieces_174:
+			Template: 174
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.L
+				Points: 1,1, 0,1
+		MultiBrush@CliffWaterPieces_175:
+			Template: 175
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.D
+				End: CliffWaterPieces.MaybeCorner.L
+				Inner: CliffWaterPieces
+				Points: 2,0, 1,0, 1,1, 0,1, 0,2
+		MultiBrush@CliffWaterPieces_176:
+			Template: 176
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.D
+				End: CliffWaterPieces.MaybeCorner.L
+				Inner: CliffWaterPieces
+				Points: 2,0, 1,0, 1,1, 0,1, 0,2
+		MultiBrush@CliffWaterPieces_177:
+			Template: 177
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.D
+				End: CliffWaterPieces.MaybeCorner.L
+				Inner: CliffWaterPieces
+				Points: 2,0, 1,0, 1,1, 0,1, 0,2
+		MultiBrush@CliffWaterPieces_178:
+			Template: 178
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.D
+				End: CliffWaterPieces.MaybeCorner.L
+				Inner: CliffWaterPieces
+				Points: 1,0, 0,0, 0,1
+		MultiBrush@CliffWaterPieces_179:
+			Template: 179
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.D
+				End: CliffWaterPieces.MaybeCorner.L
+				Inner: CliffWaterPieces
+				Points: 1,0, 0,0, 0,1
+		MultiBrush@CliffWaterPieces_180:
+			Template: 180
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.D
+				End: CliffWaterPieces.MaybeCorner.L
+				Inner: CliffWaterPieces
+				Points: 1,0, 0,0, 0,1
+		MultiBrush@CliffWaterPieces_181:
+			Template: 181
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@CliffWaterPieces_182:
+			Template: 182
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@CliffWaterPieces_183:
+			Template: 183
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.D
+				Points: 1,0, 1,1, 1,2
+		MultiBrush@CliffWaterPieces_184:
+			Template: 184
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.D
+				Points: 1,0, 1,1
+		MultiBrush@CliffWaterPieces_185:
+			Template: 185
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.D
+				Points: 1,0, 1,1, 2,1, 2,2
+		MultiBrush@CliffWaterPieces_186:
+			Template: 186
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.D
+				Points: 1,0, 1,1, 2,1, 2,2
+		MultiBrush@CliffWaterPieces_187:
+			Template: 187
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.D
+				Points: 0,0, 1,0, 1,1, 2,1, 2,2
+		MultiBrush@CliffWaterPieces_188:
+			Template: 188
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.D
+				Points: 0,0, 1,0, 1,1
+		MultiBrush@CliffWaterPieces_82:
+			Template: 82
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.R
+				Points: 0,0, 1,0, 2,0
+		MultiBrush@CliffWaterPieces_83:
+			Template: 83
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.R
+				Points: 0,0, 1,0, 2,0
+		MultiBrush@CliffWaterPieces_84:
+			Template: 84
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.R
+				Points: 0,0, 1,0, 2,0
+		MultiBrush@CliffWaterPieces_85:
+			Template: 85
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.R
+				Points: 0,0, 1,0
+		MultiBrush@CliffWaterPieces_86:
+			Template: 86
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.R
+				Points: 0,2, 0,1, 0,0, 1,0, 2,0
+		MultiBrush@CliffWaterPieces_87:
+			Template: 87
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.R
+				Points: 0,2, 0,1, 1,1, 1,0, 2,0
+		MultiBrush@CliffWaterPieces_88:
+			Template: 88
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.R
+				Points: 0,1, 0,0, 1,0
+		MultiBrush@CliffWaterPieces_89:
+			Template: 89
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.R
+				Points: 0,1, 0,0, 1,0
+		MultiBrush@CliffWaterPieces_90:
+			Template: 90
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.U
+				Points: 0,2, 0,1, 0,0, 1,0
+		MultiBrush@CliffWaterPieces_91:
+			Template: 91
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.U
+				Points: 0,1, 1,1, 1,0
+		MultiBrush@CliffWaterPieces_92:
+			Template: 92
+			Segment:
+				Start: CliffWaterPieces.R
+				End: CliffWaterPieces.U
+				Points: 0,0
+		MultiBrush@CliffWaterPieces_93_CornerLD:
+			Template: 93
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.L
+				End: CliffWaterPieces.MaybeCorner.D
+				Inner: CliffWaterPieces
+				Points: 1,1
+		MultiBrush@CliffWaterPieces_93_CornerL:
+			Template: 93
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.L
+				End: CliffWaterPieces.D
+				Inner: CliffWaterPieces
+				Points: 1,1
+		MultiBrush@CliffWaterPieces_93_CornerD:
+			Template: 93
+			Segment:
+				Start: CliffWaterPieces.L
+				End: CliffWaterPieces.MaybeCorner.D
+				Inner: CliffWaterPieces
+				Points: 1,1
+		MultiBrush@CliffWaterPieces_94:
+			Template: 94
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.U
+				Points: 0,2, 0,1, 0,0
+		MultiBrush@CliffWaterPieces_95:
+			Template: 95
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.U
+				Points: 0,2, 0,1, 0,0
+		MultiBrush@CliffWaterPieces_96:
+			Template: 96
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.U
+				Points: 0,2, 0,1, 0,0
+		MultiBrush@CliffWaterPieces_97:
+			Template: 97
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.U
+				Points: 0,1, 0,0
+		MultiBrush@CliffWaterPieces_98:
+			Template: 98
+			Segment:
+				Start: CliffWaterPieces.U
+				End: CliffWaterPieces.L
+				Points: 0,1
+		MultiBrush@CliffWaterPieces_99:
+			Template: 99
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.R
+				Points: 1,0
+		MultiBrush@CliffWaterPieces_Interface_FromCornerD:
+			Segment:
+				Start: CliffWaterPieces.D
+				End: CliffWaterPieces.MaybeCorner.D
+				Inner: CliffWaterPieces
+				Points: 0,0
+		MultiBrush@CliffWaterPieces_Interface_ToCornerL:
+			Segment:
+				Start: CliffWaterPieces.MaybeCorner.L
+				End: CliffWaterPieces.L
+				Inner: CliffWaterPieces
+				Points: 0,0
