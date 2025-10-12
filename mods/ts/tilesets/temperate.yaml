@@ -20528,39 +20528,45 @@ MultiBrushCollections:
 		MultiBrush@CliffSet_68:
 			Template: 68
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.L
-				Points: 2,0, 2,1, 1,1, 1,2, 0,2
+				Start: CliffSet.MaybeCorner.D
+				End: CliffSet.MaybeCorner.L
+				Inner: CliffSet
+				Points: 2,0, 1,0, 1,1, 0,1, 0,2
 		MultiBrush@CliffSet_69:
 			Template: 69
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.L
-				Points: 2,0, 2,1, 1,1, 1,2, 0,2
+				Start: CliffSet.MaybeCorner.D
+				End: CliffSet.MaybeCorner.L
+				Inner: CliffSet
+				Points: 2,0, 1,0, 1,1, 0,1, 0,2
 		MultiBrush@CliffSet_70:
 			Template: 70
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.L
-				Points: 2,0, 2,1, 1,1, 1,2, 0,2
+				Start: CliffSet.MaybeCorner.D
+				End: CliffSet.MaybeCorner.L
+				Inner: CliffSet
+				Points: 2,0, 1,0, 1,1, 0,1, 0,2
 		MultiBrush@CliffSet_71:
 			Template: 71
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.L
-				Points: 1,0, 1,1, 0,1
+				Start: CliffSet.MaybeCorner.D
+				End: CliffSet.MaybeCorner.L
+				Inner: CliffSet
+				Points: 1,0, 0,0, 0,1
 		MultiBrush@CliffSet_72:
 			Template: 72
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.L
-				Points: 1,0, 1,1, 0,1
+				Start: CliffSet.MaybeCorner.D
+				End: CliffSet.MaybeCorner.L
+				Inner: CliffSet
+				Points: 1,0, 0,0, 0,1
 		MultiBrush@CliffSet_73:
 			Template: 73
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.L
-				Points: 1,0, 1,1, 0,1
+				Start: CliffSet.MaybeCorner.D
+				End: CliffSet.MaybeCorner.L
+				Inner: CliffSet
+				Points: 1,0, 0,0, 0,1
 		MultiBrush@CliffSet_74:
 			Template: 74
 			Segment:
@@ -20660,9 +20666,9 @@ MultiBrushCollections:
 		MultiBrush@CliffSet_90:
 			Template: 90
 			Segment:
-				Start: CliffSet.R
+				Start: CliffSet.U
 				End: CliffSet.U
-				Points: 0,1, 0,0, 1,0
+				Points: 0,2, 0,1, 0,0, 1,0
 		MultiBrush@CliffSet_91:
 			Template: 91
 			Segment:
@@ -20675,11 +20681,26 @@ MultiBrushCollections:
 				Start: CliffSet.R
 				End: CliffSet.U
 				Points: 0,0
-		MultiBrush@CliffSet_93:
+		MultiBrush@CliffSet_93_CornerLD:
+			Template: 93
+			Segment:
+				Start: CliffSet.MaybeCorner.L
+				End: CliffSet.MaybeCorner.D
+				Inner: CliffSet
+				Points: 1,1
+		MultiBrush@CliffSet_93_CornerL:
+			Template: 93
+			Segment:
+				Start: CliffSet.MaybeCorner.L
+				End: CliffSet.D
+				Inner: CliffSet
+				Points: 1,1
+		MultiBrush@CliffSet_93_CornerD:
 			Template: 93
 			Segment:
 				Start: CliffSet.L
-				End: CliffSet.D
+				End: CliffSet.MaybeCorner.D
+				Inner: CliffSet
 				Points: 1,1
 		MultiBrush@CliffSet_94:
 			Template: 94
@@ -20717,6 +20738,18 @@ MultiBrushCollections:
 				Start: CliffSet.D
 				End: CliffSet.R
 				Points: 1,0
+		MultiBrush@CliffSet_Interface_FromCornerD:
+			Segment:
+				Start: CliffSet.D
+				End: CliffSet.MaybeCorner.D
+				Inner: CliffSet
+				Points: 0,0
+		MultiBrush@CliffSet_Interface_ToCornerL:
+			Segment:
+				Start: CliffSet.MaybeCorner.L
+				End: CliffSet.L
+				Inner: CliffSet
+				Points: 0,0
 		MultiBrush@ShorePiece_108:
 			Template: 108
 			Segment:

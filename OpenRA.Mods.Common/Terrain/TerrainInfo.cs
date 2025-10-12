@@ -121,7 +121,7 @@ namespace OpenRA.Mods.Common.Terrain
 			if (!Contains(index))
 				throw new ArgumentException($"index {index} not valid for template {Id}");
 
-			return new CVec(index % Size.X, index / Size.Y);
+			return new CVec(index % Size.X, index / Size.X);
 		}
 
 		public int TilesCount => tileInfo.Length;
