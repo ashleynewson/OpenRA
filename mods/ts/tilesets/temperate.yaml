@@ -20477,862 +20477,862 @@ Templates:
 				ZRamp: 0
 MultiBrushCollections:
 	Segmented:
-		MultiBrush@CliffSet_60:
+		MultiBrush@Cliff_60:
 			Template: 60
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.U
+				Start: Cliff.L
+				End: Cliff.U
 				Points: 2,2, 1,2, 1,1, 0,1, 0,0
-		MultiBrush@CliffSet_61:
+		MultiBrush@Cliff_61:
 			Template: 61
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.U
+				Start: Cliff.L
+				End: Cliff.U
 				Points: 1,1, 0,1, 0,0
-		MultiBrush@CliffSet_62:
+		MultiBrush@Cliff_62:
 			Template: 62
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.L
+				Start: Cliff.L
+				End: Cliff.L
 				Points: 2,2, 1,2, 1,1, 0,1
-		MultiBrush@CliffSet_63:
+		MultiBrush@Cliff_63:
 			Template: 63
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.L
+				Start: Cliff.L
+				End: Cliff.L
 				Points: 2,2, 1,2, 1,1, 0,1
-		MultiBrush@CliffSet_64:
+		MultiBrush@Cliff_64:
 			Template: 64
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.L
+				Start: Cliff.L
+				End: Cliff.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@CliffSet_65:
+		MultiBrush@Cliff_65:
 			Template: 65
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.L
+				Start: Cliff.L
+				End: Cliff.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@CliffSet_66:
+		MultiBrush@Cliff_66:
 			Template: 66
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.L
+				Start: Cliff.L
+				End: Cliff.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@CliffSet_67:
+		MultiBrush@Cliff_67:
 			Template: 67
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.L
+				Start: Cliff.L
+				End: Cliff.L
 				Points: 1,1, 0,1
-		MultiBrush@CliffSet_68:
+		MultiBrush@Cliff_68:
 			Template: 68
 			Segment:
-				Start: CliffSet.MaybeCorner.D
-				End: CliffSet.MaybeCorner.L
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.D
+				End: Cliff.MaybeCorner.L
+				Inner: Cliff
 				Points: 2,0, 1,0, 1,1, 0,1, 0,2
-		MultiBrush@CliffSet_69:
+		MultiBrush@Cliff_69:
 			Template: 69
 			Segment:
-				Start: CliffSet.MaybeCorner.D
-				End: CliffSet.MaybeCorner.L
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.D
+				End: Cliff.MaybeCorner.L
+				Inner: Cliff
 				Points: 2,0, 1,0, 1,1, 0,1, 0,2
-		MultiBrush@CliffSet_70:
+		MultiBrush@Cliff_70:
 			Template: 70
 			Segment:
-				Start: CliffSet.MaybeCorner.D
-				End: CliffSet.MaybeCorner.L
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.D
+				End: Cliff.MaybeCorner.L
+				Inner: Cliff
 				Points: 2,0, 1,0, 1,1, 0,1, 0,2
-		MultiBrush@CliffSet_71:
+		MultiBrush@Cliff_71:
 			Template: 71
 			Segment:
-				Start: CliffSet.MaybeCorner.D
-				End: CliffSet.MaybeCorner.L
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.D
+				End: Cliff.MaybeCorner.L
+				Inner: Cliff
 				Points: 1,0, 0,0, 0,1
-		MultiBrush@CliffSet_72:
+		MultiBrush@Cliff_72:
 			Template: 72
 			Segment:
-				Start: CliffSet.MaybeCorner.D
-				End: CliffSet.MaybeCorner.L
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.D
+				End: Cliff.MaybeCorner.L
+				Inner: Cliff
 				Points: 1,0, 0,0, 0,1
-		MultiBrush@CliffSet_73:
+		MultiBrush@Cliff_73:
 			Template: 73
 			Segment:
-				Start: CliffSet.MaybeCorner.D
-				End: CliffSet.MaybeCorner.L
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.D
+				End: Cliff.MaybeCorner.L
+				Inner: Cliff
 				Points: 1,0, 0,0, 0,1
-		MultiBrush@CliffSet_74:
+		MultiBrush@Cliff_74:
 			Template: 74
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.D
+				Start: Cliff.D
+				End: Cliff.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@CliffSet_75:
+		MultiBrush@Cliff_75:
 			Template: 75
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.D
+				Start: Cliff.D
+				End: Cliff.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@CliffSet_76:
+		MultiBrush@Cliff_76:
 			Template: 76
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.D
+				Start: Cliff.D
+				End: Cliff.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@CliffSet_77:
+		MultiBrush@Cliff_77:
 			Template: 77
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.D
+				Start: Cliff.D
+				End: Cliff.D
 				Points: 1,0, 1,1
-		MultiBrush@CliffSet_78:
+		MultiBrush@Cliff_78:
 			Template: 78
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.D
+				Start: Cliff.D
+				End: Cliff.D
 				Points: 1,0, 1,1, 2,1, 2,2
-		MultiBrush@CliffSet_79:
+		MultiBrush@Cliff_79:
 			Template: 79
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.D
+				Start: Cliff.D
+				End: Cliff.D
 				Points: 1,0, 1,1, 2,1, 2,2
-		MultiBrush@CliffSet_80:
+		MultiBrush@Cliff_80:
 			Template: 80
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.D
+				Start: Cliff.R
+				End: Cliff.D
 				Points: 0,0, 1,0, 1,1, 2,1, 2,2
-		MultiBrush@CliffSet_81:
+		MultiBrush@Cliff_81:
 			Template: 81
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.D
+				Start: Cliff.R
+				End: Cliff.D
 				Points: 0,0, 1,0, 1,1
-		MultiBrush@CliffSet_82:
+		MultiBrush@Cliff_82:
 			Template: 82
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.R
+				Start: Cliff.R
+				End: Cliff.R
 				Points: 0,0, 1,0, 2,0
-		MultiBrush@CliffSet_83:
+		MultiBrush@Cliff_83:
 			Template: 83
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.R
+				Start: Cliff.R
+				End: Cliff.R
 				Points: 0,0, 1,0, 2,0
-		MultiBrush@CliffSet_84:
+		MultiBrush@Cliff_84:
 			Template: 84
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.R
+				Start: Cliff.R
+				End: Cliff.R
 				Points: 0,0, 1,0, 2,0
-		MultiBrush@CliffSet_85:
+		MultiBrush@Cliff_85:
 			Template: 85
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.R
+				Start: Cliff.R
+				End: Cliff.R
 				Points: 0,0, 1,0
-		MultiBrush@CliffSet_86:
+		MultiBrush@Cliff_86:
 			Template: 86
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.R
+				Start: Cliff.U
+				End: Cliff.R
 				Points: 0,2, 0,1, 0,0, 1,0, 2,0
-		MultiBrush@CliffSet_87:
+		MultiBrush@Cliff_87:
 			Template: 87
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.R
+				Start: Cliff.U
+				End: Cliff.R
 				Points: 0,2, 0,1, 1,1, 1,0, 2,0
-		MultiBrush@CliffSet_88:
+		MultiBrush@Cliff_88:
 			Template: 88
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.R
+				Start: Cliff.U
+				End: Cliff.R
 				Points: 0,1, 0,0, 1,0
-		MultiBrush@CliffSet_89:
+		MultiBrush@Cliff_89:
 			Template: 89
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.R
+				Start: Cliff.U
+				End: Cliff.R
 				Points: 0,1, 0,0, 1,0
-		MultiBrush@CliffSet_90:
+		MultiBrush@Cliff_90:
 			Template: 90
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.U
+				Start: Cliff.U
+				End: Cliff.U
 				Points: 0,2, 0,1, 0,0, 1,0
-		MultiBrush@CliffSet_91:
+		MultiBrush@Cliff_91:
 			Template: 91
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.U
+				Start: Cliff.R
+				End: Cliff.U
 				Points: 0,1, 1,1, 1,0
-		MultiBrush@CliffSet_92:
+		MultiBrush@Cliff_92:
 			Template: 92
 			Segment:
-				Start: CliffSet.R
-				End: CliffSet.U
+				Start: Cliff.R
+				End: Cliff.U
 				Points: 0,0
-		MultiBrush@CliffSet_93_CornerLD:
+		MultiBrush@Cliff_93_CornerLD:
 			Template: 93
 			Segment:
-				Start: CliffSet.MaybeCorner.L
-				End: CliffSet.MaybeCorner.D
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.L
+				End: Cliff.MaybeCorner.D
+				Inner: Cliff
 				Points: 1,1
-		MultiBrush@CliffSet_93_CornerL:
+		MultiBrush@Cliff_93_CornerL:
 			Template: 93
 			Segment:
-				Start: CliffSet.MaybeCorner.L
-				End: CliffSet.D
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.L
+				End: Cliff.D
+				Inner: Cliff
 				Points: 1,1
-		MultiBrush@CliffSet_93_CornerD:
+		MultiBrush@Cliff_93_CornerD:
 			Template: 93
 			Segment:
-				Start: CliffSet.L
-				End: CliffSet.MaybeCorner.D
-				Inner: CliffSet
+				Start: Cliff.L
+				End: Cliff.MaybeCorner.D
+				Inner: Cliff
 				Points: 1,1
-		MultiBrush@CliffSet_94:
+		MultiBrush@Cliff_94:
 			Template: 94
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.U
+				Start: Cliff.U
+				End: Cliff.U
 				Points: 0,2, 0,1, 0,0
-		MultiBrush@CliffSet_95:
+		MultiBrush@Cliff_95:
 			Template: 95
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.U
+				Start: Cliff.U
+				End: Cliff.U
 				Points: 0,2, 0,1, 0,0
-		MultiBrush@CliffSet_96:
+		MultiBrush@Cliff_96:
 			Template: 96
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.U
+				Start: Cliff.U
+				End: Cliff.U
 				Points: 0,2, 0,1, 0,0
-		MultiBrush@CliffSet_97:
+		MultiBrush@Cliff_97:
 			Template: 97
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.U
+				Start: Cliff.U
+				End: Cliff.U
 				Points: 0,1, 0,0
-		MultiBrush@CliffSet_98:
+		MultiBrush@Cliff_98:
 			Template: 98
 			Segment:
-				Start: CliffSet.U
-				End: CliffSet.L
+				Start: Cliff.U
+				End: Cliff.L
 				Points: 0,1
-		MultiBrush@CliffSet_99:
+		MultiBrush@Cliff_99:
 			Template: 99
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.R
+				Start: Cliff.D
+				End: Cliff.R
 				Points: 1,0
-		MultiBrush@CliffSet_Interface_FromCornerD:
+		MultiBrush@Cliff_Interface_FromCornerD:
 			Segment:
-				Start: CliffSet.D
-				End: CliffSet.MaybeCorner.D
-				Inner: CliffSet
+				Start: Cliff.D
+				End: Cliff.MaybeCorner.D
+				Inner: Cliff
 				Points: 0,0
-		MultiBrush@CliffSet_Interface_ToCornerL:
+		MultiBrush@Cliff_Interface_ToCornerL:
 			Segment:
-				Start: CliffSet.MaybeCorner.L
-				End: CliffSet.L
-				Inner: CliffSet
+				Start: Cliff.MaybeCorner.L
+				End: Cliff.L
+				Inner: Cliff
 				Points: 0,0
-		MultiBrush@ShorePiece_108:
+		MultiBrush@Shore_108:
 			Template: 108
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.L
+				Start: Shore.L
+				End: Shore.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@ShorePiece_109:
+		MultiBrush@Shore_109:
 			Template: 109
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.L
+				Start: Shore.L
+				End: Shore.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@ShorePiece_110:
+		MultiBrush@Shore_110:
 			Template: 110
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.L
+				Start: Shore.L
+				End: Shore.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@ShorePiece_111:
+		MultiBrush@Shore_111:
 			Template: 111
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.L
+				Start: Shore.L
+				End: Shore.L
 				Points: 1,1, 0,1
-		MultiBrush@ShorePiece_112:
+		MultiBrush@Shore_112:
 			Template: 112
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.L
+				Start: Shore.L
+				End: Shore.L
 				Points: 2,2, 1,2, 1,1, 0,1
-		MultiBrush@ShorePiece_113:
+		MultiBrush@Shore_113:
 			Template: 113
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.L
+				Start: Shore.L
+				End: Shore.L
 				Points: 2,1, 1,1, 1,2, 0,2
-		MultiBrush@ShorePiece_114:
+		MultiBrush@Shore_114:
 			Template: 114
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.L
+				Start: Shore.D
+				End: Shore.L
 				Points: 1,0, 1,1, 0,1
-		MultiBrush@ShorePiece_115:
+		MultiBrush@Shore_115:
 			Template: 115
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.L
+				Start: Shore.D
+				End: Shore.L
 				Points: 1,0, 1,1, 0,1
-		MultiBrush@ShorePiece_116:
+		MultiBrush@Shore_116:
 			Template: 116
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@ShorePiece_117:
+		MultiBrush@Shore_117:
 			Template: 117
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@ShorePiece_118:
+		MultiBrush@Shore_118:
 			Template: 118
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@ShorePiece_119:
+		MultiBrush@Shore_119:
 			Template: 119
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 1,0, 1,1
-		MultiBrush@ShorePiece_120:
+		MultiBrush@Shore_120:
 			Template: 120
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 2,0, 2,1, 1,1, 1,2
-		MultiBrush@ShorePiece_121:
+		MultiBrush@Shore_121:
 			Template: 121
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 1,0, 1,1, 1,2, 2,2
-		MultiBrush@ShorePiece_122:
+		MultiBrush@Shore_122:
 			Template: 122
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.D
+				Start: Shore.R
+				End: Shore.D
 				Points: 0,1, 1,1, 1,2
-		MultiBrush@ShorePiece_123:
+		MultiBrush@Shore_123:
 			Template: 123
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.D
+				Start: Shore.R
+				End: Shore.D
 				Points: 0,1, 1,1, 1,2
-		MultiBrush@ShorePiece_124:
+		MultiBrush@Shore_124:
 			Template: 124
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.R
+				Start: Shore.R
+				End: Shore.R
 				Points: 0,1, 1,1, 2,1
-		MultiBrush@ShorePiece_125:
+		MultiBrush@Shore_125:
 			Template: 125
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.R
+				Start: Shore.R
+				End: Shore.R
 				Points: 0,1, 1,1, 2,1
-		MultiBrush@ShorePiece_126:
+		MultiBrush@Shore_126:
 			Template: 126
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.R
+				Start: Shore.R
+				End: Shore.R
 				Points: 0,1, 1,1, 2,1
-		MultiBrush@ShorePiece_127:
+		MultiBrush@Shore_127:
 			Template: 127
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.R
+				Start: Shore.R
+				End: Shore.R
 				Points: 0,1, 1,1
-		MultiBrush@ShorePiece_128:
+		MultiBrush@Shore_128:
 			Template: 128
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.R
+				Start: Shore.R
+				End: Shore.R
 				Points: 0,2, 1,2, 1,1, 2,1
-		MultiBrush@ShorePiece_129:
+		MultiBrush@Shore_129:
 			Template: 129
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.R
+				Start: Shore.R
+				End: Shore.R
 				Points: 0,1, 1,1, 1,2, 2,2
-		MultiBrush@ShorePiece_130:
+		MultiBrush@Shore_130:
 			Template: 130
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.R
+				Start: Shore.U
+				End: Shore.R
 				Points: 1,2, 1,1, 2,1
-		MultiBrush@ShorePiece_131:
+		MultiBrush@Shore_131:
 			Template: 131
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.R
+				Start: Shore.U
+				End: Shore.R
 				Points: 1,2, 1,1, 2,1
-		MultiBrush@ShorePiece_132:
+		MultiBrush@Shore_132:
 			Template: 132
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.U
+				Start: Shore.U
+				End: Shore.U
 				Points: 1,2, 1,1, 1,0
-		MultiBrush@ShorePiece_133:
+		MultiBrush@Shore_133:
 			Template: 133
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.U
+				Start: Shore.U
+				End: Shore.U
 				Points: 1,2, 1,1, 1,0
-		MultiBrush@ShorePiece_134:
+		MultiBrush@Shore_134:
 			Template: 134
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.U
+				Start: Shore.U
+				End: Shore.U
 				Points: 1,2, 1,1, 1,0
-		MultiBrush@ShorePiece_135:
+		MultiBrush@Shore_135:
 			Template: 135
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.U
+				Start: Shore.U
+				End: Shore.U
 				Points: 1,1, 1,0
-		MultiBrush@ShorePiece_136:
+		MultiBrush@Shore_136:
 			Template: 136
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.U
+				Start: Shore.U
+				End: Shore.U
 				Points: 2,2, 2,1, 1,1, 1,0
-		MultiBrush@ShorePiece_137:
+		MultiBrush@Shore_137:
 			Template: 137
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.U
+				Start: Shore.U
+				End: Shore.U
 				Points: 1,2, 1,1, 2,1, 2,0
-		MultiBrush@ShorePiece_138:
+		MultiBrush@Shore_138:
 			Template: 138
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.U
+				Start: Shore.L
+				End: Shore.U
 				Points: 2,1, 1,1, 1,0
-		MultiBrush@ShorePiece_139:
+		MultiBrush@Shore_139:
 			Template: 139
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.U
+				Start: Shore.L
+				End: Shore.U
 				Points: 2,1, 1,1, 1,0
-		MultiBrush@ShorePiece_140:
+		MultiBrush@Shore_140:
 			Template: 140
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.D
+				Start: Shore.L
+				End: Shore.D
 				Points: 2,1, 1,1, 1,2
-		MultiBrush@ShorePiece_141:
+		MultiBrush@Shore_141:
 			Template: 141
 			Segment:
-				Start: ShorePiece.L
-				End: ShorePiece.D
+				Start: Shore.L
+				End: Shore.D
 				Points: 2,1, 1,1, 1,2
-		MultiBrush@ShorePiece_142:
+		MultiBrush@Shore_142:
 			Template: 142
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.R
+				Start: Shore.D
+				End: Shore.R
 				Points: 1,0, 1,1, 2,1
-		MultiBrush@ShorePiece_143:
+		MultiBrush@Shore_143:
 			Template: 143
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.R
+				Start: Shore.D
+				End: Shore.R
 				Points: 1,0, 1,1, 2,1
-		MultiBrush@ShorePiece_144:
+		MultiBrush@Shore_144:
 			Template: 144
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.U
+				Start: Shore.R
+				End: Shore.U
 				Points: 0,1, 1,1, 1,0
-		MultiBrush@ShorePiece_145:
+		MultiBrush@Shore_145:
 			Template: 145
 			Segment:
-				Start: ShorePiece.R
-				End: ShorePiece.U
+				Start: Shore.R
+				End: Shore.U
 				Points: 0,1, 1,1, 1,0
-		MultiBrush@ShorePiece_146:
+		MultiBrush@Shore_146:
 			Template: 146
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.L
+				Start: Shore.U
+				End: Shore.L
 				Points: 1,2, 1,1, 0,1
-		MultiBrush@ShorePiece_147:
+		MultiBrush@Shore_147:
 			Template: 147
 			Segment:
-				Start: ShorePiece.U
-				End: ShorePiece.L
+				Start: Shore.U
+				End: Shore.L
 				Points: 1,2, 1,1, 0,1
-		MultiBrush@ShorePiece_148:
+		MultiBrush@Shore_148:
 			Template: 148
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 5,1, 5,2, 4,2, 3,2, 2,2, 1,2, 1,3, 1,4
-		MultiBrush@ShorePiece_149:
+		MultiBrush@Shore_149:
 			Template: 149
 			Segment:
-				Start: ShorePiece.D
-				End: ShorePiece.D
+				Start: Shore.D
+				End: Shore.D
 				Points: 8,2, 8,3, 8,4, 7,4, 6,4, 5,4, 4,4, 4,3, 3,3, 3,4, 3,5
-		MultiBrush@CliffWaterPieces_167:
+		MultiBrush@WaterCliff_167:
 			Template: 167
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.U
+				Start: WaterCliff.L
+				End: WaterCliff.U
 				Points: 2,2, 1,2, 1,1, 0,1, 0,0
-		MultiBrush@CliffWaterPieces_168:
+		MultiBrush@WaterCliff_168:
 			Template: 168
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.U
+				Start: WaterCliff.L
+				End: WaterCliff.U
 				Points: 1,1, 0,1, 0,0
-		MultiBrush@CliffWaterPieces_169:
+		MultiBrush@WaterCliff_169:
 			Template: 169
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.L
+				Start: WaterCliff.L
+				End: WaterCliff.L
 				Points: 2,2, 1,2, 1,1, 0,1
-		MultiBrush@CliffWaterPieces_170:
+		MultiBrush@WaterCliff_170:
 			Template: 170
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.L
+				Start: WaterCliff.L
+				End: WaterCliff.L
 				Points: 2,2, 1,2, 1,1, 0,1
-		MultiBrush@CliffWaterPieces_171:
+		MultiBrush@WaterCliff_171:
 			Template: 171
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.L
+				Start: WaterCliff.L
+				End: WaterCliff.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@CliffWaterPieces_172:
+		MultiBrush@WaterCliff_172:
 			Template: 172
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.L
+				Start: WaterCliff.L
+				End: WaterCliff.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@CliffWaterPieces_173:
+		MultiBrush@WaterCliff_173:
 			Template: 173
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.L
+				Start: WaterCliff.L
+				End: WaterCliff.L
 				Points: 2,1, 1,1, 0,1
-		MultiBrush@CliffWaterPieces_174:
+		MultiBrush@WaterCliff_174:
 			Template: 174
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.L
+				Start: WaterCliff.L
+				End: WaterCliff.L
 				Points: 1,1, 0,1
-		MultiBrush@CliffWaterPieces_175:
+		MultiBrush@WaterCliff_175:
 			Template: 175
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.D
-				End: CliffWaterPieces.MaybeCorner.L
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.D
+				End: WaterCliff.MaybeCorner.L
+				Inner: WaterCliff
 				Points: 2,0, 1,0, 1,1, 0,1, 0,2
-		MultiBrush@CliffWaterPieces_176:
+		MultiBrush@WaterCliff_176:
 			Template: 176
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.D
-				End: CliffWaterPieces.MaybeCorner.L
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.D
+				End: WaterCliff.MaybeCorner.L
+				Inner: WaterCliff
 				Points: 2,0, 1,0, 1,1, 0,1, 0,2
-		MultiBrush@CliffWaterPieces_177:
+		MultiBrush@WaterCliff_177:
 			Template: 177
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.D
-				End: CliffWaterPieces.MaybeCorner.L
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.D
+				End: WaterCliff.MaybeCorner.L
+				Inner: WaterCliff
 				Points: 2,0, 1,0, 1,1, 0,1, 0,2
-		MultiBrush@CliffWaterPieces_178:
+		MultiBrush@WaterCliff_178:
 			Template: 178
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.D
-				End: CliffWaterPieces.MaybeCorner.L
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.D
+				End: WaterCliff.MaybeCorner.L
+				Inner: WaterCliff
 				Points: 1,0, 0,0, 0,1
-		MultiBrush@CliffWaterPieces_179:
+		MultiBrush@WaterCliff_179:
 			Template: 179
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.D
-				End: CliffWaterPieces.MaybeCorner.L
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.D
+				End: WaterCliff.MaybeCorner.L
+				Inner: WaterCliff
 				Points: 1,0, 0,0, 0,1
-		MultiBrush@CliffWaterPieces_180:
+		MultiBrush@WaterCliff_180:
 			Template: 180
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.D
-				End: CliffWaterPieces.MaybeCorner.L
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.D
+				End: WaterCliff.MaybeCorner.L
+				Inner: WaterCliff
 				Points: 1,0, 0,0, 0,1
-		MultiBrush@CliffWaterPieces_181:
+		MultiBrush@WaterCliff_181:
 			Template: 181
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.D
+				Start: WaterCliff.D
+				End: WaterCliff.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@CliffWaterPieces_182:
+		MultiBrush@WaterCliff_182:
 			Template: 182
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.D
+				Start: WaterCliff.D
+				End: WaterCliff.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@CliffWaterPieces_183:
+		MultiBrush@WaterCliff_183:
 			Template: 183
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.D
+				Start: WaterCliff.D
+				End: WaterCliff.D
 				Points: 1,0, 1,1, 1,2
-		MultiBrush@CliffWaterPieces_184:
+		MultiBrush@WaterCliff_184:
 			Template: 184
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.D
+				Start: WaterCliff.D
+				End: WaterCliff.D
 				Points: 1,0, 1,1
-		MultiBrush@CliffWaterPieces_185:
+		MultiBrush@WaterCliff_185:
 			Template: 185
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.D
+				Start: WaterCliff.D
+				End: WaterCliff.D
 				Points: 1,0, 1,1, 2,1, 2,2
-		MultiBrush@CliffWaterPieces_186:
+		MultiBrush@WaterCliff_186:
 			Template: 186
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.D
+				Start: WaterCliff.D
+				End: WaterCliff.D
 				Points: 1,0, 1,1, 2,1, 2,2
-		MultiBrush@CliffWaterPieces_187:
+		MultiBrush@WaterCliff_187:
 			Template: 187
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.D
+				Start: WaterCliff.R
+				End: WaterCliff.D
 				Points: 0,0, 1,0, 1,1, 2,1, 2,2
-		MultiBrush@CliffWaterPieces_188:
+		MultiBrush@WaterCliff_188:
 			Template: 188
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.D
+				Start: WaterCliff.R
+				End: WaterCliff.D
 				Points: 0,0, 1,0, 1,1
-		MultiBrush@CliffWaterPieces_82:
+		MultiBrush@WaterCliff_82:
 			Template: 82
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.R
+				Start: WaterCliff.R
+				End: WaterCliff.R
 				Points: 0,0, 1,0, 2,0
-		MultiBrush@CliffWaterPieces_83:
+		MultiBrush@WaterCliff_83:
 			Template: 83
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.R
+				Start: WaterCliff.R
+				End: WaterCliff.R
 				Points: 0,0, 1,0, 2,0
-		MultiBrush@CliffWaterPieces_84:
+		MultiBrush@WaterCliff_84:
 			Template: 84
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.R
+				Start: WaterCliff.R
+				End: WaterCliff.R
 				Points: 0,0, 1,0, 2,0
-		MultiBrush@CliffWaterPieces_85:
+		MultiBrush@WaterCliff_85:
 			Template: 85
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.R
+				Start: WaterCliff.R
+				End: WaterCliff.R
 				Points: 0,0, 1,0
-		MultiBrush@CliffWaterPieces_86:
+		MultiBrush@WaterCliff_86:
 			Template: 86
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.R
+				Start: WaterCliff.U
+				End: WaterCliff.R
 				Points: 0,2, 0,1, 0,0, 1,0, 2,0
-		MultiBrush@CliffWaterPieces_87:
+		MultiBrush@WaterCliff_87:
 			Template: 87
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.R
+				Start: WaterCliff.U
+				End: WaterCliff.R
 				Points: 0,2, 0,1, 1,1, 1,0, 2,0
-		MultiBrush@CliffWaterPieces_88:
+		MultiBrush@WaterCliff_88:
 			Template: 88
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.R
+				Start: WaterCliff.U
+				End: WaterCliff.R
 				Points: 0,1, 0,0, 1,0
-		MultiBrush@CliffWaterPieces_89:
+		MultiBrush@WaterCliff_89:
 			Template: 89
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.R
+				Start: WaterCliff.U
+				End: WaterCliff.R
 				Points: 0,1, 0,0, 1,0
-		MultiBrush@CliffWaterPieces_90:
+		MultiBrush@WaterCliff_90:
 			Template: 90
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.U
+				Start: WaterCliff.U
+				End: WaterCliff.U
 				Points: 0,2, 0,1, 0,0, 1,0
-		MultiBrush@CliffWaterPieces_91:
+		MultiBrush@WaterCliff_91:
 			Template: 91
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.U
+				Start: WaterCliff.R
+				End: WaterCliff.U
 				Points: 0,1, 1,1, 1,0
-		MultiBrush@CliffWaterPieces_92:
+		MultiBrush@WaterCliff_92:
 			Template: 92
 			Segment:
-				Start: CliffWaterPieces.R
-				End: CliffWaterPieces.U
+				Start: WaterCliff.R
+				End: WaterCliff.U
 				Points: 0,0
-		MultiBrush@CliffWaterPieces_93_CornerLD:
+		MultiBrush@WaterCliff_93_CornerLD:
 			Template: 93
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.L
-				End: CliffWaterPieces.MaybeCorner.D
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.L
+				End: WaterCliff.MaybeCorner.D
+				Inner: WaterCliff
 				Points: 1,1
-		MultiBrush@CliffWaterPieces_93_CornerL:
+		MultiBrush@WaterCliff_93_CornerL:
 			Template: 93
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.L
-				End: CliffWaterPieces.D
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.L
+				End: WaterCliff.D
+				Inner: WaterCliff
 				Points: 1,1
-		MultiBrush@CliffWaterPieces_93_CornerD:
+		MultiBrush@WaterCliff_93_CornerD:
 			Template: 93
 			Segment:
-				Start: CliffWaterPieces.L
-				End: CliffWaterPieces.MaybeCorner.D
-				Inner: CliffWaterPieces
+				Start: WaterCliff.L
+				End: WaterCliff.MaybeCorner.D
+				Inner: WaterCliff
 				Points: 1,1
-		MultiBrush@CliffWaterPieces_94:
+		MultiBrush@WaterCliff_94:
 			Template: 94
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.U
+				Start: WaterCliff.U
+				End: WaterCliff.U
 				Points: 0,2, 0,1, 0,0
-		MultiBrush@CliffWaterPieces_95:
+		MultiBrush@WaterCliff_95:
 			Template: 95
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.U
+				Start: WaterCliff.U
+				End: WaterCliff.U
 				Points: 0,2, 0,1, 0,0
-		MultiBrush@CliffWaterPieces_96:
+		MultiBrush@WaterCliff_96:
 			Template: 96
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.U
+				Start: WaterCliff.U
+				End: WaterCliff.U
 				Points: 0,2, 0,1, 0,0
-		MultiBrush@CliffWaterPieces_97:
+		MultiBrush@WaterCliff_97:
 			Template: 97
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.U
+				Start: WaterCliff.U
+				End: WaterCliff.U
 				Points: 0,1, 0,0
-		MultiBrush@CliffWaterPieces_98:
+		MultiBrush@WaterCliff_98:
 			Template: 98
 			Segment:
-				Start: CliffWaterPieces.U
-				End: CliffWaterPieces.L
+				Start: WaterCliff.U
+				End: WaterCliff.L
 				Points: 0,1
-		MultiBrush@CliffWaterPieces_99:
+		MultiBrush@WaterCliff_99:
 			Template: 99
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.R
+				Start: WaterCliff.D
+				End: WaterCliff.R
 				Points: 1,0
-		MultiBrush@CliffWaterPieces_Interface_FromCornerD:
+		MultiBrush@WaterCliff_Interface_FromCornerD:
 			Segment:
-				Start: CliffWaterPieces.D
-				End: CliffWaterPieces.MaybeCorner.D
-				Inner: CliffWaterPieces
+				Start: WaterCliff.D
+				End: WaterCliff.MaybeCorner.D
+				Inner: WaterCliff
 				Points: 0,0
-		MultiBrush@CliffWaterPieces_Interface_ToCornerL:
+		MultiBrush@WaterCliff_Interface_ToCornerL:
 			Segment:
-				Start: CliffWaterPieces.MaybeCorner.L
-				End: CliffWaterPieces.L
-				Inner: CliffWaterPieces
+				Start: WaterCliff.MaybeCorner.L
+				End: WaterCliff.L
+				Inner: WaterCliff
 				Points: 0,0
-		MultiBrush@CliffSet_403:
+		MultiBrush@Cliff_403:
 			Template: 403
 			Segment:
 				Start: Clear.L
-				Inner: CliffSet
-				End: CliffSet.L
+				Inner: Cliff
+				End: Cliff.L
 				Points: 3,2, 2,2, 1,2, 0,2
-		MultiBrush@CliffSet_404:
+		MultiBrush@Cliff_404:
 			Template: 404
 			Segment:
-				Start: CliffSet.L
-				Inner: CliffSet
+				Start: Cliff.L
+				Inner: Cliff
 				End: Clear.L
 				Points: 3,2, 2,2, 1,2, 0,2
-		MultiBrush@CliffSet_405:
+		MultiBrush@Cliff_405:
 			Template: 405
 			Segment:
 				Start: Clear.D
-				Inner: CliffSet
-				End: CliffSet.D
+				Inner: Cliff
+				End: Cliff.D
 				Points: 2,0, 2,1, 2,2, 2,3
-		MultiBrush@CliffSet_406:
+		MultiBrush@Cliff_406:
 			Template: 406
 			Segment:
-				Start: CliffSet.D
-				Inner: CliffSet
+				Start: Cliff.D
+				Inner: Cliff
 				End: Clear.D
 				Points: 2,0, 2,1, 2,2, 2,3
-		MultiBrush@CliffSet_407:
+		MultiBrush@Cliff_407:
 			Template: 407
 			Segment:
-				Start: CliffSet.R
-				Inner: CliffSet
+				Start: Cliff.R
+				Inner: Cliff
 				End: Clear.R
 				Points: 0,2, 1,2, 2,2, 3,2
-		MultiBrush@CliffSet_408_409:
+		MultiBrush@Cliff_408_409:
 			Template: 408
 			Template: 409
 				Offset: 1,2
 			Segment:
 				Start: Clear.R
-				Inner: CliffSet
-				End: CliffSet.R
+				Inner: Cliff
+				End: Cliff.R
 				Points: 0,2, 1,2, 2,2, 3,2
-		MultiBrush@CliffSet_410:
+		MultiBrush@Cliff_410:
 			Template: 410
 			Segment:
 				Start: Clear.U
-				Inner: CliffSet
-				End: CliffSet.U
+				Inner: Cliff
+				End: Cliff.U
 				Points: 2,3, 2,2, 2,1, 2,0
-		MultiBrush@CliffSet_411_412:
+		MultiBrush@Cliff_411_412:
 			Template: 411
 			Template: 412
 				Offset: 2,1
 			Segment:
-				Start: CliffSet.U
-				Inner: CliffSet
+				Start: Cliff.U
+				Inner: Cliff
 				End: Clear.U
 				Points: 2,3, 2,2, 2,1, 2,0
 
