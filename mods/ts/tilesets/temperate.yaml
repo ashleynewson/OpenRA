@@ -21275,3 +21275,115 @@ MultiBrushCollections:
 				End: CliffWaterPieces.L
 				Inner: CliffWaterPieces
 				Points: 0,0
+		MultiBrush@CliffSet_403:
+			Template: 403
+			Segment:
+				Start: Clear.L
+				Inner: CliffSet
+				End: CliffSet.L
+				Points: 3,2, 2,2, 1,2, 0,2
+		MultiBrush@CliffSet_404:
+			Template: 404
+			Segment:
+				Start: CliffSet.L
+				Inner: CliffSet
+				End: Clear.L
+				Points: 3,2, 2,2, 1,2, 0,2
+		MultiBrush@CliffSet_405:
+			Template: 405
+			Segment:
+				Start: Clear.D
+				Inner: CliffSet
+				End: CliffSet.D
+				Points: 2,0, 2,1, 2,2, 2,3
+		MultiBrush@CliffSet_406:
+			Template: 406
+			Segment:
+				Start: CliffSet.D
+				Inner: CliffSet
+				End: Clear.D
+				Points: 2,0, 2,1, 2,2, 2,3
+		MultiBrush@CliffSet_407:
+			Template: 407
+			Segment:
+				Start: CliffSet.R
+				Inner: CliffSet
+				End: Clear.R
+				Points: 0,2, 1,2, 2,2, 3,2
+		MultiBrush@CliffSet_408_409:
+			Template: 408
+			Template: 409
+				Offset: 1,2
+			Segment:
+				Start: Clear.R
+				Inner: CliffSet
+				End: CliffSet.R
+				Points: 0,2, 1,2, 2,2, 3,2
+		MultiBrush@CliffSet_410:
+			Template: 410
+			Segment:
+				Start: Clear.U
+				Inner: CliffSet
+				End: CliffSet.U
+				Points: 2,3, 2,2, 2,1, 2,0
+		MultiBrush@CliffSet_411_412:
+			Template: 411
+			Template: 412
+				Offset: 2,1
+			Segment:
+				Start: CliffSet.U
+				Inner: CliffSet
+				End: Clear.U
+				Points: 2,3, 2,2, 2,1, 2,0
+
+	Trees:
+		MultiBrush@tree01:
+			Actor: tree01
+		MultiBrush@tree02:
+			Actor: tree02
+		MultiBrush@tree03:
+			Actor: tree03
+		MultiBrush@tree04:
+			Actor: tree04
+		MultiBrush@tree05:
+			Actor: tree05
+		MultiBrush@tree06:
+			Actor: tree06
+		MultiBrush@tree07:
+			Actor: tree07
+		MultiBrush@tree08:
+			Actor: tree08
+		MultiBrush@tree09:
+			Actor: tree09
+		MultiBrush@tree10:
+			Actor: tree10
+		MultiBrush@tree11:
+			Actor: tree11
+		MultiBrush@tree12:
+			Actor: tree12
+		MultiBrush@tree13:
+			Actor: tree13
+		MultiBrush@tree14:
+			Actor: tree14
+		MultiBrush@tree15:
+			Actor: tree15
+		MultiBrush@tree16:
+			Actor: tree16
+		MultiBrush@tree17:
+			Actor: tree17
+		MultiBrush@tree18:
+			Actor: tree18
+		MultiBrush@tree19:
+			Actor: tree19
+		MultiBrush@tree20:
+			Actor: tree20
+		MultiBrush@tree21:
+			Actor: tree21
+		MultiBrush@tree22:
+			Actor: tree22
+		MultiBrush@tree23:
+			Actor: tree23
+		MultiBrush@tree24:
+			Actor: tree24
+		MultiBrush@tree25:
+			Actor: tree25
