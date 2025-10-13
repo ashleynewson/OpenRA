@@ -21335,6 +21335,98 @@ MultiBrushCollections:
 				Inner: Cliff
 				End: Clear.U
 				Points: 2,3, 2,2, 2,1, 2,0
+		MultiBrush@Shore_WaterCliff_61_97_132_135_403:
+			Template: 61
+				Offset: 2,1
+			Template: 97
+				Offset: 2,0
+			Template: 132
+				Offset: 0,1
+			Template: 135
+			Template: 403
+				Offset: 3,0
+			Segment:
+				Start: Shore.U
+				End: WaterCliff.U
+				Points: 1,3, 1,2, 2,2, 2,1, 2,0
+		MultiBrush@Shore_WaterCliff_111_192_405:
+			Template: 111
+				Offset: 3,2
+			Template: 192
+				Offset: 1,3
+			Template: 405
+			Segment:
+				Start: Shore.L
+				End: WaterCliff.MaybeCorner.L
+				Points: 4,3, 3,3, 2,3, 2,4, 1,4
+		MultiBrush@Shore_WaterCliff_119_188_408_409:
+			Template: 119
+				Offset: 3,1
+			Template: 188
+				Offset: 3,2
+			Template: 408
+			Template: 409
+				Offset: 1,2
+			Segment:
+				Start: Shore.D
+				End: WaterCliff.D
+				Points: 4,1, 4,2, 4,3
+		MultiBrush@Shore_WaterCliff_88_127_410:
+			Template: 88
+				Offset: 2,0
+			Template: 127
+			Template: 410
+				Offset: 0,1
+			Segment:
+				Start: Shore.R
+				End: WaterCliff.R
+				Points: 0,1, 1,1, 2,1, 2,0, 3,0
+		MultiBrush@Shore_WaterCliff_119_193_404:
+			Template: 119
+				Offset: 2,3
+			Template: 193
+				Offset: 3,1
+			Template: 404
+			Segment:
+				Start: WaterCliff.MaybeCorner.D
+				End: Shore.D
+				Points: 4,1, 4,2, 3,2, 3,3, 3,4
+		MultiBrush@Shore_WaterCliff_81_85_124_127_406:
+			Template: 81
+				Offset: 1,2
+			Template: 85
+				Offset: 0,2
+			Template: 124
+				Offset: 1,0
+			Template: 127
+			Template: 406
+				Offset: 0,3
+			Segment:
+				Start: WaterCliff.R
+				End: Shore.R
+				Points: 0,2, 1,2, 2,2, 2,1, 3,1
+		MultiBrush@Shore_WaterCliff_88_135_407:
+			Template: 88
+				Offset: 0,2
+			Template: 135
+			Template: 407
+				Offset: 1,0
+			Segment:
+				Start: WaterCliff.U
+				End: Shore.U
+				Points: 0,3, 0,2, 1,2, 1,1, 1,0
+		MultiBrush@Shore_WaterCliff_111_168_411_412:
+			Template: 111
+				Offset: 1,3
+			Template: 168
+				Offset: 2,3
+			Template: 411
+			Template: 412
+				Offset: 2,1
+			Segment:
+				Start: WaterCliff.L
+				End: Shore.L
+				Points: 3,4, 2,4, 1,4
 
 	Trees:
 		MultiBrush@tree01:
