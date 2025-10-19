@@ -934,9 +934,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>Wrapper around MultiBrush.Paint for path tiling results.</summary>
 		public void PaintTiling(
 			MersenneTwister random,
-			MultiBrush brush)
+			MultiBrush brush,
+			short? heightOffset = null)
 		{
-			brush.Paint(Map, ActorPlans, CPos.Zero, null, MultiBrush.Replaceability.Any, random);
+			brush.Paint(Map, ActorPlans, CPos.Zero, heightOffset, MultiBrush.Replaceability.Any, random);
 		}
 
 		/// <summary>

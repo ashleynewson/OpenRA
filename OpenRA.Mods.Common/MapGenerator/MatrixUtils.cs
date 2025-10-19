@@ -653,6 +653,33 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Apply an aggregator over submatrices of input with a given size and store it to an
+		/// output, returning the output.
+		/// </summary>
+		public static Matrix<R> KernelAggregate<T, R>(
+			Matrix<T> input,
+			Matrix<R> output,
+			int2 kernelSize,
+			int2 kernelCenter,
+			Func<Matrix<T>, R> aggregator)
+		{
+			var submatrix = new Matrix<T>(kernelSize);
+			for (var y = 0; y < output.Size.Y; y++)
+			{
+				for (var x = 0; x < output.Size.X; x++)
+				{
+					for (var oy = 0; oy < kernelSize.Y; oy++)
+						for (var ox = 0; ox < kernelSize.X; ox++)
+							submatrix[ox, oy] = input[input.ClampXY(new int2(x + ox, y + oy) - kernelCenter)];
+
+					output[x, y] = aggregator(submatrix);
+				}
+			}
+
+			return output;
+		}
+
+		/// <summary>
 		/// Apply a binomial filter-based blur to a matrix, returning a new matrix. The result is
 		/// somewhat similar to a Gaussian blur. Maximum supported radius is MaxBinomialKernelRadius.
 		/// </summary>
@@ -708,6 +735,47 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					output[cx, cy] = (int)(sumOfSquares / samples);
 				}
+
+			return output;
+		}
+
+		/// <summary>
+		/// Determines the strength and consistency of a slope within a given radius.
+		/// Note that this isn't the gradient between both ends of the radius, but considers all
+		/// points within the radius. A high-range input should be provided to maximum output
+		/// precision.
+		/// </summary>
+		public static Matrix<int> SlopeStrength(Matrix<int> input, int radius)
+		{
+			var output = new Matrix<int>(input.Size);
+			for (var cy = 0; cy < output.Size.Y; cy++)
+			{
+				for (var cx = 0; cx < output.Size.X; cx++)
+				{
+					var samples = 0;
+					var dx = 0;
+					var dy = 0;
+					for (var ry = -radius; ry <= radius; ry++)
+						for (var rx = -radius; rx <= radius; rx++)
+						{
+							var y = cy + ry;
+							var x = cx + rx;
+							if (!input.ContainsXY(x, y))
+								continue;
+							var value = input[x, y];
+
+							if (rx != 0)
+								dx += value / rx;
+
+							if (ry != 0)
+								dy += value / ry;
+
+							samples++;
+						}
+
+					output[cx, cy] = (Math.Abs(dx) + Math.Abs(dy)) / samples;
+				}
+			}
 
 			return output;
 		}
