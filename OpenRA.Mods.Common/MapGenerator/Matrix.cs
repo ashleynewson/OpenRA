@@ -192,5 +192,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 				matrix.Data[i] = func(a.Data[i], b.Data[i]);
 			return matrix;
 		}
+
+		/// <summary>
+		/// Copy the underlying data from one matrix to another similar matrix.
+		/// </summary>
+		public void CopyTo(Matrix<T> destination)
+		{
+			if (Size != destination.Size)
+				throw new ArgumentException("source and destination have different size");
+			Data.CopyTo(destination.Data, 0);
+		}
 	}
 }

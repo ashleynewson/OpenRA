@@ -647,9 +647,8 @@ namespace OpenRA.Mods.Cnc.Traits
 				rampMask,
 				targetHeights,
 				(m, t) => m ? t : (byte)0);
-			MatrixUtils.EnumDump2d("targetHeights1", targetHeights.Map(v => (int)v));
-			targetHeights = rampTiler.ConstrainCornerHeights(targetHeights, rampMask, RampTiler.AdjustmentMode.LowerMiddle);
-			MatrixUtils.EnumDump2d("targetHeights2", targetHeights.Map(v => (int)v));
+			// targetHeights = rampTiler.ConstrainCornerHeights(targetHeights, rampMask, RampTiler.AdjustmentMode.LowerMiddle);
+			// MatrixUtils.EnumDump2d("targetHeights2", heightMap.Target.Map(v => (int)v));
 
 			var coast = MatrixUtils.BordersToPoints(landPlan);
 			List<TilingPath> coastPaths;
@@ -693,18 +692,31 @@ namespace OpenRA.Mods.Cnc.Traits
 				[new MultiBrush().WithTemplate(map, param.WaterTile, CVec.Zero)],
 				null)
 					?? throw new MapGenerationException("Could not fit tiles for coast");
-			{
-				var retain = MatrixUtils.KernelAggregate<Terraformer.Side, bool>(
-					CellLayerUtils.ToMatrix(landCoastWater, Terraformer.Side.In),
-					new Matrix<bool>(rampMask.Size),
-					new int2(2, 2),
-					new int2(1, 1),
-					submatrix => submatrix.Data.All(v => v == Terraformer.Side.In));
-				rampMask = Matrix<bool>.Zip(rampMask, retain, (a, b) => a && b);
-				rampTiler.PullUnmaskedCornerHeights(targetHeights, rampMask);
-				targetHeights = rampTiler.ConstrainCornerHeights(targetHeights, rampMask, RampTiler.AdjustmentMode.LowerMiddle)
-					?? throw new MapGenerationException("created unfixable heightmap");
-			}
+
+			var heightMap = new RampTiler.HeightMap(map);
+			heightMap.SetHeights(targetHeights);
+			MatrixUtils.EnumDump2d("targetHeights0", heightMap.Target.Map(v => (int)v));
+			heightMap.MarkUntileable(
+				CellLayerUtils.Map(landCoastWater, v => v != Terraformer.Side.In));
+			MatrixUtils.EnumDump2d("targetHeights1", heightMap.Target.Map(v => (int)v));
+			rampTiler.PullHeightMap(heightMap);
+			MatrixUtils.EnumDump2d("targetHeights2", heightMap.Target.Map(v => (int)v));
+			heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
+				?? throw new MapGenerationException("created unfixable heightmap");
+			MatrixUtils.EnumDump2d("targetHeights3", heightMap.Target.Map(v => (int)v));
+
+			// {
+			// 	var retain = MatrixUtils.KernelAggregate<Terraformer.Side, bool>(
+			// 		CellLayerUtils.ToMatrix(landCoastWater, Terraformer.Side.In),
+			// 		new Matrix<bool>(rampMask.Size),
+			// 		new int2(2, 2),
+			// 		new int2(1, 1),
+			// 		submatrix => submatrix.Data.All(v => v == Terraformer.Side.In));
+			// 	rampMask = Matrix<bool>.Zip(rampMask, retain, (a, b) => a && b);
+			// 	rampTiler.PullUnmaskedCornerHeights(targetHeights, rampMask);
+			// 	targetHeights = rampTiler.ConstrainCornerHeights(targetHeights, rampMask, RampTiler.AdjustmentMode.LowerMiddle)
+			// 		?? throw new MapGenerationException("created unfixable heightmap");
+			// }
 
 			if (param.Mountains > 0)
 			{
@@ -747,22 +759,23 @@ namespace OpenRA.Mods.Cnc.Traits
 								?? throw new MapGenerationException("Could not fit tiles for sand-sand cliffs");
 						var matrixXYs = brush.Shape
 							.Where(cvec => map.Tiles.Contains(CPos.Zero + cvec))
-							.Select(cvec => CVecToMatrixXY(cvec))
-							.SelectMany(xy => new int2[] {
+							.Select(CVecToMatrixXY)
+							.SelectMany(xy => new int2[]
+							{
 								xy,
 								xy + new int2(1, 0),
 								xy + new int2(0, 1),
 								xy + new int2(1, 1),
 							})
 							.Distinct()
-							.Where(targetHeights.ContainsXY)
+							.Where(heightMap.Target.ContainsXY)
 							.ToList();
 
 						if (matrixXYs.Count == 0)
 							continue;
 
 						var baseHeight = matrixXYs
-							.Select(xy => (short)targetHeights[xy])
+							.Select(xy => (short)heightMap.Target[xy])
 							.Append(short.MaxValue)
 							.Min();
 
@@ -770,29 +783,37 @@ namespace OpenRA.Mods.Cnc.Traits
 
 						// TODO: Add a height/mask updater that takes a multibrush.
 
-						foreach (var xy in matrixXYs)
-						{
-							rampMask[xy] = false;
-							targetHeights[xy] = rampTiler.GetCornerHeightAtMatrixXy(xy);
-						}
+						heightMap.MarkUntileable(brush.Shape.Select(cvec => CPos.Zero + cvec));
 
-						var cliffDropHack = brush.Segment.Points
-							.Skip(1)
-							.SkipLast(1)
-							.Select(cvec => CVecToMatrixXY(cvec))
-							.Where(targetHeights.ContainsXY);
-						foreach (var xy in cliffDropHack)
-							targetHeights[xy] = (byte)baseHeight;
+						// foreach (var xy in matrixXYs)
+						// {
+						// 	rampMask[xy] = false;
+						// 	targetHeights[xy] = rampTiler.GetCornerHeightAtMatrixXy(xy);
+						// }
+
+						// var cliffDropHack = brush.Segment.Points
+						// 	.Skip(1)
+						// 	.SkipLast(1)
+						// 	.Select(cvec => CVecToMatrixXY(cvec))
+						// 	.Where(targetHeights.ContainsXY);
+						// foreach (var xy in cliffDropHack)
+						// 	targetHeights[xy] = (byte)baseHeight;
 					}
 
-					var cornerHeights = new Matrix<byte>(targetHeights.Size);
-					rampTiler.PullUnmaskedCornerHeights(cornerHeights, null);
-					MatrixUtils.EnumDump2d("cornerHeights?", cornerHeights.Map(v => (int)v));
-					MatrixUtils.ColorDump2d("rampMask?", rampMask);
-					MatrixUtils.EnumDump2d("targetHeights?", targetHeights.Map(v => (int)v));
-					targetHeights = rampTiler.ConstrainCornerHeights(targetHeights, rampMask, RampTiler.AdjustmentMode.LowerMiddle)
+					rampTiler.PullHeightMap(heightMap);
+					heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
 						?? throw new MapGenerationException("created unfixable heightmap");
-					MatrixUtils.EnumDump2d("targetHeights2?", targetHeights.Map(v => (int)v));
+					MatrixUtils.EnumDump2d("targetHeights?", heightMap.Target.Map(v => (int)v));
+
+					// var cornerHeights = new Matrix<byte>(targetHeights.Size);
+					// rampTiler.PullUnmaskedCornerHeights(cornerHeights, null);
+					// MatrixUtils.EnumDump2d("cornerHeights?", cornerHeights.Map(v => (int)v));
+					// MatrixUtils.ColorDump2d("rampMask?", rampMask);
+					// MatrixUtils.EnumDump2d("targetHeights?", targetHeights.Map(v => (int)v));
+					// targetHeights = rampTiler.ConstrainCornerHeights(targetHeights, rampMask, RampTiler.AdjustmentMode.LowerMiddle)
+					// 	?? throw new MapGenerationException("created unfixable heightmap");
+					// MatrixUtils.EnumDump2d("targetHeights2?", targetHeights.Map(v => (int)v));
+
 					// var unmaskedCliffs = MatrixUtils.BordersToPoints(cliffPlan);
 					// var maskedCliffs = MatrixUtils.MaskPathPoints(unmaskedCliffs, cliffMask);
 					// var cliffs = CellLayerUtils.FromMatrixPoints(maskedCliffs, map.Tiles)
@@ -817,18 +838,27 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 
 			{
-				var rampCellMask = new CellLayer<bool>(map);
-				CellLayerUtils.FromMatrix(
-					rampCellMask,
-					MatrixUtils.KernelAggregate(
-						rampMask,
-						new Matrix<bool>(landPlan.Size),
-						new int2(2, 2),
-						new int2(0, 0),
-						submatrix => submatrix.Data.All(v => v)));
-				var brush = rampTiler.TileCorners(targetHeights, rampCellMask, rampTilingRandom);
+				MatrixUtils.ColorDump2d("adjustable", heightMap.Adjustable);
+				MatrixUtils.EnumDump2d("targetHeights final", heightMap.Target.Map(v => (int)v));
+
+				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom);
 				terraformer.PaintTiling(rampTilingRandom, brush, 0);
 			}
+
+			// {
+			// 	var rampCellMask = new CellLayer<bool>(map);
+			// 	CellLayerUtils.FromMatrix(
+			// 		rampCellMask,
+			// 		MatrixUtils.KernelAggregate(
+			// 			rampMask,
+			// 			new Matrix<bool>(landPlan.Size),
+			// 			new int2(2, 2),
+			// 			new int2(0, 0),
+			// 			submatrix => submatrix.Data.Any(v => v)));
+			// 	MatrixUtils.EnumDump2d("mask", targetHeights.Map(v => (int)v));
+			// 	var brush = rampTiler.TileCorners(targetHeights, rampCellMask, rampTilingRandom);
+			// 	terraformer.PaintTiling(rampTilingRandom, brush, 0);
+			// }
 
 			if (param.Forests > 0)
 			{
