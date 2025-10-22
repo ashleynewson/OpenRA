@@ -56,6 +56,27 @@ namespace OpenRA
 			LU = 7,
 		}
 
+		public static CVec ConnectionToCell(Connection connection)
+		{
+			switch (connection)
+			{
+				case Connection.UL:
+				case Connection.UR:
+					return new CVec(0, -1);
+				case Connection.RU:
+				case Connection.RD:
+					return new CVec(1, 0);
+				case Connection.DR:
+				case Connection.DL:
+					return new CVec(0, 1);
+				case Connection.LD:
+				case Connection.LU:
+					return new CVec(-1, 0);
+			}
+
+			throw new ArgumentException("invalid connection");
+		}
+
 		public static CVec ConnectionFromCorner(Connection connection)
 		{
 			switch (connection)
@@ -113,7 +134,9 @@ namespace OpenRA
 			if (definition == null)
 				return;
 
-			var parts = definition.Split(",");
+			string[] parts;
+
+			parts = definition.Split(",");
 			if (parts.Length == 8)
 			{
 				bits = 0;
@@ -124,21 +147,30 @@ namespace OpenRA
 
 					bits |= (ulong)b << (i * 8);
 				}
+
+				return;
 			}
-			else
+
+			parts = definition.Split("=");
+			if (parts.Length == 2)
 			{
+				if (!Exts.TryParseByteInvariant(parts[1], out var b))
+					throw new YamlException($"{definition} is not a valid Riser definition");
+
+				bits = b * 0x0101010101010101u;
+
 				// TODO: make stricter
-				if (definition.Contains('U', StringComparison.InvariantCultureIgnoreCase))
-					bits &= 0xff_ff_ff_ff_ff_ff_00_00;
+				if (!parts[0].Contains('U', StringComparison.InvariantCultureIgnoreCase))
+					bits |= 0x00_00_00_00_00_00_ff_ffu;
 
-				if (definition.Contains('R', StringComparison.InvariantCultureIgnoreCase))
-					bits &= 0xff_ff_ff_ff_00_00_ff_ff;
+				if (!parts[0].Contains('R', StringComparison.InvariantCultureIgnoreCase))
+					bits |= 0x00_00_00_00_ff_ff_00_00u;
 
-				if (definition.Contains('D', StringComparison.InvariantCultureIgnoreCase))
-					bits &= 0xff_ff_00_00_ff_ff_ff_ff;
+				if (!parts[0].Contains('D', StringComparison.InvariantCultureIgnoreCase))
+					bits |= 0x00_00_ff_ff_00_00_00_00u;
 
-				if (definition.Contains('L', StringComparison.InvariantCultureIgnoreCase))
-					bits &= 0x00_00_ff_ff_ff_ff_ff_ff;
+				if (!parts[0].Contains('L', StringComparison.InvariantCultureIgnoreCase))
+					bits |= 0xff_ff_00_00_00_00_00_00u;
 			}
 		}
 

@@ -49,6 +49,24 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Adjustable = new Matrix<bool>(size).Fill(true);
 				Tileable = new CellLayer<bool>(map);
 				Tileable.Clear(true);
+
+				for (var y = 0; y < size.Y; y++)
+				{
+					for (var x = 0; x < size.X; x++)
+					{
+						var inside =
+							Tileable.Contains(XyToCPos(new int2(x, y))) ||
+							Tileable.Contains(XyToCPos(new int2(x - 1, y))) ||
+							Tileable.Contains(XyToCPos(new int2(x, y - 1))) ||
+							Tileable.Contains(XyToCPos(new int2(x - 1, y - 1)));
+						if (!inside)
+						{
+							LowerBound[x, y] = byte.MaxValue;
+							UpperBound[x, y] = byte.MinValue;
+							Adjustable[x, y] = false;
+						}
+					}
+				}
 			}
 
 			HeightMap(
@@ -71,12 +89,21 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			public void SetHeights(Matrix<byte> heights)
 			{
-				heights.CopyTo(Target);
+				if (heights.Size != Target.Size)
+					throw new ArgumentException("heights matrix has wrong size");
+				for (var i = 0; i < Target.Data.Length; i++)
+					Target[i] = Adjustable[i] ? heights[i] : (byte)0;
 			}
 
 			public int2 CPosToXy(CPos cpos)
 			{
 				return new int2(cpos.X, cpos.Y) - CellBounds.TopLeft;
+			}
+
+			public CPos XyToCPos(int2 xy)
+			{
+				xy += CellBounds.TopLeft;
+				return new CPos(xy.X, xy.Y);
 			}
 
 			public void MarkUntileable(CellLayer<bool> mask)
@@ -107,8 +134,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				Tileable[cpos] = false;
 
-				var xy = CPosToXy(cpos);
-				Adjustable[xy] = false;
+				// var xy = CPosToXy(cpos);
+				// Adjustable[xy] = false;
 
 				// var tl = cpos;
 				// var tr = cpos + new CVec(1, 0);
@@ -128,6 +155,16 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Target[CPosToXy(cpos + new CVec(1, 0))] = 0;
 				Target[CPosToXy(cpos + new CVec(1, 1))] = 0;
 				Target[CPosToXy(cpos + new CVec(0, 1))] = 0;
+
+				LowerBound[CPosToXy(cpos)] = byte.MaxValue;
+				LowerBound[CPosToXy(cpos + new CVec(1, 0))] = byte.MaxValue;
+				LowerBound[CPosToXy(cpos + new CVec(1, 1))] = byte.MaxValue;
+				LowerBound[CPosToXy(cpos + new CVec(0, 1))] = byte.MaxValue;
+
+				UpperBound[CPosToXy(cpos)] = 0;
+				UpperBound[CPosToXy(cpos + new CVec(1, 0))] = 0;
+				UpperBound[CPosToXy(cpos + new CVec(1, 1))] = 0;
+				UpperBound[CPosToXy(cpos + new CVec(0, 1))] = 0;
 
 				// var tl = heightMap.CPosToXy(cpos);
 				// var tr = heightMap.CPosToXy(cpos + new CVec(1, 0));
@@ -196,8 +233,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			public HeightMap Constrain(AdjustmentMode mode)
 			{
-				var forcedMaximum = GetLowerHull(UpperBound);
-				var forcedMinimum = GetUpperHull(LowerBound);
+				MatrixUtils.EnumDump2d("lower", LowerBound.Map(v => (int)v));
+				MatrixUtils.EnumDump2d("upper", UpperBound.Map(v => (int)v));
+
+				var forcedMaximum = GetLowerHull(UpperBound.Clone());
+				var forcedMinimum = GetUpperHull(LowerBound.Clone());
 				var constrained = Target.Clone();
 
 				for (var y = 0; y < Target.Size.Y; y++)
@@ -244,8 +284,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 					map,
 					CellBounds,
 					constrained,
-					forcedMinimum,
-					forcedMaximum,
+					LowerBound.Clone(),
+					UpperBound.Clone(),
 					Adjustable.Clone(),
 					CellLayerUtils.Clone(Tileable));
 			}
@@ -489,6 +529,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (!(heightMap.Adjustable.ContainsXY(toXy) && heightMap.Adjustable[toXy]))
 					continue;
 
+				// // Needed to prevent literal edge cases at the edge of the map.
+				// if (!heightMap.Tileable.Contains(cpos + Riser.ConnectionToCell(connection)))
+				// 	continue;
+
 				var connectionHeight = GetConnectionHeight(height, info, connection);
 				// var rampedHeight =
 				// 	riser[connection].HasValue
@@ -712,33 +756,77 @@ namespace OpenRA.Mods.Common.MapGenerator
 				}
 				else
 				{
-					var rCPos = cpos + new CVec(1, 0);
-					var dCPos = cpos + new CVec(0, 1);
-					var lCPos = cpos + new CVec(-1, 0);
-					var uCPos = cpos + new CVec(0, -1);
+					var r = new CVec(1, 0);
+					var d = new CVec(0, 1);
+					var l = new CVec(-1, 0);
+					var u = new CVec(0, -1);
+					// var rCPos = cpos + new CVec(1, 0);
+					// var dCPos = cpos + new CVec(0, 1);
+					// var lCPos = cpos + new CVec(-1, 0);
+					// var uCPos = cpos + new CVec(0, -1);
 
-					if (heightMap.Tileable.Contains(rCPos) && heightMap.Tileable[rCPos])
+					if (heightMap.Tileable.Contains(cpos + r) && heightMap.Tileable[cpos + r])
 					{
-						tlCorners[rCPos] = GetConnectionHeight(height, info, Riser.Connection.RU);
-						blCorners[rCPos] = GetConnectionHeight(height, info, Riser.Connection.RD);
+						tlCorners[cpos + r] = GetConnectionHeight(height, info, Riser.Connection.RU);
+						blCorners[cpos + r] = GetConnectionHeight(height, info, Riser.Connection.RD);
+
+						if (heightMap.Tileable.Contains(cpos + r + u) && heightMap.Tileable[cpos + r + u])
+						{
+							blCorners[cpos + r + u] = GetConnectionHeight(height, info, Riser.Connection.RU);
+						}
+
+						if (heightMap.Tileable.Contains(cpos + r + d) && heightMap.Tileable[cpos + r + d])
+						{
+							tlCorners[cpos + r + d] = GetConnectionHeight(height, info, Riser.Connection.RD);
+						}
 					}
 
-					if (heightMap.Tileable.Contains(dCPos) && heightMap.Tileable[dCPos])
+					if (heightMap.Tileable.Contains(cpos + d) && heightMap.Tileable[cpos + d])
 					{
-						trCorners[dCPos] = GetConnectionHeight(height, info, Riser.Connection.DR);
-						tlCorners[dCPos] = GetConnectionHeight(height, info, Riser.Connection.DL);
+						trCorners[cpos + d] = GetConnectionHeight(height, info, Riser.Connection.DR);
+						tlCorners[cpos + d] = GetConnectionHeight(height, info, Riser.Connection.DL);
+
+						if (heightMap.Tileable.Contains(cpos + d + r) && heightMap.Tileable[cpos + d + r])
+						{
+							tlCorners[cpos + d + r] = GetConnectionHeight(height, info, Riser.Connection.DR);
+						}
+
+						if (heightMap.Tileable.Contains(cpos + d + l) && heightMap.Tileable[cpos + d + l])
+						{
+							trCorners[cpos + d + l] = GetConnectionHeight(height, info, Riser.Connection.DL);
+						}
 					}
 
-					if (heightMap.Tileable.Contains(lCPos) && heightMap.Tileable[lCPos])
+					if (heightMap.Tileable.Contains(cpos + l) && heightMap.Tileable[cpos + l])
 					{
-						brCorners[lCPos] = GetConnectionHeight(height, info, Riser.Connection.LD);
-						trCorners[lCPos] = GetConnectionHeight(height, info, Riser.Connection.LU);
+						brCorners[cpos + l] = GetConnectionHeight(height, info, Riser.Connection.LD);
+						trCorners[cpos + l] = GetConnectionHeight(height, info, Riser.Connection.LU);
+
+						if (heightMap.Tileable.Contains(cpos + l + d) && heightMap.Tileable[cpos + l + d])
+						{
+							trCorners[cpos + l + d] = GetConnectionHeight(height, info, Riser.Connection.LD);
+						}
+
+						if (heightMap.Tileable.Contains(cpos + l + u) && heightMap.Tileable[cpos + l + u])
+						{
+							brCorners[cpos + l + u] = GetConnectionHeight(height, info, Riser.Connection.LU);
+						}
 					}
 
-					if (heightMap.Tileable.Contains(uCPos) && heightMap.Tileable[uCPos])
+					if (heightMap.Tileable.Contains(cpos + u) && heightMap.Tileable[cpos + u])
 					{
-						blCorners[uCPos] = GetConnectionHeight(height, info, Riser.Connection.UL);
-						brCorners[uCPos] = GetConnectionHeight(height, info, Riser.Connection.UR);
+						blCorners[cpos + u] = GetConnectionHeight(height, info, Riser.Connection.UL);
+						brCorners[cpos + u] = GetConnectionHeight(height, info, Riser.Connection.UR);
+
+						if (heightMap.Tileable.Contains(cpos + u + l) && heightMap.Tileable[cpos + u + l])
+						{
+							brCorners[cpos + u + l] = GetConnectionHeight(height, info, Riser.Connection.UL);
+						}
+
+						if (heightMap.Tileable.Contains(cpos + u + r) && heightMap.Tileable[cpos + u + r])
+						{
+							blCorners[cpos + u + r] = GetConnectionHeight(height, info, Riser.Connection.UR);
+						}
 					}
 				}
 			}
