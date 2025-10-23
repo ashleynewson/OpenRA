@@ -563,7 +563,6 @@ namespace OpenRA.Mods.Cnc.Traits
 			};
 			var beachZone = new Terraformer.PathPartitionZone()
 			{
-				RequiredSomewhere = true,
 				SegmentType = param.BeachSegmentTypes[0],
 				MinimumLength = param.MinimumBeachLength,
 				MaximumDeviation = param.MinimumLandSeaThickness - 1,
@@ -584,13 +583,21 @@ namespace OpenRA.Mods.Cnc.Traits
 			foreach (var mpos in map.AllCells.MapCoords)
 				map.Tiles[mpos] = terraformer.PickTile(random, param.LandTile);
 
-			const int heightSteps = 12;
+			const int heightSteps = 8;
 
 			var elevation = terraformer.ElevationNoiseMatrix(
 				elevationRandom,
 				param.TerrainFeatureSize,
 				param.TerrainSmoothing);
 			elevation = MatrixUtils.NormalizeRangeInPlace(elevation, heightSteps * FractionMax);
+
+			var slopinessMatrix = MatrixUtils.SlopeStrength(elevation, param.RoughnessRadius);
+			var cliffMask = MatrixUtils.KernelAggregate(
+				slopinessMatrix,
+				new Matrix<bool>(slopinessMatrix.Size + new int2(1, 1)),
+				new int2(2, 2),
+				new int2(1, 1),
+				submatrix => submatrix.Data.Sum() * 3 / 2 >= 1 * 4 * FractionMax);
 
 			var landPlan = terraformer.SliceElevation(elevation, null, FractionMax - param.Water);
 			landPlan = MatrixUtils.BooleanBlotch(
@@ -607,14 +614,6 @@ namespace OpenRA.Mods.Cnc.Traits
 					(p, e) => p ? e : int.MaxValue)
 				.Min();
 			elevation = elevation.Map(v => v - elevationCalibration);
-
-			var slopinessMatrix = MatrixUtils.SlopeStrength(elevation, param.RoughnessRadius);
-			var cliffMask = MatrixUtils.KernelAggregate(
-				slopinessMatrix,
-				new Matrix<bool>(slopinessMatrix.Size + new int2(1, 1)),
-				new int2(2, 2),
-				new int2(1, 1),
-				submatrix => submatrix.Data.Sum() * 3 / 2 >= 1 * 4 * FractionMax);
 
 			// var roughnessMatrix = MatrixUtils.GridVariance(
 			// 	elevation,

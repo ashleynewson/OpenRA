@@ -18,7 +18,7 @@
 						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
 						SmoothingThreshold: 833
-						MinimumCoastStraight: 4
+						MinimumCoastStraight: 5
 						MinimumLandSeaThickness: 2
 						MinimumMountainThickness: 4
 						MaximumAltitude: 8
