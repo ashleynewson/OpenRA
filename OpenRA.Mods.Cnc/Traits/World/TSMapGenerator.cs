@@ -584,7 +584,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			foreach (var mpos in map.AllCells.MapCoords)
 				map.Tiles[mpos] = terraformer.PickTile(random, param.LandTile);
 
-			const int heightSteps = 24;
+			const int heightSteps = 12;
 
 			var elevation = terraformer.ElevationNoiseMatrix(
 				elevationRandom,
@@ -614,7 +614,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				new Matrix<bool>(slopinessMatrix.Size + new int2(1, 1)),
 				new int2(2, 2),
 				new int2(1, 1),
-				submatrix => submatrix.Data.Sum() >= 2 * 4 * FractionMax);
+				submatrix => submatrix.Data.Sum() * 3 / 2 >= 1 * 4 * FractionMax);
 
 			// var roughnessMatrix = MatrixUtils.GridVariance(
 			// 	elevation,
@@ -745,7 +745,7 @@ namespace OpenRA.Mods.Cnc.Traits
 						[cliffZone, clearZone],
 						partitionMask,
 						param.SegmentedBrushes,
-						/*param.MinimumCliffStraight*/4);
+						/*param.MinimumCliffStraight*/3);
 					if (tilingPaths.Count == 0)
 						break;
 
