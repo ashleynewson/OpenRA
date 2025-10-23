@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -19,15 +20,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 {
 	public sealed class RampTiler
 	{
-		// public record struct HeightElement
-		// {
-		// 	public byte R;
-		// 	public byte D;
-		// 	public byte L;
-		// 	public byte U;
-		// 	public byte Height;
-		// }
-
 		public sealed class HeightMap
 		{
 			readonly Map map;
@@ -37,6 +29,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			public readonly Matrix<byte> UpperBound;
 			public readonly Matrix<bool> Adjustable;
 			public readonly CellLayer<bool> Tileable;
+
+			// Corners that belong only to one cell, and thus have no global constraints.
+			public readonly ImmutableHashSet<int2> PermissiveCorners;
 
 			public HeightMap(Map map)
 			{
@@ -49,24 +44,40 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Adjustable = new Matrix<bool>(size).Fill(true);
 				Tileable = new CellLayer<bool>(map);
 				Tileable.Clear(true);
+				var permissiveCorners = new List<int2>();
 
 				for (var y = 0; y < size.Y; y++)
 				{
 					for (var x = 0; x < size.X; x++)
 					{
-						var inside =
-							Tileable.Contains(XyToCPos(new int2(x, y))) ||
-							Tileable.Contains(XyToCPos(new int2(x - 1, y))) ||
-							Tileable.Contains(XyToCPos(new int2(x, y - 1))) ||
-							Tileable.Contains(XyToCPos(new int2(x - 1, y - 1)));
-						if (!inside)
+						var cells = 0;
+
+						if (Tileable.Contains(XyToCPos(new int2(x, y))))
+							cells++;
+
+						if (Tileable.Contains(XyToCPos(new int2(x - 1, y))))
+							cells++;
+
+						if (Tileable.Contains(XyToCPos(new int2(x, y - 1))))
+							cells++;
+
+						if (Tileable.Contains(XyToCPos(new int2(x - 1, y - 1))))
+							cells++;
+
+						if (cells == 0)
 						{
 							LowerBound[x, y] = byte.MaxValue;
 							UpperBound[x, y] = byte.MinValue;
 							Adjustable[x, y] = false;
 						}
+						else if (cells == 1)
+						{
+							permissiveCorners.Add(new int2(x, y));
+						}
 					}
 				}
+
+				PermissiveCorners = permissiveCorners.ToImmutableHashSet();
 			}
 
 			HeightMap(
@@ -76,7 +87,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Matrix<byte> lowerBounds,
 				Matrix<byte> upperBounds,
 				Matrix<bool> adjustable,
-				CellLayer<bool> tileable)
+				CellLayer<bool> tileable,
+				ImmutableHashSet<int2> permissiveCorners)
 			{
 				this.map = map;
 				CellBounds = cellBounds;
@@ -85,6 +97,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				UpperBound = upperBounds;
 				Adjustable = adjustable;
 				Tileable = tileable;
+				PermissiveCorners = permissiveCorners;
 			}
 
 			public void SetHeights(Matrix<byte> heights)
@@ -134,18 +147,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				Tileable[cpos] = false;
 
-				// var xy = CPosToXy(cpos);
-				// Adjustable[xy] = false;
-
-				// var tl = cpos;
-				// var tr = cpos + new CVec(1, 0);
-				// var br = cpos + new CVec(1, 1);
-				// var bl = cpos + new CVec(0, 1);
-				// var mtl = new int2(tl.X, tl.Y) - cellBounds.TopLeft;
-				// var mtr = new int2(tr.X, tr.Y) - cellBounds.TopLeft;
-				// var mbr = new int2(br.X, br.Y) - cellBounds.TopLeft;
-				// var mbl = new int2(bl.X, bl.Y) - cellBounds.TopLeft;
-
 				Adjustable[CPosToXy(cpos)] = false;
 				Adjustable[CPosToXy(cpos + new CVec(1, 0))] = false;
 				Adjustable[CPosToXy(cpos + new CVec(1, 1))] = false;
@@ -165,18 +166,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 				UpperBound[CPosToXy(cpos + new CVec(1, 0))] = 0;
 				UpperBound[CPosToXy(cpos + new CVec(1, 1))] = 0;
 				UpperBound[CPosToXy(cpos + new CVec(0, 1))] = 0;
-
-				// var tl = heightMap.CPosToXy(cpos);
-				// var tr = heightMap.CPosToXy(cpos + new CVec(1, 0));
-
-				// if (cornerHeights.ContainsXY(mtl))
-				// 	cornerHeights[mtl] = GetCornerHeightAt(tl);
-				// if (cornerHeights.ContainsXY(mtr))
-				// 	cornerHeights[mtr] = GetCornerHeightAt(tr);
-				// if (cornerHeights.ContainsXY(mbr))
-				// 	cornerHeights[mbr] = GetCornerHeightAt(br);
-				// if (cornerHeights.ContainsXY(mbl))
-				// 	cornerHeights[mbl] = GetCornerHeightAt(bl);
 			}
 
 			IEnumerable<(int2 XY, (byte Height, bool First) Prop)> FillSeeds(Matrix<byte> heights)
@@ -287,15 +276,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 					LowerBound.Clone(),
 					UpperBound.Clone(),
 					Adjustable.Clone(),
-					CellLayerUtils.Clone(Tileable));
+					CellLayerUtils.Clone(Tileable),
+					PermissiveCorners);
 			}
-
-			// public void CommitXy(int2 xy, byte height)
-			// {
-			// 	Tileable[xy] = false;
-			// 	LowerBound[xy] = height;
-			// 	UpperBound[xy] = height;
-			// }
 		}
 
 		public enum AdjustmentMode
@@ -350,12 +333,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 		// Contains single-tile brushes with zero height offset.
 		readonly RampProperties[] rampProperties;
 
-		// readonly Dictionary<byte, (MultiBrush[] Brushes, int[] Weights)> brushLookup;
-
 		// Lookup from a binary-concatenation of corner heights (0, 1, or 2) to ramp types.
 		// Only contains mappings for which there are brushes.
 		readonly Dictionary<int, List<byte>> rampLookup;
-		readonly Dictionary<byte, byte> rampCorners;
 
 		public RampTiler(Map map, IReadOnlyList<MultiBrush> brushes)
 		{
@@ -407,26 +387,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 					rampLookup[lookup].Add(ramp);
 				}
 			}
-
-				// brushLookup = rampsToBrushes
-				// 	.ToDictionary(
-				// 		kv => kv.Key,
-				// 		kv => (kv.Value.ToArray(), kv.Value.Select(b => b.Weight).ToArray()));
-
-
-			// foreach (var rampType in brushLookup.Keys)
-			// {
-			// 	var cellRamp = map.Grid.Ramps[rampType];
-			// 	var tl = cellRamp.Corners[0].Z / heightStep;
-			// 	var tr = cellRamp.Corners[1].Z / heightStep;
-			// 	var br = cellRamp.Corners[2].Z / heightStep;
-			// 	var bl = cellRamp.Corners[3].Z / heightStep;
-			// 	var lookup = tl | (tr << 2) | (br << 4) | (bl << 6);
-			// 	if (!rampLookup.ContainsKey(lookup))
-			// 		rampLookup.Add(lookup, []);
-
-			// 	rampLookup[lookup].Add(rampType);
-			// }
 		}
 
 		public byte GetTileHeightAt(CPos cpos)
@@ -447,7 +407,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		public byte GetCornerHeightAt(CPos cpos)
 		{
-			int height = 0;
+			var height = 0;
 			var br = cpos;
 			var bl = cpos - new CVec(1, 0);
 			var tl = cpos - new CVec(1, 1);
@@ -466,7 +426,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		public byte GetRampedCellHeightAt(CPos cpos)
 		{
-			int height = 0;
+			var height = 0;
 			var tl = cpos;
 			var tr = cpos + new CVec(1, 0);
 			var br = cpos + new CVec(1, 1);
@@ -495,19 +455,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 				PullHeightMap(heightMap, cpos);
 		}
 
-		// public void PullHeightMap(HeightMap heightMap, CellLayer<bool> mask)
-		// {
-		// 	foreach (var cpos in mask.CellRegion)
-		// 		if (mask[cpos])
-		// 			PullHeightMap(heightMap, cpos);
-		// }
-
-		// public void PullHeightMap(HeightMap heightMap, IEnumerable<CPos> cells)
-		// {
-		// 	foreach (var cpos in cells)
-		// 		PullHeightMap(heightMap, cpos);
-		// }
-
 		public void PullHeightMap(HeightMap heightMap, CPos cpos)
 		{
 			if (!heightMap.Tileable.Contains(cpos) || heightMap.Tileable[cpos])
@@ -515,8 +462,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			var height = map.Height[cpos];
 			var info = map.Rules.TerrainInfo.GetTerrainInfo(map.Tiles[cpos]);
-			// var properties = rampProperties[GetRampTypeAt(cpos)];
-			// var riser = info.Riser;
 			for (var i = 0; i < 8; i++)
 			{
 				var connection = (Riser.Connection)i;
@@ -529,191 +474,17 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (!(heightMap.Adjustable.ContainsXY(toXy) && heightMap.Adjustable[toXy]))
 					continue;
 
-				// // Needed to prevent literal edge cases at the edge of the map.
-				// if (!heightMap.Tileable.Contains(cpos + Riser.ConnectionToCell(connection)))
-				// 	continue;
+				if (heightMap.PermissiveCorners.Contains(toXy))
+					continue;
 
 				var connectionHeight = GetConnectionHeight(height, info, connection);
-				// var rampedHeight =
-				// 	riser[connection].HasValue
-				// 		? height + riser[connection].Value - info.Height
-				// 		: height + properties.GetCorner(connection);
 
 				var lower = Math.Clamp(connectionHeight - 1, byte.MinValue, byte.MaxValue);
 				var upper = Math.Clamp(connectionHeight + 1, byte.MinValue, byte.MaxValue);
-				// heightMap.LowerBound[fromXy] = (byte)Math.Max(heightMap.LowerBound[fromXy], connectionHeight);
-				// heightMap.UpperBound[fromXy] = (byte)Math.Min(heightMap.UpperBound[fromXy], connectionHeight);
 				heightMap.LowerBound[toXy] = (byte)Math.Max(heightMap.LowerBound[toXy], lower);
 				heightMap.UpperBound[toXy] = (byte)Math.Min(heightMap.UpperBound[toXy], upper);
 			}
-
-				// var tl = cpos;
-				// var tr = cpos + new CVec(1, 0);
-				// var br = cpos + new CVec(1, 1);
-				// var bl = cpos + new CVec(0, 1);
-				// var mtl = new int2(tl.X, tl.Y) - cellBounds.TopLeft;
-				// var mtr = new int2(tr.X, tr.Y) - cellBounds.TopLeft;
-				// var mbr = new int2(br.X, br.Y) - cellBounds.TopLeft;
-				// var mbl = new int2(bl.X, bl.Y) - cellBounds.TopLeft;
-				// if (cornerHeights.ContainsXY(mtl))
-				// 	cornerHeights[mtl] = GetCornerHeightAt(tl);
-				// if (cornerHeights.ContainsXY(mtr))
-				// 	cornerHeights[mtr] = GetCornerHeightAt(tr);
-				// if (cornerHeights.ContainsXY(mbr))
-				// 	cornerHeights[mbr] = GetCornerHeightAt(br);
-				// if (cornerHeights.ContainsXY(mbl))
-				// 	cornerHeights[mbl] = GetCornerHeightAt(bl);
-			// }
 		}
-
-		// public void PullCornerHeightsForCellCorners(Matrix<byte> cornerHeights, IEnumerable<CPos> corners)
-		// {
-		// 	foreach (var cpos in corners)
-		// 	{
-		// 		var xy = new int2(cpos.X, cpos.Y) - cellBounds.TopLeft;
-		// 		if (cornerHeights.ContainsXY(xy))
-		// 			cornerHeights[xy] = GetCornerHeightAt(cpos);
-		// 	}
-		// }
-
-		// public void PullCornerHeightsForMatrixCorners(Matrix<byte> cornerHeights, IEnumerable<int2> corners)
-		// {
-		// 	foreach (var xy in corners)
-		// 	{
-		// 		if (cornerHeights.ContainsXY(xy))
-		// 			cornerHeights[xy] = GetCornerHeightAtMatrixXy(xy);
-		// 	}
-		// }
-
-		// /// <summary>
-		// /// Updates the masked corner heights according to what is currently in the map.
-		// /// </summary>
-		// public void PullUnmaskedCornerHeights(Matrix<byte> cornerHeights, Matrix<bool> mask)
-		// {
-		// 	for (var y = 0; y < cornerHeights.Size.Y; y++)
-		// 		for (var x = 0; x < cornerHeights.Size.X; x++)
-		// 			if (!(mask?[x, y] ?? false))
-		// 				cornerHeights[x, y] = GetCornerHeightAtMatrixXy(new int2(x, y));
-		// }
-
-		// /// <summary>
-		// /// Adjusts input cell corner heights such that all adjacent corners only have a height
-		// /// difference of -1, 0, or 1.
-		// /// </summary>
-		// /// <param name="cornerHeights">Original corner heights.</param>
-		// /// <param name="mask">Mask of corners that can be adjusted, or null if all can be adjusted.</param>
-		// /// <param name="mode">Preferred direction to adjust heights.</param>
-		// /// <returns>Adjusted corner heights, or null if there is no valid solution.</returns>
-		// public Matrix<byte> ConstrainCornerHeights(
-		// 	Matrix<byte> cornerHeights,
-		// 	Matrix<bool> mask,
-		// 	AdjustmentMode mode)
-		// {
-		// 	IEnumerable<(int2 XY, (byte Height, bool First) Prop)> MaskedSeeds()
-		// 	{
-		// 		for (var y = 0; y < cornerHeights.Size.Y; y++)
-		// 			for (var x = 0; x < cornerHeights.Size.X; x++)
-		// 				if (mask?[x, y] ?? true)
-		// 					yield return (new int2(x, y), (cornerHeights[x, y], true));
-		// 	}
-
-		// 	IEnumerable<(int2 XY, (byte Height, bool First) Prop)> UnmaskedSeeds()
-		// 	{
-		// 		for (var y = 0; y < cornerHeights.Size.Y; y++)
-		// 			for (var x = 0; x < cornerHeights.Size.X; x++)
-		// 				if (!mask[x, y])
-		// 					yield return (new int2(x, y), (cornerHeights[x, y], true));
-		// 	}
-
-		// 	Matrix<byte> GetMinimal(Matrix<byte> matrix, bool masked)
-		// 	{
-		// 		(byte Lower, bool First)? FillMinimal(int2 xy, (byte Lower, bool First) prop)
-		// 		{
-		// 			if (!prop.First && (!(mask?[xy] ?? true) || prop.Lower >= matrix[xy]))
-		// 				return null;
-
-		// 			matrix[xy] = prop.Lower;
-		// 			if (prop.Lower == byte.MaxValue)
-		// 				return null;
-
-		// 			return ((byte)(prop.Lower + 1), false);
-		// 		}
-
-		// 		var seeds = masked ? MaskedSeeds() : UnmaskedSeeds();
-		// 		MatrixUtils.FloodFill(
-		// 			cornerHeights.Size,
-		// 			seeds.OrderBy(s => s.Prop.Height),
-		// 			FillMinimal,
-		// 			DirectionExts.Spread4);
-		// 		return matrix;
-		// 	}
-
-		// 	Matrix<byte> GetMaximal(Matrix<byte> matrix, bool masked)
-		// 	{
-		// 		(byte Upper, bool First)? FillMaximal(int2 xy, (byte Upper, bool First) prop)
-		// 		{
-		// 			if (!prop.First && (!(mask?[xy] ?? true) || prop.Upper <= matrix[xy]))
-		// 				return null;
-
-		// 			matrix[xy] = prop.Upper;
-		// 			if (prop.Upper == byte.MinValue)
-		// 				return null;
-
-		// 			return ((byte)(prop.Upper - 1), false);
-		// 		}
-
-		// 		var seeds = masked ? MaskedSeeds() : UnmaskedSeeds();
-		// 		MatrixUtils.FloodFill(
-		// 			cornerHeights.Size,
-		// 			seeds.OrderByDescending(s => s.Prop.Height),
-		// 			FillMaximal,
-		// 			DirectionExts.Spread4);
-		// 		return matrix;
-		// 	}
-
-		// 	if (mask != null)
-		// 	{
-		// 		var floor = GetMaximal(new Matrix<byte>(cornerHeights.Size).Fill(byte.MinValue), false);
-		// 		var ceiling = GetMinimal(new Matrix<byte>(cornerHeights.Size).Fill(byte.MaxValue), false);
-
-		// 		cornerHeights = cornerHeights.Clone();
-		// 		for (var y = 0; y < cornerHeights.Size.Y; y++)
-		// 		{
-		// 			for (var x = 0; x < cornerHeights.Size.X; x++)
-		// 			{
-		// 				if (!mask[x, y])
-		// 					continue;
-
-		// 				if (floor[x, y] > ceiling[x, y])
-		// 					return null;
-		// 				else if (cornerHeights[x, y] < floor[x, y])
-		// 					cornerHeights[x, y] = floor[x, y];
-		// 				else if (cornerHeights[x, y] > ceiling[x, y])
-		// 					cornerHeights[x, y] = ceiling[x, y];
-		// 			}
-		// 		}
-		// 	}
-
-		// 	switch (mode)
-		// 	{
-		// 		case AdjustmentMode.Minimal:
-		// 			return GetMinimal(cornerHeights.Clone(), true);
-		// 		case AdjustmentMode.LowerMiddle:
-		// 			return Matrix<byte>.Zip(
-		// 				GetMinimal(cornerHeights.Clone(), true),
-		// 				GetMaximal(cornerHeights.Clone(), true),
-		// 				(a, b) => (byte)((a + b) / 2));
-		// 		case AdjustmentMode.UpperMiddle:
-		// 			return Matrix<byte>.Zip(
-		// 				GetMinimal(cornerHeights.Clone(), true),
-		// 				GetMaximal(cornerHeights.Clone(), true),
-		// 				(a, b) => (byte)((a + b + 1) / 2));
-		// 		case AdjustmentMode.Maximal:
-		// 			return GetMaximal(cornerHeights.Clone(), true);
-		// 		default:
-		// 			throw new ArgumentException("invalid fitting mode");
-		// 	}
-		// }
 
 		public (CellLayer<byte> Heights, CellLayer<byte> Ramps) GenerateRampsAndHeights(
 			HeightMap heightMap,
@@ -760,10 +531,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 					var d = new CVec(0, 1);
 					var l = new CVec(-1, 0);
 					var u = new CVec(0, -1);
-					// var rCPos = cpos + new CVec(1, 0);
-					// var dCPos = cpos + new CVec(0, 1);
-					// var lCPos = cpos + new CVec(-1, 0);
-					// var uCPos = cpos + new CVec(0, -1);
 
 					if (heightMap.Tileable.Contains(cpos + r) && heightMap.Tileable[cpos + r])
 					{
@@ -836,6 +603,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (!heightMap.Tileable[cpos])
 					continue;
 
+				{
+					var xy = heightMap.CPosToXy(cpos);
+					if (
+						heightMap.PermissiveCorners.Contains(xy) ||
+						heightMap.PermissiveCorners.Contains(xy + new int2(1, 0)) ||
+						heightMap.PermissiveCorners.Contains(xy + new int2(1, 1)) ||
+						heightMap.PermissiveCorners.Contains(xy + new int2(0, 1)))
+					{
+						continue;
+					}
+				}
+
 				var tl = tlCorners[cpos];
 				var tr = trCorners[cpos];
 				var br = brCorners[cpos];
@@ -865,69 +644,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 						: validRamps[random.Next() % validRamps.Count];
 			}
 
-			// // TODO: ensure map shape consistency (or just use grid).
-			// var masked =
-			// 	mask != null
-			// 		? mask.CellRegion.Where(cpos => mask[cpos])
-			// 		: map.Tiles.CellRegion;
-			// foreach (var cpos in masked)
-			// {
-			// 	var x = cpos.X - cellBounds.X;
-			// 	var y = cpos.Y - cellBounds.Y;
-			// 	var tl = cornerHeights[x, y];
-			// 	var tr = cornerHeights[x + 1, y];
-			// 	var br = cornerHeights[x + 1, y + 1];
-			// 	var bl = cornerHeights[x, y + 1];
-
-			// 	var baseHeight = Math.Min(Math.Min(tl, tr), Math.Min(bl, br));
-			// 	tl -= baseHeight;
-			// 	tr -= baseHeight;
-			// 	br -= baseHeight;
-			// 	bl -= baseHeight;
-			// 	if (Math.Abs(tl - tr) > 1 ||
-			// 		Math.Abs(tr - br) > 1 ||
-			// 		Math.Abs(br - bl) > 1 ||
-			// 		Math.Abs(bl - tl) > 1)
-			// 	{
-			// 		throw new ArgumentException("cornerHeights has adjacent cell corners with a height difference > 1");
-			// 	}
-
-			// 	var lookup = tl | (tr << 2) | (br << 4) | (bl << 6);
-			// 	if (!rampLookup.TryGetValue(lookup, out var validRamps))
-			// 		return (null, null);
-
-			// 	heights[cpos] = baseHeight;
-			// 	ramps[cpos] =
-			// 		validRamps.Count == 1
-			// 			? validRamps[0]
-			// 			: validRamps[random.Next() % validRamps.Count];
-			// }
-
 			return (heights, ramps);
 		}
-
-		// /// <summary>Wrapper around CornersToRampsAndHeights and Tile.</summary>
-		// public MultiBrush TileCorners(Matrix<byte> cornerHeights, CellLayer<bool> mask, MersenneTwister random)
-		// {
-		// 	var (heights, ramps) = GenerateRampsAndHeights(cornerHeights, mask, random);
-		// 	if (heights == null)
-		// 		return null;
-
-		// 	return Tile(heights, ramps, mask, random);
-		// }
 
 		/// <summary>Wrapper around CornersToRampsAndHeights and Tile.</summary>
 		public MultiBrush TileHeightMap(HeightMap heightMap, MersenneTwister random)
 		{
-			// var mask = new CellLayer<bool>(map);
-			// CellLayerUtils.FromMatrix(
-			// 	mask,
-			// 	MatrixUtils.KernelAggregate(
-			// 		heightMap.Adjustable,
-			// 		new Matrix<bool>(cellBounds.Size.ToInt2()),
-			// 		new int2(2, 2),
-			// 		new int2(0, 0),
-			// 		submatrix => submatrix.Data.Any(v => v)));
 			var (heights, ramps) = GenerateRampsAndHeights(heightMap, random);
 			if (heights == null)
 				return null;

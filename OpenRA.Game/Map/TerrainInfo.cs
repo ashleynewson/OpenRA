@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using OpenRA.FileSystem;
 using OpenRA.Primitives;
 using OpenRA.Support;
