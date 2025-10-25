@@ -43,7 +43,7 @@
 						MinimumSpawnRadius: 5
 						SpawnResourceSpawns: 3
 						SpawnReservation: 16
-						SpawnResourceBias: 1150
+						SpawnResourceBias: 500
 						ResourcesPerPlayer: 50000
 						OreUniformity: 250
 						OreClumpiness: 2
@@ -81,6 +81,8 @@
 						Rotations: 1
 						LandTile: 0
 						WaterTile: 341
+						RepaintTiles:
+							341: Water
 			IntegerOption@Seed:
 				Label: label-ra-map-generator-option-seed
 				Parameter: Seed
@@ -156,23 +158,6 @@
 						Water: 200
 						Mountains: 900
 						Roughness: 850
-				Choice@Oceanic:
-					Label: label-ra-map-generator-choice-terrain-type-oceanic
-					Settings:
-						Water: 800
-						Forests: 0
-						MinimumSpawnRadius: 4
-				Choice@LargeIslands:
-					Label: label-ra-map-generator-choice-terrain-type-large-islands
-					Settings:
-						Water: 750
-						TerrainFeatureSize: 51200
-						Forests: 0
-				Choice@Continents:
-					Label: label-ra-map-generator-choice-terrain-type-continents
-					Settings:
-						Water: 500
-						TerrainFeatureSize: 102400
 				Choice@Wetlands:
 					Label: label-ra-map-generator-choice-terrain-type-wetlands
 					Settings:
@@ -285,7 +270,7 @@
 					Label: label-ra-map-generator-choice-resources-low
 					Settings:
 						SpawnResourceSpawns: 2
-						ResourcesPerPlayer: 18750
+						ResourcesPerPlayer: 50000
 						ResourceSpawnWeights:
 							tibtre01: 1
 							tibtre02: 1
@@ -296,7 +281,7 @@
 					Label: label-ra-map-generator-choice-resources-medium
 					Settings:
 						SpawnResourceSpawns: 3
-						ResourcesPerPlayer: 37500
+						ResourcesPerPlayer: 75000
 						ResourceSpawnWeights:
 							tibtre01: 2
 							tibtre02: 2
@@ -309,7 +294,7 @@
 					Label: label-ra-map-generator-choice-resources-high
 					Settings:
 						SpawnResourceSpawns: 3
-						ResourcesPerPlayer: 56250
+						ResourcesPerPlayer: 100000
 						ResourceSpawnWeights:
 							tibtre01: 2
 							tibtre02: 2
@@ -322,7 +307,7 @@
 					Label: label-ra-map-generator-choice-resources-very-high
 					Settings:
 						SpawnResourceSpawns: 4
-						ResourcesPerPlayer: 75000
+						ResourcesPerPlayer: 200000
 						ResourceSpawnWeights:
 							tibtre01: 2
 							tibtre02: 2
@@ -348,30 +333,20 @@
 						MinimumBuildings: 0
 						MaximumBuildings: 0
 						BuildingWeights:
-				Choice@Standard:
-					Label: label-ra-map-generator-choice-buildings-standard
+				Choice@Veinholes:
+					Label: label-ra-map-generator-choice-buildings-veinholes
 					Settings:
-						MinimumBuildings: 0
-						MaximumBuildings: 3
+						MinimumBuildings: 1
+						MaximumBuildings: 1
 						BuildingWeights:
-				Choice@Extra:
-					Label: label-ra-map-generator-choice-buildings-extra
+							veinhole: 1
+				Choice@MoreVeinholes:
+					Label: label-ra-map-generator-choice-buildings-more-veinholes
 					Settings:
-						MinimumBuildings: 3
-						MaximumBuildings: 6
+						MinimumBuildings: 2
+						MaximumBuildings: 2
 						BuildingWeights:
-				Choice@OilOnly:
-					Label: label-ra-map-generator-choice-buildings-oil-only
-					Settings:
-						MinimumBuildings: 0
-						MaximumBuildings: 3
-						BuildingWeights:
-				Choice@OilRush:
-					Label: label-ra-map-generator-choice-buildings-oil-rush
-					Settings:
-						MinimumBuildings: 8
-						MaximumBuildings: 10
-						BuildingWeights:
+							veinhole: 1
 			MultiChoiceOption@Density:
 				Label: label-ra-map-generator-option-density
 				Default: Players

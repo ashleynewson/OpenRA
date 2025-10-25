@@ -268,6 +268,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 					zoneable[mpos] = value;
 		}
 
+		public void ZoneFromRamps<T>(CellLayer<T> zoneable, T value)
+		{
+			var terrainInfo = Map.Rules.TerrainInfo;
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (terrainInfo.GetTerrainInfo(Map.Tiles[mpos]).RampType != 0)
+					zoneable[mpos] = value;
+		}
+
+		/// <summary>
+		/// Zones all cells that have ramps, except for cardinal ramps.
+		/// </summary>
+		public void ZoneFromComplexRamps<T>(CellLayer<T> zoneable, T value)
+		{
+			var terrainInfo = Map.Rules.TerrainInfo;
+			foreach (var mpos in Map.AllCells.MapCoords)
+				if (terrainInfo.GetTerrainInfo(Map.Tiles[mpos]).RampType > 4)
+					zoneable[mpos] = value;
+		}
+
 		/// <summary>
 		/// Returns a CellLayer describing whether the space in a map satisfies given terrain types
 		/// (if allowedTerrain is non-null), is free of actors, and/or is free of resources.
@@ -276,7 +295,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			IReadOnlySet<byte> allowedTerrain,
 			bool checkActors = false,
 			bool checkResources = false,
-			bool checkBounds = false)
+			bool checkBounds = false,
+			bool checkRamps = false)
 		{
 			var space = new CellLayer<bool>(Map);
 			if (allowedTerrain != null)
@@ -298,6 +318,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (checkBounds)
 				ZoneFromOutOfBounds(space, false);
 
+			if (checkRamps)
+				ZoneFromRamps(space, false);
+
 			return space;
 		}
 
@@ -309,7 +332,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			ushort requiredTile,
 			bool checkActors = false,
 			bool checkResources = false,
-			bool checkBounds = false)
+			bool checkBounds = false,
+			bool checkRamps = false)
 		{
 			var space = new CellLayer<bool>(Map);
 			foreach (var mpos in Map.AllCells.MapCoords)
@@ -323,6 +347,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			if (checkBounds)
 				ZoneFromOutOfBounds(space, false);
+
+			if (checkRamps)
+				ZoneFromRamps(space, false);
 
 			return space;
 		}
@@ -2025,7 +2052,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public void GrowResources(
 			CellLayer<int> plan,
 			CellLayer<ResourceTypeInfo> typePlan,
-			long targetValue)
+			long targetValue,
+			bool bakeDensities = false)
 		{
 			CheckHasMapShape(plan);
 			CheckHasMapShape(typePlan);
@@ -2056,9 +2084,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			Map.Resources.Clear();
 
-			// Return resource value of a given square.
-			// Matches the logic in ResourceLayer trait.
-			int CheckValue(CPos cpos)
+			int CheckDensity(CPos cpos)
 			{
 				if (!Map.Resources.Contains(cpos))
 					return 0;
@@ -2080,9 +2106,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 				// We need to have at least one resource in the cell.
 				// HACK: we should not be lerping to 9, as maximum adjacent resources is 8.
 				// HACK: it's too disruptive to fix.
-				var density = Math.Max(int2.Lerp(0, resourceType.MaxDensity, adjacent, 9), 1);
+				return Math.Max(int2.Lerp(0, resourceType.MaxDensity, adjacent, 9), 1);
+			}
 
-				return resourceValues[resourceType] * density;
+			// Return resource value of a given square.
+			// Matches the logic in ResourceLayer trait.
+			int CheckValue(CPos cpos)
+			{
+				var resourceType = typePlan[cpos];
+				return resourceValues[resourceType] * CheckDensity(cpos);
 			}
 
 			int CheckValue3By3(CPos cpos)
@@ -2127,6 +2159,16 @@ namespace OpenRA.Mods.Common.MapGenerator
 				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Rotations, Mirror))
 					if (Map.Resources.Contains(cpos))
 						remaining -= AddResource(cpos);
+			}
+
+			if (bakeDensities)
+			{
+				foreach (var cpos in Map.Resources.CellRegion)
+				{
+					Map.Resources[cpos] = new ResourceTile(
+						Map.Resources[cpos].Type,
+						(byte)CheckDensity(cpos));
+				}
 			}
 		}
 

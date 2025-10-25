@@ -543,6 +543,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			var repaintRandom = new MersenneTwister(random.Next());
 			var decorationRandom = new MersenneTwister(random.Next());
 			var decorationTilingRandom = new MersenneTwister(random.Next());
+			var heightMapNoiseRandom = new MersenneTwister(random.Next());
 
 			terraformer.InitMap();
 
@@ -575,7 +576,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			};
 
 			foreach (var mpos in map.AllCells.MapCoords)
-				map.Tiles[mpos] = terraformer.PickTile(random, param.LandTile);
+				map.Tiles[mpos] = terraformer.PickTile(pickAnyRandom, param.LandTile);
 
 			var elevation = terraformer.ElevationNoiseMatrix(
 				elevationRandom,
@@ -750,7 +751,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				MatrixUtils.EnumDump2d("targetHeights basic", heightMap.Target.Map(v => (int)v));
 
 				var noise = NoiseUtils.SymmetricFractalNoise(
-					random,
+					heightMapNoiseRandom,
 					heightMap.Target.Size,
 					terraformer.Rotations,
 					terraformer.Mirror,
@@ -765,38 +766,12 @@ namespace OpenRA.Mods.Cnc.Traits
 				heightMap.Soften(16);
 				MatrixUtils.EnumDump2d("targetHeights soften", heightMap.Target.Map(v => (int)v));
 
-				// var heightAdjust = MatrixUtils.KernelAggregate(
-				// 	elevation,
-				// 	new Matrix<int>(heightMap.Target.Size),
-				// 	new int2(2, 2),
-				// 	new int2(1, 1),
-				// 	submatrix => submatrix.Data.Sum());
-				// MatrixUtils.NormalizeRangeInPlace(heightAdjust, 2);
-
-				// heightMap.SetHeights(
-				// 	MatrixUtils.BinomialBlur(heightMap.Target.Map(v => (int)v), 5).Map(v => (byte)v));
-				// heightMap.BinomialBlur(5);
 				heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
 					?? throw new MapGenerationException("created unfixable heightmap");
 				MatrixUtils.EnumDump2d("targetHeights constrain", heightMap.Target.Map(v => (int)v));
 				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom);
 				terraformer.PaintTiling(rampTilingRandom, brush, 0);
 			}
-
-			// {
-			// 	var rampCellMask = new CellLayer<bool>(map);
-			// 	CellLayerUtils.FromMatrix(
-			// 		rampCellMask,
-			// 		MatrixUtils.KernelAggregate(
-			// 			rampMask,
-			// 			new Matrix<bool>(landPlan.Size),
-			// 			new int2(2, 2),
-			// 			new int2(0, 0),
-			// 			submatrix => submatrix.Data.Any(v => v)));
-			// 	MatrixUtils.EnumDump2d("mask", targetHeights.Map(v => (int)v));
-			// 	var brush = rampTiler.TileCorners(targetHeights, rampCellMask, rampTilingRandom);
-			// 	terraformer.PaintTiling(rampTilingRandom, brush, 0);
-			// }
 
 			if (param.Forests > 0)
 			{
@@ -824,50 +799,208 @@ namespace OpenRA.Mods.Cnc.Traits
 				terraformer.PaintActors(symmetryTilingRandom, asymmetries, param.ForestObstacles);
 			}
 
-			// var templates = new ushort[] { 0, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 };
-			// var brushes = templates
-			// 	.Select(t => new MultiBrush().WithTemplate(map, t, CVec.Zero))
-			// 	.ToList();
-			// var tiler = new RampTiler(map, brushes);
-			// var bounds = CellLayerUtils.CellBounds(map);
-			// var cornerHeightsNoise =
-			// 	NoiseUtils.FractalNoise(
-			// 		random,
-			// 		bounds.Size.ToInt2() + new int2(1, 1),
-			// 		1024 * 32,
-			// 		NoiseUtils.PinkAmplitude);
-			// cornerHeightsNoise = MatrixUtils.NormalizeRangeInPlace(cornerHeightsNoise, 32);
-			// var cornerHeights = MatrixUtils.BinomialBlur(cornerHeightsNoise, 0)
-			// 	.Map(i => (byte)Math.Max(0, i));
-			// var maskLayer = CellLayerUtils.Create(map, (MPos mpos) => map.Contains(mpos));
-			// var mask = new Matrix<bool>(bounds.Size.ToInt2() + new int2(1, 1)).Fill(true);
-			// // foreach (var cpos in map.AllEdgeCells)
-			// // {
-			// // 	var xy = new int2(cpos.X, cpos.Y) - bounds.TopLeft;
-			// // 	mask[xy.X, xy.Y] = false;
-			// // 	mask[xy.X + 1, xy.Y] = false;
-			// // 	mask[xy.X + 1, xy.Y + 1] = false;
-			// // 	mask[xy.X, xy.Y + 1] = false;
-			// // 	cornerHeights[xy.X, xy.Y] = 0;
-			// // 	cornerHeights[xy.X + 1, xy.Y] = 0;
-			// // 	cornerHeights[xy.X + 1, xy.Y + 1] = 0;
-			// // 	cornerHeights[xy.X, xy.Y + 1] = 0;
-			// // }
-			// for (var y = 0; y < mask.Size.Y; y++)
-			// {
-			// 	for (var x = 0; x < mask.Size.X; x++)
-			// 	{
-			// 		var cpos = new CPos(x + bounds.TopLeft.X, y + bounds.TopLeft.Y);
-			// 		if (map.Contains(cpos))
-			// 			mask[x, y] = true;
-			// 		else
-			// 			cornerHeights[x, y] = 0;
-			// 	}
-			// }
+			CellLayer<bool> playable;
+			{
+				playable = terraformer.ChoosePlayableRegion(
+					terraformer.CheckSpace(param.PlayableTerrain, true, false, true),
+					null)
+						?? throw new MapGenerationException("could not find a playable region");
 
-			// cornerHeights = tiler.ConstrainCornerHeights(cornerHeights, mask, RampTiler.AdjustmentMode.LowerMiddle);
-			// var tiling = tiler.TileCorners(cornerHeights, null, random);
-			// terraformer.PaintTiling(random, tiling);
+				var minimumPlayableSpace = (int)(param.Players * Math.PI * param.SpawnBuildSize * param.SpawnBuildSize);
+				if (playable.Count(p => p) < minimumPlayableSpace)
+					throw new MapGenerationException("playable space is too small");
+
+				if (param.DenyWalledAreas)
+				{
+					var replace = PlayableToReplaceable();
+					foreach (var mpos in map.AllCells.MapCoords)
+						if (playable[mpos] || !map.Contains(mpos))
+							replace[mpos] = MultiBrush.Replaceability.None;
+
+					terraformer.PaintArea(debrisTilingRandom, replace, param.UnplayableObstacles);
+				}
+			}
+
+			if (param.CreateEntities)
+			{
+				var zoneable = terraformer.GetZoneable(param.ZoneableTerrain, playable);
+				terraformer.ZoneFromRamps(zoneable, false);
+
+				var zoneableArea = zoneable.Count(v => v);
+				var symmetryCount = Symmetry.RotateAndMirrorProjectionCount(param.Rotations, param.Mirror);
+				var entityMultiplier =
+					(long)zoneableArea * param.AreaEntityBonus +
+					(long)param.Players * param.PlayerCountEntityBonus;
+				var perSymmetryEntityMultiplier = entityMultiplier / symmetryCount;
+
+				// Spawn generation
+				var symmetryPlayers = param.Players / symmetryCount;
+				for (var iteration = 0; iteration < symmetryPlayers; iteration++)
+				{
+					var chosenCPos = terraformer.ChooseSpawnInZoneable(
+						playerRandom,
+						zoneable,
+						param.CentralSpawnReservationFraction,
+						param.MinimumSpawnRadius,
+						param.SpawnRegionSize,
+						param.SpawnReservation)
+							?? throw new MapGenerationException("Not enough room for player spawns");
+
+					var spawn = new ActorPlan(map, "mpspawn")
+					{
+						Location = chosenCPos,
+					};
+
+					var resourceSpawnPreferences = terraformer.TargetWalkingDistance(
+						terraformer.CheckSpace(param.PlayableTerrain, true),
+						terraformer.ErodeZones(zoneable, 1),
+						[chosenCPos],
+						new WDist((param.SpawnBuildSize + param.SpawnRegionSize * 2) * 512),
+						new WDist(param.SpawnRegionSize * 1024));
+					terraformer.AddDistributedActors(
+						playerRandom,
+						zoneable,
+						resourceSpawnPreferences,
+						param.ResourceSpawnWeights,
+						param.SpawnResourceSpawns,
+						false,
+						new WDist(param.ResourceSpawnReservation * 1024));
+
+					terraformer.ProjectPlaceDezoneActor(spawn, zoneable, new WDist(param.SpawnReservation * 1024));
+				}
+
+				// Expansions
+				{
+					var resourceSpawnsRemaining = (int)(param.MaximumExpansionResourceSpawns * perSymmetryEntityMultiplier / EntityBonusMax);
+					while (resourceSpawnsRemaining > 0)
+					{
+						var added = terraformer.AddActorCluster(
+							expansionRandom,
+							zoneable,
+							param.ResourceSpawnWeights,
+							Math.Min(resourceSpawnsRemaining, expansionRandom.Next(param.MaximumResourceSpawnsPerExpansion) + 1),
+							param.ExpansionInner,
+							param.MinimumExpansionSize,
+							param.MaximumExpansionSize,
+							param.ExpansionBorder,
+							true,
+							new WDist(param.ResourceSpawnReservation * 1024));
+						resourceSpawnsRemaining -= added;
+						if (added == 0)
+							break;
+					}
+				}
+
+				// {
+				// 	var targetVeinholdCount = (int)(param.MaximumVeinholes * perSymmetryEntityMultiplier / EntityBonusMax);
+				// 	for (var i = 0; i < targetVeinholdCount; i++)
+				// 		terraformer.AddActor(
+				// 			expansionRandom,
+				// 			zoneable,
+				// 			param.Veinhole,
+				// 			new WDist(param.ResourceSpawnReservation * 1024));
+				// }
+
+				// Neutral buildings
+				{
+					var (buildingTypes, buildingWeights) = Terraformer.SplitDictionary(param.BuildingWeights);
+					var targetBuildingCount =
+						(param.MaximumBuildings != 0)
+							? buildingRandom.Next(
+								(int)(param.MinimumBuildings * perSymmetryEntityMultiplier / EntityBonusMax),
+								(int)(param.MaximumBuildings * perSymmetryEntityMultiplier / EntityBonusMax) + 1)
+							: 0;
+					for (var i = 0; i < targetBuildingCount; i++)
+						terraformer.AddActor(
+							buildingRandom,
+							zoneable,
+							buildingTypes[buildingRandom.PickWeighted(buildingWeights)]);
+				}
+
+				// Grow resources
+				var targetResourceValue = param.ResourcesPerPlayer * entityMultiplier / EntityBonusMax;
+				if (targetResourceValue > 0)
+				{
+					var resourcePattern = terraformer.ResourceNoise(
+						resourceRandom,
+						param.ResourceFeatureSize,
+						param.OreClumpiness,
+						param.OreUniformity * 1024 / FractionMax);
+
+					var resourceBiases = new List<Terraformer.ResourceBias>();
+					var wSpawnBuildSizeSq = (long)param.SpawnBuildSize * param.SpawnBuildSize * 1024 * 1024;
+
+					// Bias towards resource spawns
+					foreach (var (actorType, resourceType) in param.ResourceSpawnSeeds.OrderBy(kv => kv.Key))
+					{
+						resourceBiases.AddRange(
+							terraformer.ActorsOfType(actorType)
+								.Select(a => new Terraformer.ResourceBias(a)
+								{
+									BiasRadius = new WDist(16 * 1024),
+									Bias = (value, rSq) => value + (int)(1024 * 1024 / (1024 + Exts.ISqrt(rSq))),
+									ResourceType = resourceType,
+								}));
+					}
+
+					// Give veinholes even more bias. (Note: they don't consume resource quota.)
+					resourceBiases.AddRange(
+						terraformer.ActorsOfType("veinhole")
+							.Select(a => new Terraformer.ResourceBias(a)
+							{
+								BiasRadius = new WDist(16 * 1024),
+								Bias = (value, rSq) => value + (int)(512 * 1024 / (1024 + Exts.ISqrt(rSq))),
+							}));
+
+					// Bias towards player spawns, but also reserve an area for base building.
+					resourceBiases.AddRange(
+						terraformer.ActorsOfType("mpspawn")
+							.Select(a => new Terraformer.ResourceBias(a)
+							{
+								ExclusionRadius = new WDist(param.SpawnBuildSize * 1024),
+								BiasRadius = new WDist(param.SpawnRegionSize * 2 * 1024),
+								Bias = (value, rSq) => value + (int)(value * param.SpawnResourceBias * wSpawnBuildSizeSq / Math.Max(rSq, 1024 * 1024) / FractionMax),
+							}));
+
+					var resourceMask = CellLayerUtils.Clone(playable);
+					terraformer.ZoneFromActors(resourceMask, false);
+					terraformer.ZoneFromComplexRamps(resourceMask, false);
+
+					var (plan, typePlan) = terraformer.PlanResources(
+						resourcePattern,
+						resourceMask,
+						param.DefaultResource,
+						resourceBiases);
+					terraformer.GrowResources(
+						plan,
+						typePlan,
+						targetResourceValue,
+						true);
+					terraformer.ZoneFromResources(zoneable, false);
+				}
+
+				// // CivilianBuildings
+				// if (param.CivilianBuildings > 0)
+				// {
+				// 	var decorationNoise = terraformer.DecorationPattern(
+				// 		decorationRandom,
+				// 		terraformer.CheckSpace(param.PlayableTerrain, true),
+				// 		CellLayerUtils.Intersect([zoneable, terraformer.CheckSpace(param.LandTile)]),
+				// 		param.CivilianBuildings,
+				// 		param.CivilianBuildingsFeatureSize,
+				// 		param.CivilianBuildingDensity,
+				// 		param.MinimumCivilianBuildingDensity,
+				// 		param.CivilianBuildingDensityRadius);
+				// 	terraformer.PaintActors(
+				// 		decorationTilingRandom,
+				// 		decorationNoise,
+				// 		param.CivilianBuildingsObstacles,
+				// 		alwaysPreferLargerBrushes: true);
+				// }
+			}
+
+			// Cosmetically repaint tiles
+			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);
 
 			terraformer.BakeMap();
 

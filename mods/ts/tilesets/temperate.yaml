@@ -21638,3 +21638,8 @@ MultiBrushCollections:
 			Actor: tree24
 		MultiBrush@tree25:
 			Actor: tree25
+	Water:
+		FromTemplates: 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345
+		MultiBrush@346:
+			Template: 346
+			Weight: 100
