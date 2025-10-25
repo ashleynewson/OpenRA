@@ -281,21 +281,30 @@ namespace OpenRA.Mods.Common.MapGenerator
 					PermissiveCorners);
 			}
 
+			/// <summary>
+			/// Uniformally adjust the corner heights of masked cells.
+			/// </summary>
+			/// <param name="adjustment">Height adjustment.</param>
+			/// <param name="mask">Cells to apply height change to.</param>
+			public void AdjustCellHeights(int adjustment, CellLayer<bool> mask)
+			{
+				var matrixMask = MatrixUtils.KernelAggregate(
+					CellLayerUtils.ToMatrix(mask, false),
+					new Matrix<bool>(Target.Size),
+					new int2(2, 2),
+					new int2(1, 1),
+					submatrix => submatrix.Data.Any(v => v));
+				for (var y = 0; y < Target.Size.Y; y++)
+					for (var x = 0; x < Target.Size.X; x++)
+						if (matrixMask[x, y])
+							Target[x, y] = (byte)Math.Clamp(Target[x, y] + adjustment, byte.MinValue, byte.MaxValue);
+			}
+
 			public void SetCellHeights(byte height, CellLayer<bool> mask)
 			{
 				foreach (var cpos in mask.CellRegion)
 					if (mask[cpos])
 						SetCellHeight(height, cpos);
-				// var matrixMask = MatrixUtils.KernelAggregate(
-				// 	CellLayerUtils.ToMatrix(mask, false),
-				// 	new Matrix<bool>(Target.Size),
-				// 	new int2(2, 2),
-				// 	new int2(1, 1),
-				// 	submatrix => submatrix.Data.Any(v => v));
-				// for (var y = 0; y < Target.Size.Y; y++)
-				// 	for (var x = 0; x < Target.Size.X; x++)
-				// 		if (matrixMask[x, y])
-				// 			Target[x, y] = height;
 			}
 
 			public void SetCellHeights(byte height, IEnumerable<CPos> cells)
@@ -336,6 +345,46 @@ namespace OpenRA.Mods.Common.MapGenerator
 				SetHeights(MatrixUtils.BinomialBlur(
 					extended.Map(v => (int)v),
 					blur).Map(v => (byte)v));
+			}
+
+			public void Soften(int radius)
+			{
+				var newNumerator = Target.Map(v => (long)v);
+				var newDenominator = new Matrix<long>(Target.Size).Fill(1);
+
+				for (var iteration = 0; iteration < radius; iteration++)
+				{
+					var oldNumerator = newNumerator;
+					var oldDenominator = newDenominator;
+					newNumerator = new Matrix<long>(Target.Size);
+					newDenominator = new Matrix<long>(Target.Size);
+
+					(long Numerator, long Denominator, bool First)? Filler(int2 xy, (long Numerator, long Denominator, bool First) prop)
+					{
+						if (Adjustable[xy])
+						{
+							newNumerator[xy] += prop.Numerator;
+							newDenominator[xy] += prop.Denominator;
+						}
+
+						if (prop.First)
+							return (prop.Numerator, prop.Denominator, false);
+						else
+							return null;
+					}
+
+					MatrixUtils.FloodFill(
+						Target.Size,
+						Adjustable.Enumerate()
+							.Where(v => v.Value)
+							.Select(v => (v.Xy, (oldNumerator[v.Xy], oldDenominator[v.Xy], true))),
+						Filler,
+						DirectionExts.Spread4);
+				}
+
+				for (var i = 0; i < Target.Data.Length; i++)
+					if (Adjustable[i])
+						Target[i] = (byte)((newNumerator[i] + newDenominator[i] / 2) / newDenominator[i]);
 			}
 		}
 

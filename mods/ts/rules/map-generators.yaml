@@ -23,7 +23,7 @@
 						MinimumMountainThickness: 4
 						MaximumAltitude: 8
 						RoughnessRadius: 5
-						Roughness: 500
+						Roughness: 250
 						WaterRoughness: 0
 						MinimumTerrainContourSpacing: 5
 						MinimumBeachLength: 10
