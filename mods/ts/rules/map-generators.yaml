@@ -24,7 +24,7 @@
 						MaximumAltitude: 8
 						RoughnessRadius: 5
 						Roughness: 500
-						WaterRoughness: 200
+						WaterRoughness: 0
 						MinimumTerrainContourSpacing: 5
 						MinimumBeachLength: 10
 						MinimumWaterCliffLength: 10

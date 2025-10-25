@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Data;
 using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -278,6 +279,63 @@ namespace OpenRA.Mods.Common.MapGenerator
 					Adjustable.Clone(),
 					CellLayerUtils.Clone(Tileable),
 					PermissiveCorners);
+			}
+
+			public void SetCellHeights(byte height, CellLayer<bool> mask)
+			{
+				foreach (var cpos in mask.CellRegion)
+					if (mask[cpos])
+						SetCellHeight(height, cpos);
+				// var matrixMask = MatrixUtils.KernelAggregate(
+				// 	CellLayerUtils.ToMatrix(mask, false),
+				// 	new Matrix<bool>(Target.Size),
+				// 	new int2(2, 2),
+				// 	new int2(1, 1),
+				// 	submatrix => submatrix.Data.Any(v => v));
+				// for (var y = 0; y < Target.Size.Y; y++)
+				// 	for (var x = 0; x < Target.Size.X; x++)
+				// 		if (matrixMask[x, y])
+				// 			Target[x, y] = height;
+			}
+
+			public void SetCellHeights(byte height, IEnumerable<CPos> cells)
+			{
+				foreach (var cpos in cells)
+					SetCellHeight(height, cpos);
+			}
+
+			public void SetCellHeight(byte height, CPos cpos)
+			{
+				Target[CPosToXy(cpos)] = height;
+				Target[CPosToXy(cpos + new CVec(1, 0))] = height;
+				Target[CPosToXy(cpos + new CVec(1, 1))] = height;
+				Target[CPosToXy(cpos + new CVec(0, 1))] = height;
+			}
+
+			public void BinomialBlur(int blur)
+			{
+				var extended = Target.Clone();
+				var touched = new Matrix<bool>(Target.Size);
+
+				byte? Filler(int2 xy, byte prop)
+				{
+					if (touched[xy])
+						return null;
+
+					touched[xy] = true;
+					extended[xy] = prop;
+					return prop;
+				}
+
+				MatrixUtils.FloodFill(
+					extended.Size,
+					Adjustable.Enumerate().Where(i => i.Value).Select(i => (i.Xy, Target[i.Xy])),
+					Filler,
+					DirectionExts.Spread4);
+
+				SetHeights(MatrixUtils.BinomialBlur(
+					extended.Map(v => (int)v),
+					blur).Map(v => (byte)v));
 			}
 		}
 

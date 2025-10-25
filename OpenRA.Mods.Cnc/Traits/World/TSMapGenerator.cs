@@ -567,12 +567,6 @@ namespace OpenRA.Mods.Cnc.Traits
 				MinimumLength = param.MinimumBeachLength,
 				MaximumDeviation = param.MinimumLandSeaThickness - 1,
 			};
-			var waterCliffZone = new Terraformer.PathPartitionZone()
-			{
-				SegmentType = param.WaterCliffSegmentTypes[0],
-				MinimumLength = param.MinimumCliffLength,
-				MaximumDeviation = param.MinimumLandSeaThickness - 1,
-			};
 			var cliffZone = new Terraformer.PathPartitionZone()
 			{
 				SegmentType = param.CliffSegmentTypes[0],
@@ -585,19 +579,21 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			const int heightSteps = 8;
 
+			var baseHeight = 0;
+
 			var elevation = terraformer.ElevationNoiseMatrix(
 				elevationRandom,
 				param.TerrainFeatureSize,
 				param.TerrainSmoothing);
-			elevation = MatrixUtils.NormalizeRangeInPlace(elevation, heightSteps * FractionMax);
-
-			var slopinessMatrix = MatrixUtils.SlopeStrength(elevation, param.RoughnessRadius);
-			var cliffMask = MatrixUtils.KernelAggregate(
-				slopinessMatrix,
-				new Matrix<bool>(slopinessMatrix.Size + new int2(1, 1)),
-				new int2(2, 2),
-				new int2(1, 1),
-				submatrix => submatrix.Data.Sum() * 3 / 2 >= 1 * 4 * FractionMax);
+			var roughnessMatrix = MatrixUtils.GridVariance(
+				elevation,
+				param.RoughnessRadius);
+			// var waterCliffMask = MatrixUtils.CalibratedBooleanThreshold(
+			// 	roughnessMatrix,
+			// 	param.WaterRoughness, FractionMax);
+			// var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
+			// 	roughnessMatrix,
+			// 	param.Roughness, FractionMax);
 
 			var landPlan = terraformer.SliceElevation(elevation, null, FractionMax - param.Water);
 			landPlan = MatrixUtils.BooleanBlotch(
@@ -615,37 +611,39 @@ namespace OpenRA.Mods.Cnc.Traits
 				.Min();
 			elevation = elevation.Map(v => v - elevationCalibration);
 
+			var heightMap = new RampTiler.HeightMap(map);
+
 			// var roughnessMatrix = MatrixUtils.GridVariance(
 			// 	elevation,
 			// 	param.RoughnessRadius);
 
-			MatrixUtils.ColorDump2d("elevation", elevation, MatrixUtils.DumpAdjustment.Normalize);
-			MatrixUtils.ColorDump2d("cliffMask", cliffMask);
-			MatrixUtils.ColorDump2d("slopiness", slopinessMatrix, MatrixUtils.DumpAdjustment.Normalize);
-			MatrixUtils.EnumDump2d("slopiness2",
-				MatrixUtils.KernelAggregate(
-					slopinessMatrix,
-					new Matrix<int>(slopinessMatrix.Size + new int2(1, 1)),
-					new int2(2, 2),
-					new int2(1, 1),
-					submatrix => submatrix.Data.Sum() / FractionMax / 4));
+			// MatrixUtils.ColorDump2d("elevation", elevation, MatrixUtils.DumpAdjustment.Normalize);
+			// MatrixUtils.ColorDump2d("cliffMask", cliffMask);
+			// MatrixUtils.ColorDump2d("slopiness", slopinessMatrix, MatrixUtils.DumpAdjustment.Normalize);
+			// MatrixUtils.EnumDump2d("slopiness2",
+			// 	MatrixUtils.KernelAggregate(
+			// 		slopinessMatrix,
+			// 		new Matrix<int>(slopinessMatrix.Size + new int2(1, 1)),
+			// 		new int2(2, 2),
+			// 		new int2(1, 1),
+			// 		submatrix => submatrix.Data.Sum() / FractionMax / 4));
 
-			var rampMask = MatrixUtils.KernelAggregate(
-				landPlan,
-				new Matrix<bool>(landPlan.Size + new int2(1, 1)),
-				new int2(2, 2),
-				new int2(1, 1),
-				(submatrix) => submatrix.Data.All(v => v));
-			var targetHeights = MatrixUtils.KernelAggregate(
-				elevation,
-				new Matrix<byte>(rampMask.Size),
-				new int2(2, 2),
-				new int2(1, 1),
-				submatrix => (byte)Math.Clamp(submatrix.Data.Sum() / FractionMax / 4, byte.MinValue, byte.MaxValue));
-			targetHeights = Matrix<byte>.Zip(
-				rampMask,
-				targetHeights,
-				(m, t) => m ? t : (byte)0);
+			// var rampMask = MatrixUtils.KernelAggregate(
+			// 	landPlan,
+			// 	new Matrix<bool>(landPlan.Size + new int2(1, 1)),
+			// 	new int2(2, 2),
+			// 	new int2(1, 1),
+			// 	(submatrix) => submatrix.Data.All(v => v));
+			// var targetHeights = MatrixUtils.KernelAggregate(
+			// 	elevation,
+			// 	new Matrix<byte>(rampMask.Size),
+			// 	new int2(2, 2),
+			// 	new int2(1, 1),
+			// 	submatrix => (byte)Math.Clamp(submatrix.Data.Sum() / FractionMax / 4, byte.MinValue, byte.MaxValue));
+			// targetHeights = Matrix<byte>.Zip(
+			// 	rampMask,
+			// 	targetHeights,
+			// 	(m, t) => m ? t : (byte)0);
 			// targetHeights = rampTiler.ConstrainCornerHeights(targetHeights, rampMask, RampTiler.AdjustmentMode.LowerMiddle);
 			// MatrixUtils.EnumDump2d("targetHeights2", heightMap.Target.Map(v => (int)v));
 
@@ -653,10 +651,16 @@ namespace OpenRA.Mods.Cnc.Traits
 			List<TilingPath> coastPaths;
 			if (param.WaterRoughness > 0)
 			{
-				// var waterCliffMask = MatrixUtils.CalibratedBooleanThreshold(
-				// 	slopinessMatrix,
-				// 	param.WaterRoughness, FractionMax);
-				var partitionMask = cliffMask.Map(masked => masked ? waterCliffZone : beachZone);
+				var waterCliffZone = new Terraformer.PathPartitionZone()
+				{
+					SegmentType = param.WaterCliffSegmentTypes[0],
+					MinimumLength = param.MinimumCliffLength,
+					MaximumDeviation = param.MinimumLandSeaThickness - 1,
+				};
+				var waterCliffMask = MatrixUtils.CalibratedBooleanThreshold(
+					roughnessMatrix,
+					param.WaterRoughness, FractionMax);
+				var partitionMask = waterCliffMask.Map(masked => masked ? waterCliffZone : beachZone);
 				coastPaths = terraformer.PartitionPaths(
 					coast,
 					[beachZone, waterCliffZone],
@@ -668,6 +672,8 @@ namespace OpenRA.Mods.Cnc.Traits
 					coastPath
 						.OptimizeLoop()
 						.ExtendEdge(4);
+
+				baseHeight += 4;
 			}
 			else
 			{
@@ -692,17 +698,22 @@ namespace OpenRA.Mods.Cnc.Traits
 				null)
 					?? throw new MapGenerationException("Could not fit tiles for coast");
 
-			var heightMap = new RampTiler.HeightMap(map);
-			heightMap.SetHeights(targetHeights);
-			MatrixUtils.EnumDump2d("targetHeights0", heightMap.Target.Map(v => (int)v));
+			heightMap.SetCellHeights(
+				/* heightAdjust */ (byte)baseHeight,
+				CellLayerUtils.Map(landCoastWater, v => v == Terraformer.Side.In));
 			heightMap.MarkUntileable(
 				CellLayerUtils.Map(landCoastWater, v => v != Terraformer.Side.In));
-			MatrixUtils.EnumDump2d("targetHeights1", heightMap.Target.Map(v => (int)v));
-			rampTiler.PullHeightMap(heightMap);
-			MatrixUtils.EnumDump2d("targetHeights2", heightMap.Target.Map(v => (int)v));
-			heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
-				?? throw new MapGenerationException("created unfixable heightmap");
-			MatrixUtils.EnumDump2d("targetHeights3", heightMap.Target.Map(v => (int)v));
+
+			// heightMap.SetHeights(targetHeights);
+			// MatrixUtils.EnumDump2d("targetHeights0", heightMap.Target.Map(v => (int)v));
+			// heightMap.MarkUntileable(
+			// 	CellLayerUtils.Map(landCoastWater, v => v != Terraformer.Side.In));
+			// MatrixUtils.EnumDump2d("targetHeights1", heightMap.Target.Map(v => (int)v));
+			// rampTiler.PullHeightMap(heightMap);
+			// MatrixUtils.EnumDump2d("targetHeights2", heightMap.Target.Map(v => (int)v));
+			// heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
+			// 	?? throw new MapGenerationException("created unfixable heightmap");
+			// MatrixUtils.EnumDump2d("targetHeights3", heightMap.Target.Map(v => (int)v));
 
 			// {
 			// 	var retain = MatrixUtils.KernelAggregate<Terraformer.Side, bool>(
@@ -719,9 +730,9 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			if (param.Mountains > 0)
 			{
-				// var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
-				// 	slopinessMatrix,
-				// 	param.Roughness, FractionMax);
+				var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
+					roughnessMatrix,
+					param.Roughness, FractionMax);
 				var plan = landPlan;
 
 				for (var altitude = 0; altitude < param.MaximumAltitude; altitude++)
@@ -744,9 +755,12 @@ namespace OpenRA.Mods.Cnc.Traits
 						[cliffZone, clearZone],
 						partitionMask,
 						param.SegmentedBrushes,
-						/*param.MinimumCliffStraight*/3);
-					if (tilingPaths.Count == 0)
-						break;
+						/*param.MinimumCliffStraight*/2);
+					// if (tilingPaths.Count == 0)
+					// 	break;
+
+					var planCellLayer = new CellLayer<bool>(map);
+					CellLayerUtils.FromMatrix(planCellLayer, plan);
 
 					foreach (var tilingPath in tilingPaths)
 					{
@@ -756,29 +770,29 @@ namespace OpenRA.Mods.Cnc.Traits
 							.SetAutoEndDeviation()
 							.Tile(cliffTilingRandom)
 								?? throw new MapGenerationException("Could not fit tiles for sand-sand cliffs");
-						var matrixXYs = brush.Shape
-							.Where(cvec => map.Tiles.Contains(CPos.Zero + cvec))
-							.Select(CVecToMatrixXY)
-							.SelectMany(xy => new int2[]
-							{
-								xy,
-								xy + new int2(1, 0),
-								xy + new int2(0, 1),
-								xy + new int2(1, 1),
-							})
-							.Distinct()
-							.Where(heightMap.Target.ContainsXY)
-							.ToList();
+						// var matrixXYs = brush.Shape
+						// 	.Where(cvec => map.Tiles.Contains(CPos.Zero + cvec))
+						// 	.Select(CVecToMatrixXY)
+						// 	.SelectMany(xy => new int2[]
+						// 	{
+						// 		xy,
+						// 		xy + new int2(1, 0),
+						// 		xy + new int2(0, 1),
+						// 		xy + new int2(1, 1),
+						// 	})
+						// 	.Distinct()
+						// 	.Where(heightMap.Target.ContainsXY)
+						// 	.ToList();
 
-						if (matrixXYs.Count == 0)
-							continue;
+						// if (matrixXYs.Count == 0)
+						// 	continue;
 
-						var baseHeight = matrixXYs
-							.Select(xy => (short)heightMap.Target[xy])
-							.Append(short.MaxValue)
-							.Min();
+						// var baseHeight = matrixXYs
+						// 	.Select(xy => (short)heightMap.Target[xy])
+						// 	.Append(short.MaxValue)
+						// 	.Min();
 
-						terraformer.PaintTiling(pickAnyRandom, brush, baseHeight);
+						terraformer.PaintTiling(pickAnyRandom, brush, (short)baseHeight);
 
 						// TODO: Add a height/mask updater that takes a multibrush.
 
@@ -799,10 +813,15 @@ namespace OpenRA.Mods.Cnc.Traits
 						// 	targetHeights[xy] = (byte)baseHeight;
 					}
 
-					rampTiler.PullHeightMap(heightMap);
-					heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
-						?? throw new MapGenerationException("created unfixable heightmap");
-					MatrixUtils.EnumDump2d("targetHeights?", heightMap.Target.Map(v => (int)v));
+					baseHeight += 4;
+					heightMap.SetCellHeights(
+						(byte)baseHeight,
+						planCellLayer);
+
+					// rampTiler.PullHeightMap(heightMap);
+					// heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
+					// 	?? throw new MapGenerationException("created unfixable heightmap");
+					// MatrixUtils.EnumDump2d("targetHeights?", heightMap.Target.Map(v => (int)v));
 
 					// var cornerHeights = new Matrix<byte>(targetHeights.Size);
 					// rampTiler.PullUnmaskedCornerHeights(cornerHeights, null);
@@ -837,9 +856,36 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 
 			{
+				rampTiler.PullHeightMap(heightMap);
 				MatrixUtils.ColorDump2d("adjustable", heightMap.Adjustable);
-				MatrixUtils.EnumDump2d("targetHeights final", heightMap.Target.Map(v => (int)v));
+				MatrixUtils.EnumDump2d("targetHeights basic", heightMap.Target.Map(v => (int)v));
+				var noise = NoiseUtils.SymmetricFractalNoise(
+					random,
+					heightMap.Target.Size,
+					terraformer.Rotations,
+					terraformer.Mirror,
+					16 * 1024,
+					NoiseUtils.PinkAmplitude);
+				noise = MatrixUtils.BinomialBlur(noise, 1);
+				noise = MatrixUtils.NormalizeRangeInPlace(noise, 3);
+				for (var i = 0; i < noise.Data.Length; i++)
+					heightMap.Target[i] = (byte)Math.Clamp(noise[i] + heightMap.Target[i], byte.MinValue, byte.MaxValue);
+				MatrixUtils.EnumDump2d("targetHeights noised", heightMap.Target.Map(v => (int)v));
 
+				// var heightAdjust = MatrixUtils.KernelAggregate(
+				// 	elevation,
+				// 	new Matrix<int>(heightMap.Target.Size),
+				// 	new int2(2, 2),
+				// 	new int2(1, 1),
+				// 	submatrix => submatrix.Data.Sum());
+				// MatrixUtils.NormalizeRangeInPlace(heightAdjust, 2);
+
+				// heightMap.SetHeights(
+				// 	MatrixUtils.BinomialBlur(heightMap.Target.Map(v => (int)v), 5).Map(v => (byte)v));
+				// heightMap.BinomialBlur(5);
+				heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
+					?? throw new MapGenerationException("created unfixable heightmap");
+				MatrixUtils.EnumDump2d("targetHeights constrain", heightMap.Target.Map(v => (int)v));
 				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom);
 				terraformer.PaintTiling(rampTilingRandom, brush, 0);
 			}

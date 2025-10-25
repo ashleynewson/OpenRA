@@ -10,6 +10,8 @@
 #endregion
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace OpenRA.Mods.Common.MapGenerator
 {
@@ -201,6 +203,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (Size != destination.Size)
 				throw new ArgumentException("source and destination have different size");
 			Data.CopyTo(destination.Data, 0);
+		}
+
+		public IEnumerable<(int2 Xy, T Value)> Enumerate()
+		{
+			for (var y = 0; y < Size.Y; y++)
+				for (var x = 0; x < Size.X; x++)
+					yield return (new int2(x, y), this[x, y]);
 		}
 	}
 }
