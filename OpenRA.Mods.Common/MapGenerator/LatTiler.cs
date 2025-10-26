@@ -13,6 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using OpenRA.Mods.Common.Terrain;
+using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapGenerator
 {
@@ -84,7 +86,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return canonicalizations.GetValueOrDefault(tile.Type, tile.Type);
 		}
 
-		public CellLayer<TerrainTile> OfferReplacements(CellLayer<TerrainTile> original)
+		static TerrainTile PickTile(MersenneTwister random, ITemplatedTerrainInfo templatedTerrainInfo, ushort tileType)
+		{
+			if (random != null && templatedTerrainInfo != null && templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
+				return new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
+			else
+				return new TerrainTile(tileType, 0);
+		}
+
+		public CellLayer<TerrainTile> OfferReplacements(
+			MersenneTwister random,
+			ITemplatedTerrainInfo templatedTerrainInfo,
+			CellLayer<TerrainTile> original)
 		{
 			var replaced = CellLayerUtils.Clone(original);
 			foreach (var cpos in original.CellRegion)
@@ -108,8 +121,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 					var maybe = latRule.OfferReplacement(main, adjacents);
 					if (maybe.HasValue)
 					{
-						// TODO: Use a random index.
-						replaced[cpos] = new TerrainTile(maybe.Value, 0);
+						replaced[cpos] = PickTile(random, templatedTerrainInfo, maybe.Value);
 						break;
 					}
 				}
@@ -118,9 +130,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return replaced;
 		}
 
-		public void Replace(Map map)
+		public void Replace(MersenneTwister random, Map map)
 		{
-			var updated = OfferReplacements(map.Tiles);
+			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			var updated = OfferReplacements(random, templatedTerrainInfo, map.Tiles);
 			foreach (var mpos in map.Tiles.CellRegion.MapCoords)
 				map.Tiles[mpos] = updated[mpos];
 		}

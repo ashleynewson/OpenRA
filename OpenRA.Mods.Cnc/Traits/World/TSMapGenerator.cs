@@ -760,8 +760,6 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			{
 				rampTiler.PullHeightMap(heightMap);
-				MatrixUtils.ColorDump2d("adjustable", heightMap.Adjustable);
-				MatrixUtils.EnumDump2d("targetHeights basic", heightMap.Target.Map(v => (int)v));
 
 				var noise = NoiseUtils.SymmetricFractalNoise(
 					heightMapNoiseRandom,
@@ -774,14 +772,10 @@ namespace OpenRA.Mods.Cnc.Traits
 				noise = MatrixUtils.NormalizeRangeInPlace(noise, 3);
 				for (var i = 0; i < noise.Data.Length; i++)
 					heightMap.Target[i] = (byte)Math.Clamp(noise[i] + heightMap.Target[i], byte.MinValue, byte.MaxValue);
-				MatrixUtils.EnumDump2d("targetHeights noised", heightMap.Target.Map(v => (int)v));
 
 				heightMap.Soften(16);
-				MatrixUtils.EnumDump2d("targetHeights soften", heightMap.Target.Map(v => (int)v));
-
 				heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
 					?? throw new MapGenerationException("created unfixable heightmap");
-				MatrixUtils.EnumDump2d("targetHeights constrain", heightMap.Target.Map(v => (int)v));
 				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom)
 					?? throw new MapGenerationException("created invalid heightmap");
 				terraformer.PaintTiling(rampTilingRandom, brush, 0);
@@ -807,29 +801,6 @@ namespace OpenRA.Mods.Cnc.Traits
 						replace[mpos] = MultiBrush.Replaceability.None;
 				terraformer.PaintArea(forestTilingRandom, replace, param.ForestObstacles);
 			}
-
-			// {
-			// 	var tileable = terraformer.CheckSpace(param.LandTile);
-			// 	var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
-			// 	if (forestPlan != null)
-			// 		noise = CellLayerUtils.Union([noise, forestPlan]);
-
-			// 	noise = CellLayerUtils.Intersect([noise, tileable]);
-			// 	noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
-			// 	foreach (var cpos in map.Tiles.CellRegion)
-			// 		if (noise[cpos])
-			// 			map.Tiles[cpos] = new TerrainTile(626, 0);
-			// }
-
-			// {
-			// 	var tileable = terraformer.CheckSpace(param.LandTile);
-			// 	var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
-			// 	noise = CellLayerUtils.Intersect([noise, tileable]);
-			// 	noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
-			// 	foreach (var cpos in map.Tiles.CellRegion)
-			// 		if (noise[cpos])
-			// 			map.Tiles[cpos] = new TerrainTile(535, 0);
-			// }
 
 			if (param.EnforceSymmetry != 0)
 			{
@@ -1051,14 +1022,13 @@ namespace OpenRA.Mods.Cnc.Traits
 						map.Tiles[cpos] = new TerrainTile(535, 0);
 			}
 
-
 			var tiler = new LatTiler(
 				[
 					new LatTiler.LatRule(535, 535, null, [535, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551]),
 					new LatTiler.LatRule(626, 626, null, [626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642])
 				],
 				ImmutableDictionary<ushort, ushort>.Empty);
-			tiler.Replace(map);
+			tiler.Replace(pickAnyRandom, map);
 
 			// Cosmetically repaint tiles
 			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);

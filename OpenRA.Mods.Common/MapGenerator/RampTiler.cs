@@ -223,9 +223,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			public HeightMap Constrain(AdjustmentMode mode)
 			{
-				MatrixUtils.EnumDump2d("lower", LowerBound.Map(v => (int)v));
-				MatrixUtils.EnumDump2d("upper", UpperBound.Map(v => (int)v));
-
 				var forcedMaximum = GetLowerHull(UpperBound.Clone());
 				var forcedMinimum = GetUpperHull(LowerBound.Clone());
 				var constrained = Target.Clone();
