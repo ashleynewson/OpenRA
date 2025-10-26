@@ -544,6 +544,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			var decorationRandom = new MersenneTwister(random.Next());
 			var decorationTilingRandom = new MersenneTwister(random.Next());
 			var heightMapNoiseRandom = new MersenneTwister(random.Next());
+			var grassNoiseRandom = new MersenneTwister(random.Next());
 
 			terraformer.InitMap();
 
@@ -593,6 +594,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
 				param.MinimumLandSeaThickness,
 				/*bias=*/param.Water <= FractionMax / 2);
+			var elevationPlan = landPlan;
 
 			var elevationCalibration =
 				Enumerable.Zip(
@@ -653,9 +655,21 @@ namespace OpenRA.Mods.Cnc.Traits
 				null)
 					?? throw new MapGenerationException("Could not fit tiles for coast");
 
-			heightMap.SetCellHeights(
-				(byte)(param.WaterRoughness > 0 ? 4 : 0),
-				CellLayerUtils.Map(landCoastWater, v => v == Terraformer.Side.In));
+			if (param.WaterRoughness > 0)
+			{
+				elevationPlan = terraformer.SliceElevation(
+					elevation,
+					elevationPlan,
+					param.Mountains,
+					param.MinimumTerrainContourSpacing);
+
+				heightMap.SetCellHeights(
+					4,
+					CellLayerUtils.Map(landCoastWater, v => v == Terraformer.Side.In));
+				heightMap.MarkUntileable(
+					CellLayerUtils.Map(landCoastWater, v => v == Terraformer.Side.None));
+				heightMap.Soften(16);
+			}
 
 			heightMap.MarkUntileable(
 				CellLayerUtils.Map(landCoastWater, v => v != Terraformer.Side.In));
@@ -665,26 +679,25 @@ namespace OpenRA.Mods.Cnc.Traits
 				var cliffMask = MatrixUtils.CalibratedBooleanThreshold(
 					roughnessMatrix,
 					param.Roughness, FractionMax);
-				var plan = landPlan;
 
 				for (var altitude = 0; altitude < param.MaximumAltitude; altitude++)
 				{
-					plan = terraformer.SliceElevation(
+					elevationPlan = terraformer.SliceElevation(
 						elevation,
-						plan,
+						elevationPlan,
 						param.Mountains,
 						param.MinimumTerrainContourSpacing);
-					plan = MatrixUtils.BooleanBlotch(
-						plan,
+					elevationPlan = MatrixUtils.BooleanBlotch(
+						elevationPlan,
 						param.TerrainSmoothing,
 						param.SmoothingThreshold, /*smoothingThresholdOutOf=*/FractionMax,
 						param.MinimumMountainThickness,
 						/*bias=*/false);
 
 					var planCellLayer = new CellLayer<bool>(map);
-					CellLayerUtils.FromMatrix(planCellLayer, plan);
+					CellLayerUtils.FromMatrix(planCellLayer, elevationPlan);
 
-					var contours = MatrixUtils.BordersToPoints(plan);
+					var contours = MatrixUtils.BordersToPoints(elevationPlan);
 					var partitionMask = cliffMask.Map(masked => masked ? cliffZone : clearZone);
 
 					var shortContours = new List<int2[]>();
@@ -769,10 +782,12 @@ namespace OpenRA.Mods.Cnc.Traits
 				heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
 					?? throw new MapGenerationException("created unfixable heightmap");
 				MatrixUtils.EnumDump2d("targetHeights constrain", heightMap.Target.Map(v => (int)v));
-				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom);
+				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom)
+					?? throw new MapGenerationException("created invalid heightmap");
 				terraformer.PaintTiling(rampTilingRandom, brush, 0);
 			}
 
+			CellLayer<bool> forestPlan = null;
 			if (param.Forests > 0)
 			{
 				var space = terraformer.CheckSpace(param.ClearTerrain);
@@ -781,17 +796,40 @@ namespace OpenRA.Mods.Cnc.Traits
 					terraformer.ImproveSymmetry(space, true, (a, b) => a && b),
 					param.ForestCutout,
 					param.MaximumCutoutSpacing);
-				var forestNoise = terraformer.BooleanNoise(
+				forestPlan = terraformer.BooleanNoise(
 					forestRandom,
 					param.ForestFeatureSize,
 					param.Forests,
 					param.ForestClumpiness);
 				var replace = PlayableToReplaceable();
 				foreach (var mpos in map.AllCells.MapCoords)
-					if (!forestNoise[mpos] || !space[mpos] || passages[mpos])
+					if (!forestPlan[mpos] || !space[mpos] || passages[mpos])
 						replace[mpos] = MultiBrush.Replaceability.None;
 				terraformer.PaintArea(forestTilingRandom, replace, param.ForestObstacles);
 			}
+
+			// {
+			// 	var tileable = terraformer.CheckSpace(param.LandTile);
+			// 	var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
+			// 	if (forestPlan != null)
+			// 		noise = CellLayerUtils.Union([noise, forestPlan]);
+
+			// 	noise = CellLayerUtils.Intersect([noise, tileable]);
+			// 	noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
+			// 	foreach (var cpos in map.Tiles.CellRegion)
+			// 		if (noise[cpos])
+			// 			map.Tiles[cpos] = new TerrainTile(626, 0);
+			// }
+
+			// {
+			// 	var tileable = terraformer.CheckSpace(param.LandTile);
+			// 	var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
+			// 	noise = CellLayerUtils.Intersect([noise, tileable]);
+			// 	noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
+			// 	foreach (var cpos in map.Tiles.CellRegion)
+			// 		if (noise[cpos])
+			// 			map.Tiles[cpos] = new TerrainTile(535, 0);
+			// }
 
 			if (param.EnforceSymmetry != 0)
 			{
@@ -821,11 +859,11 @@ namespace OpenRA.Mods.Cnc.Traits
 				}
 			}
 
+			var zoneable = terraformer.GetZoneable(param.ZoneableTerrain, playable);
+			terraformer.ZoneFromRamps(zoneable, false);
+
 			if (param.CreateEntities)
 			{
-				var zoneable = terraformer.GetZoneable(param.ZoneableTerrain, playable);
-				terraformer.ZoneFromRamps(zoneable, false);
-
 				var zoneableArea = zoneable.Count(v => v);
 				var symmetryCount = Symmetry.RotateAndMirrorProjectionCount(param.Rotations, param.Mirror);
 				var entityMultiplier =
@@ -890,16 +928,6 @@ namespace OpenRA.Mods.Cnc.Traits
 							break;
 					}
 				}
-
-				// {
-				// 	var targetVeinholdCount = (int)(param.MaximumVeinholes * perSymmetryEntityMultiplier / EntityBonusMax);
-				// 	for (var i = 0; i < targetVeinholdCount; i++)
-				// 		terraformer.AddActor(
-				// 			expansionRandom,
-				// 			zoneable,
-				// 			param.Veinhole,
-				// 			new WDist(param.ResourceSpawnReservation * 1024));
-				// }
 
 				// Neutral buildings
 				{
@@ -979,25 +1007,58 @@ namespace OpenRA.Mods.Cnc.Traits
 					terraformer.ZoneFromResources(zoneable, false);
 				}
 
-				// // CivilianBuildings
-				// if (param.CivilianBuildings > 0)
-				// {
-				// 	var decorationNoise = terraformer.DecorationPattern(
-				// 		decorationRandom,
-				// 		terraformer.CheckSpace(param.PlayableTerrain, true),
-				// 		CellLayerUtils.Intersect([zoneable, terraformer.CheckSpace(param.LandTile)]),
-				// 		param.CivilianBuildings,
-				// 		param.CivilianBuildingsFeatureSize,
-				// 		param.CivilianBuildingDensity,
-				// 		param.MinimumCivilianBuildingDensity,
-				// 		param.CivilianBuildingDensityRadius);
-				// 	terraformer.PaintActors(
-				// 		decorationTilingRandom,
-				// 		decorationNoise,
-				// 		param.CivilianBuildingsObstacles,
-				// 		alwaysPreferLargerBrushes: true);
-				// }
+				// CivilianBuildings
+				if (param.CivilianBuildings > 0)
+				{
+					var decorationNoise = terraformer.DecorationPattern(
+						decorationRandom,
+						terraformer.CheckSpace(param.PlayableTerrain, true),
+						CellLayerUtils.Intersect([zoneable, terraformer.CheckSpace(param.LandTile)]),
+						param.CivilianBuildings,
+						param.CivilianBuildingsFeatureSize,
+						param.CivilianBuildingDensity,
+						param.MinimumCivilianBuildingDensity,
+						param.CivilianBuildingDensityRadius);
+					terraformer.PaintActors(
+						decorationTilingRandom,
+						decorationNoise,
+						param.CivilianBuildingsObstacles,
+						alwaysPreferLargerBrushes: true);
+				}
 			}
+
+			{
+				var tileable = terraformer.CheckSpace(param.LandTile);
+				var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
+				noise = CellLayerUtils.Intersect([noise, zoneable]);
+				if (forestPlan != null)
+					noise = CellLayerUtils.Union([noise, forestPlan]);
+
+				noise = CellLayerUtils.Intersect([noise, tileable]);
+				noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
+				foreach (var cpos in map.Tiles.CellRegion)
+					if (noise[cpos])
+						map.Tiles[cpos] = new TerrainTile(626, 0);
+			}
+
+			{
+				var tileable = terraformer.CheckSpace(param.LandTile);
+				var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
+				noise = CellLayerUtils.Intersect([noise, tileable, zoneable]);
+				noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
+				foreach (var cpos in map.Tiles.CellRegion)
+					if (noise[cpos])
+						map.Tiles[cpos] = new TerrainTile(535, 0);
+			}
+
+
+			var tiler = new LatTiler(
+				[
+					new LatTiler.LatRule(535, 535, null, [535, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551]),
+					new LatTiler.LatRule(626, 626, null, [626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642])
+				],
+				ImmutableDictionary<ushort, ushort>.Empty);
+			tiler.Replace(map);
 
 			// Cosmetically repaint tiles
 			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);

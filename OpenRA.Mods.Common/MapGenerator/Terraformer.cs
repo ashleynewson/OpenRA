@@ -176,7 +176,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			var maxTerrainHeight = Map.Grid.MaximumTerrainHeight;
 			var tl = new PPos(1, 1 + maxTerrainHeight);
-			var br = new PPos(Map.MapSize.Width - 2, Map.MapSize.Height + maxTerrainHeight - 2);
+			var br = new PPos(Map.MapSize.Width - 2, Map.MapSize.Height - maxTerrainHeight - 2);
 			Map.SetBounds(tl, br);
 			Map.Title = MapGenerationArgs.Title;
 			Map.Author = MapGenerationArgs.Author;
@@ -191,6 +191,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var playerCount = ActorsOfType("mpspawn").Count();
 			Map.PlayerDefinitions = new MapPlayers(Map.Rules, playerCount).ToMiniYaml();
 			Map.ActorDefinitions = ActorPlans
+				.Where(plan => plan.HasFootprintInMap())
 				.Select((plan, i) => new MiniYamlNode($"Actor{i}", plan.Reference.Save()))
 				.ToImmutableArray();
 		}
@@ -261,10 +262,13 @@ namespace OpenRA.Mods.Common.MapGenerator
 					zoneable[mpos] = value;
 		}
 
+		/// <summary>
+		/// Zone based on Map.Bounds.Contains. This is stricter than Map.Contains.
+		/// </summary>
 		public void ZoneFromOutOfBounds<T>(CellLayer<T> zoneable, T value)
 		{
 			foreach (var mpos in Map.AllCells.MapCoords)
-				if (!Map.Contains(mpos))
+				if (!Map.Bounds.Contains(mpos.U, mpos.V))
 					zoneable[mpos] = value;
 		}
 
@@ -1718,7 +1722,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			var fillSeeds = CellLayerUtils.Create(Map, (MPos mpos) =>
 				sides[mpos] == fillSide &&
 				!mask[mpos] &&
-				Map.Contains(mpos));
+				Map.Bounds.Contains(mpos.U, mpos.V));
 			fillSeeds = ImproveSymmetry(fillSeeds, false, (a, b) => a || b);
 			var fillable = CellLayerUtils.Map(sides, side => side != notFillSide);
 			CellLayerUtils.SimpleFloodFill(
@@ -2113,6 +2117,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// Matches the logic in ResourceLayer trait.
 			int CheckValue(CPos cpos)
 			{
+				if (!typePlan.Contains(cpos))
+					return 0;
+
 				var resourceType = typePlan[cpos];
 				return resourceValues[resourceType] * CheckDensity(cpos);
 			}

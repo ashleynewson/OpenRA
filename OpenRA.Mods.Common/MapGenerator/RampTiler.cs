@@ -737,7 +737,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 					Math.Abs(br - bl) > 1 ||
 					Math.Abs(bl - tl) > 1)
 				{
-					throw new ArgumentException("cornerHeights has adjacent cell corners with a height difference > 1");
+					return (null, null);
+					// throw new ArgumentException("cornerHeights has adjacent cell corners with a height difference > 1");
 				}
 
 				var lookup = tl | (tr << 2) | (br << 4) | (bl << 6);

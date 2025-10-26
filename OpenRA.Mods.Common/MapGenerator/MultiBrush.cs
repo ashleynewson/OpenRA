@@ -41,6 +41,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 			public readonly string Type;
 			public readonly WVec Offset = WVec.Zero;
 
+			public ActorInfo(string type)
+			{
+				Type = type;
+			}
+
 			public ActorInfo(MiniYaml my)
 			{
 				if (string.IsNullOrEmpty(my.Value))
@@ -208,6 +213,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 								throw new YamlException($"Invalid MultiBrush Template `{part}`");
 							brushes.Add(new MultiBrushInfo(templates: [new TemplateInfo(type)]));
 						}
+
+						break;
+					case "FromActors":
+						foreach (var type in node.Value.Value.Split(","))
+							brushes.Add(new MultiBrushInfo(actors: [new ActorInfo(type)]));
 
 						break;
 					default:

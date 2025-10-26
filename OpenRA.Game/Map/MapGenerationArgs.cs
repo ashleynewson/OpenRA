@@ -27,7 +27,6 @@ namespace OpenRA
 
 		[FieldLoader.Require]
 		public Size Size = default;
-
 		[FieldLoader.Require]
 		public string Title = null;
 

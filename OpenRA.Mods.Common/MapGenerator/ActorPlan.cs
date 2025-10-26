@@ -104,6 +104,17 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
+		/// Return true iff any of the actors footprint satisfies Map.Contains.
+		/// Note that this is not the same as satisfying Map.Bounds.Contains.
+		/// </summary>
+		public bool HasFootprintInMap()
+		{
+			return Footprint()
+				.Select(f => f.Key)
+				.All(Map.Contains);
+		}
+
+		/// <summary>
 		/// Relocates the actor such that the top-most, left-most footprint
 		/// square is at (0, 0).
 		/// </summary>

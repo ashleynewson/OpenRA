@@ -21588,58 +21588,14 @@ MultiBrushCollections:
 				Points: 3,4, 2,4, 1,4
 
 	Trees:
-		MultiBrush@tree01:
-			Actor: tree01
-		MultiBrush@tree02:
-			Actor: tree02
-		MultiBrush@tree03:
-			Actor: tree03
-		MultiBrush@tree04:
-			Actor: tree04
-		MultiBrush@tree05:
-			Actor: tree05
-		MultiBrush@tree06:
-			Actor: tree06
-		MultiBrush@tree07:
-			Actor: tree07
-		MultiBrush@tree08:
-			Actor: tree08
-		MultiBrush@tree09:
-			Actor: tree09
-		MultiBrush@tree10:
-			Actor: tree10
-		MultiBrush@tree11:
-			Actor: tree11
-		MultiBrush@tree12:
-			Actor: tree12
-		MultiBrush@tree13:
-			Actor: tree13
-		MultiBrush@tree14:
-			Actor: tree14
-		MultiBrush@tree15:
-			Actor: tree15
-		MultiBrush@tree16:
-			Actor: tree16
-		MultiBrush@tree17:
-			Actor: tree17
-		MultiBrush@tree18:
-			Actor: tree18
-		MultiBrush@tree19:
-			Actor: tree19
-		MultiBrush@tree20:
-			Actor: tree20
-		MultiBrush@tree21:
-			Actor: tree21
-		MultiBrush@tree22:
-			Actor: tree22
-		MultiBrush@tree23:
-			Actor: tree23
-		MultiBrush@tree24:
-			Actor: tree24
-		MultiBrush@tree25:
-			Actor: tree25
+		FromActors: tree01,tree02,tree03,tree04,tree05,tree06,tree07,tree08,tree09,tree10,tree11,tree12,tree13,tree14,tree15,tree16,tree17,tree18,tree19,tree20,tree21,tree22,tree23,tree24,tree25
 	Water:
 		FromTemplates: 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345
 		MultiBrush@346:
 			Template: 346
 			Weight: 100
+	CivilianBuildings:
+		FromActors: ca0001,ca0002,ca0003,ca0004,ca0005,ca0006,ca0007,ca0008,ca0009,ca0010,ca0011,ca0012,ca0013,ca0014,ca0015,ca0016,ca0017,ca0018,ca0019,ca0020,ca0021
+	Obstructions:
+		FromActors: tree01,tree02,tree03,tree04,tree05,tree06,tree07,tree08,tree09,tree10,tree11,tree12,tree13,tree14,tree15,tree16,tree17,tree18,tree19,tree20,tree21,tree22,tree23,tree24,tree25
+		FromActors: srock01,srock02,srock03,srock04,srock05,trock01,trock02,trock03,trock04,trock05
