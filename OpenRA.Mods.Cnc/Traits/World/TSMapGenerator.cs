@@ -544,7 +544,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			var decorationRandom = new MersenneTwister(random.Next());
 			var decorationTilingRandom = new MersenneTwister(random.Next());
 			var heightMapNoiseRandom = new MersenneTwister(random.Next());
-			var grassNoiseRandom = new MersenneTwister(random.Next());
+			var groundTypeNoiseRandom = new MersenneTwister(random.Next());
 
 			terraformer.InitMap();
 
@@ -1000,7 +1000,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			{
 				var tileable = terraformer.CheckSpace(param.LandTile);
-				var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
+				var noise = terraformer.BooleanNoise(groundTypeNoiseRandom, 10240, 125);
 				noise = CellLayerUtils.Intersect([noise, zoneable]);
 				if (forestPlan != null)
 					noise = CellLayerUtils.Union([noise, forestPlan]);
@@ -1014,7 +1014,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			{
 				var tileable = terraformer.CheckSpace(param.LandTile);
-				var noise = terraformer.BooleanNoise(grassNoiseRandom, 10240, 125);
+				var noise = terraformer.BooleanNoise(groundTypeNoiseRandom, 10240, 125);
 				noise = CellLayerUtils.Intersect([noise, tileable, zoneable]);
 				noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
 				foreach (var cpos in map.Tiles.CellRegion)
@@ -1022,10 +1022,21 @@ namespace OpenRA.Mods.Cnc.Traits
 						map.Tiles[cpos] = new TerrainTile(535, 0);
 			}
 
+			{
+				var tileable = terraformer.CheckSpace(param.LandTile);
+				var noise = terraformer.BooleanNoise(groundTypeNoiseRandom, 10240, 125);
+				noise = CellLayerUtils.Intersect([noise, tileable, zoneable]);
+				noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
+				foreach (var cpos in map.Tiles.CellRegion)
+					if (noise[cpos])
+						map.Tiles[cpos] = new TerrainTile(150, 0);
+			}
+
 			var tiler = new LatTiler(
 				[
+					new LatTiler.LatRule(150, 150, null, [150, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166]),
 					new LatTiler.LatRule(535, 535, null, [535, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551]),
-					new LatTiler.LatRule(626, 626, null, [626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642])
+					new LatTiler.LatRule(626, 626, null, [626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642]),
 				],
 				ImmutableDictionary<ushort, ushort>.Empty);
 			tiler.Replace(pickAnyRandom, map);
