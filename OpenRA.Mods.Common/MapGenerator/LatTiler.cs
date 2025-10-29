@@ -22,44 +22,63 @@ namespace OpenRA.Mods.Common.MapGenerator
 	{
 		public class LatRule
 		{
-			public readonly ushort MainTile;
-			public readonly ushort? LowTile;
-			public readonly ushort? HighTile;
+			[FieldLoader.Require]
+			public readonly ushort Main;
+			public readonly ushort? Low = null;
+			public readonly ushort? High = null;
 
 			// Array index is a bitmask of U=1, R=2, D=4, L=8.
+			[FieldLoader.Ignore]
 			public readonly ImmutableArray<ushort> Replacements;
 
 			public LatRule(
-				ushort mainTile,
-				ushort? lowTile,
-				ushort? highTile,
+				ushort main,
+				ushort? low,
+				ushort? high,
 				ImmutableArray<ushort> replacements)
 			{
-				if (!lowTile.HasValue && !highTile.HasValue)
+				if (!low.HasValue && !high.HasValue)
 					throw new ArgumentException("both lowTile and highTile were null");
 
-				MainTile = mainTile;
-				LowTile = lowTile;
-				HighTile = highTile;
+				if (replacements.Length != 16)
+					throw new ArgumentException("replacements did not have 16 elements");
+
+				Main = main;
+				Low = low;
+				High = high;
 				Replacements = replacements;
+			}
+
+			public LatRule(MiniYaml my)
+			{
+				FieldLoader.Load(this, my);
+				Replacements = FieldLoader.GetValue<List<ushort>>(
+					nameof(Replacements), my.NodeWithKey(nameof(Replacements)).Value.Value)
+						.ToImmutableArray();
+
+				if (!Low.HasValue && !High.HasValue)
+					throw new YamlException("both Low and High were null in LatRule");
+
+				if (Replacements.Length != 16)
+					throw new ArgumentException("Replacements did not have 16 elements");
 			}
 
 			public ushort? OfferReplacement(ushort main, ushort[] adjacents)
 			{
-				if (main != MainTile)
+				if (main != Main)
 					return null;
 
-				if (LowTile.HasValue &&
-					HighTile.HasValue &&
-					adjacents.Any(t => t != LowTile.Value && t != HighTile.Value))
+				if (Low.HasValue &&
+					High.HasValue &&
+					adjacents.Any(t => t != Low.Value && t != High.Value))
 				{
 					return null;
 				}
 
 				bool CheckBit(ushort type) =>
-					LowTile.HasValue
-						? type != LowTile.Value
-						: type == HighTile.Value;
+					Low.HasValue
+						? type != Low.Value
+						: type == High.Value;
 
 				var index =
 					(CheckBit(adjacents[0]) ? 1 : 0) |
@@ -79,6 +98,40 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			this.latRules = latRules;
 			this.canonicalizations = canonicalizations;
+		}
+
+		public LatTiler(MiniYaml my)
+		{
+			var latRules = new List<LatRule>();
+			var canonicalizations = new Dictionary<ushort, ushort>();
+			foreach (var node in my.Nodes)
+			{
+				var parts = node.Key.Split('@');
+				switch (parts[0])
+				{
+					case "Rule":
+						latRules.Add(new LatRule(node.Value));
+						break;
+					case "UseAs":
+						if (parts.Length != 2 || !Exts.TryParseUshortInvariant(parts[1], out var to))
+							throw new YamlException($"invalid UseAs `{node.Key}`");
+
+						foreach (var fromStr in node.Value.Value.Split(","))
+						{
+							if (!Exts.TryParseUshortInvariant(fromStr, out var from))
+								throw new YamlException($"invalid UseAs `{node.Key}`");
+
+							canonicalizations.Add(from, to);
+						}
+
+						break;
+					default:
+						throw new YamlException($"Invalid LatTiler key `{node.Key}`");
+				}
+			}
+
+			this.latRules = latRules.ToImmutableArray();
+			this.canonicalizations = canonicalizations.ToImmutableDictionary();
 		}
 
 		public ushort CanonicalType(TerrainTile tile)

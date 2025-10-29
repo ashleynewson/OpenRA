@@ -7,6 +7,8 @@
 			MultiChoiceOption@hidden_defaults:
 				Choice@hidden_defaults:
 					Settings:
+						Rotations: 1
+						Mirror: None
 						TerrainFeatureSize: 20480
 						ForestFeatureSize: 20480
 						ResourceFeatureSize: 20480
@@ -14,27 +16,30 @@
 						Water: 200
 						Mountains: 300
 						Forests: 25
+						Green: 125
+						Sand: 125
+						Rough: 125
 						ForestCutout: 2
 						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
 						SmoothingThreshold: 833
-						MinimumCoastStraight: 5
-						MinimumLandSeaThickness: 2
+						MinimumCoastStraight: 2
+						MinimumCliffStraight: 2
+						MinimumLandSeaThickness: 4
 						MinimumMountainThickness: 4
 						MaximumAltitude: 8
 						RoughnessRadius: 5
 						Roughness: 250
-						WaterRoughness: 0
+						WaterCliffs: False
+						WaterRoughness: 300
 						MinimumTerrainContourSpacing: 7
 						MinimumBeachLength: 10
 						MinimumWaterCliffLength: 10
 						MinimumCliffLength: 10
+						MinimumClearLength: 4
 						ForestClumpiness: 1
 						DenyWalledAreas: True
 						EnforceSymmetry: 0
-						Roads: True
-						RoadSpacing: 5
-						RoadShrink: 0
 						CreateEntities: True
 						CentralSpawnReservationFraction: 250
 						ResourceSpawnReservation: 8
@@ -44,11 +49,8 @@
 						SpawnResourceSpawns: 3
 						SpawnReservation: 16
 						SpawnResourceBias: 500
-						ResourcesPerPlayer: 50000
 						OreUniformity: 250
 						OreClumpiness: 2
-						MaximumExpansionResourceSpawns: 5
-						MaximumResourceSpawnsPerExpansion: 2
 						MinimumExpansionSize: 2
 						MaximumExpansionSize: 12
 						ExpansionInner: 2
@@ -73,16 +75,30 @@
 						BeachSegmentTypes: Shore
 						CliffSegmentTypes: Cliff
 						WaterCliffSegmentTypes: WaterCliff
-						RoadSegmentTypes: Road
 						ForestObstacles: Trees
 						UnplayableObstacles: Obstructions
 						CivilianBuildingsObstacles: CivilianBuildings
-						Mirror: None
-						Rotations: 1
 						LandTile: 0
 						WaterTile: 341
+						GreenTile: 626
+						SandTile: 535
+						RoughTile: 150
 						RepaintTiles:
 							341: Water
+						RampTiles: 0, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+						LatTiler:
+							Rule@Rough:
+								Main: 150
+								Low: 150
+								Replacements: 150, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166
+							Rule@Sand:
+								Main: 535
+								Low: 535
+								Replacements: 535, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551
+							Rule@Green:
+								Main: 626
+								Low: 626
+								Replacements: 626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642
 			IntegerOption@Seed:
 				Label: label-ts-map-generator-option-seed
 				Parameter: Seed
@@ -105,8 +121,6 @@
 						Forests: 300
 						ForestCutout: 3
 						EnforceSymmetry: 2
-						RoadSpacing: 3
-						RoadShrink: 4
 				Choice@Plains:
 					Label: label-ts-map-generator-choice-terrain-type-plains
 					Settings:
@@ -125,8 +139,6 @@
 						Forests: 400
 						ForestCutout: 3
 						EnforceSymmetry: 2
-						RoadSpacing: 3
-						RoadShrink: 4
 				Choice@Overgrown:
 					Label: label-ts-map-generator-choice-terrain-type-overgrown
 					Settings:
@@ -144,8 +156,6 @@
 						EnforceSymmetry: 2
 						Mountains: 500
 						Roughness: 250
-						RoadSpacing: 3
-						RoadShrink: 4
 				Choice@Mountains:
 					Label: label-ts-map-generator-choice-terrain-type-mountains
 					Settings:
@@ -158,22 +168,6 @@
 						Water: 200
 						Mountains: 900
 						Roughness: 850
-			MultiChoiceOption@Shape:
-				Label: label-ts-map-generator-option-shape
-				Default: Square
-				Priority: 1
-				Choice@Square:
-					Label: label-ts-map-generator-choice-shape-square
-					Settings:
-						ExternalCircularBias: 0
-				Choice@CircleMountain:
-					Label: label-ts-map-generator-choice-shape-circle-mountain
-					Settings:
-						ExternalCircularBias: 1
-				Choice@CircleWater:
-					Label: label-ts-map-generator-choice-shape-circle-water
-					Settings:
-						ExternalCircularBias: -1
 			MultiIntegerChoiceOption@Players:
 				Label: label-ts-map-generator-option-players
 				Parameter: Players
@@ -410,10 +404,10 @@
 				Parameter: DenyWalledAreas
 				Default: True
 				Priority: 1
-			BooleanOption@Roads:
-				Label: label-ts-map-generator-option-roads
-				Parameter: Roads
-				Default: True
+			BooleanOption@WaterCliffs:
+				Label: label-ts-map-generator-option-water-cliffs
+				Parameter: WaterCliffs
+				Default: False
 				Priority: 1
 
 	ClearMapGenerator@clear:

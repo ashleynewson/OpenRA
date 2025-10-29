@@ -21516,7 +21516,7 @@ MultiBrushCollections:
 			Template: 405
 			Segment:
 				Start: Shore.L
-				End: WaterCliff.MaybeCorner.L
+				End: WaterCliff.L
 				Points: 4,3, 3,3, 2,3, 2,4, 1,4
 		MultiBrush@Shore_WaterCliff_119_188_408_409:
 			Template: 119
@@ -21547,7 +21547,7 @@ MultiBrushCollections:
 				Offset: 3,1
 			Template: 404
 			Segment:
-				Start: WaterCliff.MaybeCorner.D
+				Start: WaterCliff.D
 				End: Shore.D
 				Points: 4,1, 4,2, 3,2, 3,3, 3,4
 		MultiBrush@Shore_WaterCliff_81_85_124_127_406:

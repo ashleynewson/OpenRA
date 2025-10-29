@@ -917,17 +917,6 @@ label-ts-map-generator-choice-symmetry-mirror-7-rotations =
 label-ts-map-generator-choice-symmetry-mirror-8-rotations =
    .label = 8 Rotations
 
-label-ts-map-generator-option-shape = Boundary Shape
-label-ts-map-generator-choice-shape-square =
-   .label = Rectangle
-   .description = Playable area is the full map
-label-ts-map-generator-choice-shape-circle-mountain =
-   .label = Circle in mountains
-   .description = Playable area is contained within a circular mountain range
-label-ts-map-generator-choice-shape-circle-water =
-   .label = Circle in water
-   .description = Playable area is a circular island
-
 label-ts-map-generator-option-players = Players
 
 label-ts-map-generator-option-resources = Resources
@@ -971,8 +960,8 @@ label-ts-map-generator-choice-density-area-high =
 label-ts-map-generator-choice-density-area-very-high =
    .label = Very High
 
-label-ts-map-generator-option-roads = Roads
 label-ts-map-generator-option-deny-walled-areas = Obstruct walled areas
+label-ts-map-generator-option-water-cliffs = Water cliffs
 
 label-ts-map-generator-option-civilian-density = Civilian Density
 label-ts-map-generator-choice-civilian-density-default =

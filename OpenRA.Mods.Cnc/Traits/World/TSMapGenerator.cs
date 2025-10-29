@@ -97,16 +97,22 @@ namespace OpenRA.Mods.Cnc.Traits
 			[FieldLoader.Require]
 			public readonly int Forests = default;
 			[FieldLoader.Require]
+			public readonly int Green = default;
+			[FieldLoader.Require]
+			public readonly int Sand = default;
+			[FieldLoader.Require]
+			public readonly int Rough = default;
+			[FieldLoader.Require]
 			public readonly int ForestCutout = default;
 			[FieldLoader.Require]
 			public readonly int MaximumCutoutSpacing = default;
-			[FieldLoader.Require]
-			public readonly int ExternalCircularBias = default;
 			[FieldLoader.Require]
 			public readonly int TerrainSmoothing = default;
 			[FieldLoader.Require]
 			public readonly int SmoothingThreshold = default;
 			public readonly int MinimumCoastStraight = -1;
+			[FieldLoader.Require]
+			public readonly int MinimumCliffStraight = default;
 			[FieldLoader.Require]
 			public readonly int MinimumLandSeaThickness = default;
 			[FieldLoader.Require]
@@ -117,25 +123,24 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly int RoughnessRadius = default;
 			[FieldLoader.Require]
 			public readonly int Roughness = default;
-			public readonly int WaterRoughness = 0;
+			[FieldLoader.Require]
+			public readonly bool WaterCliffs = default;
+			public readonly int WaterRoughness = -1;
 			[FieldLoader.Require]
 			public readonly int MinimumTerrainContourSpacing = default;
-			public readonly int MinimumBeachLength = 0;
+			[FieldLoader.Require]
+			public readonly int MinimumBeachLength = default;
 			public readonly int MinimumWaterCliffLength = 0;
 			[FieldLoader.Require]
 			public readonly int MinimumCliffLength = default;
+			[FieldLoader.Require]
+			public readonly int MinimumClearLength = default;
 			[FieldLoader.Require]
 			public readonly int ForestClumpiness = default;
 			[FieldLoader.Require]
 			public readonly bool DenyWalledAreas = default;
 			[FieldLoader.Require]
 			public readonly int EnforceSymmetry = default;
-			[FieldLoader.Require]
-			public readonly bool Roads = default;
-			[FieldLoader.Require]
-			public readonly int RoadSpacing = default;
-			[FieldLoader.Require]
-			public readonly int RoadShrink = default;
 			[FieldLoader.Require]
 			public readonly bool CreateEntities = default;
 			[FieldLoader.Require]
@@ -195,6 +200,12 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly ushort LandTile = default;
 			[FieldLoader.Require]
 			public readonly ushort WaterTile = default;
+			[FieldLoader.Require]
+			public readonly ushort GreenTile = default;
+			[FieldLoader.Require]
+			public readonly ushort SandTile = default;
+			[FieldLoader.Require]
+			public readonly ushort RoughTile = default;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> SegmentedBrushes;
 			[FieldLoader.Ignore]
@@ -205,6 +216,10 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly IReadOnlyList<MultiBrush> CivilianBuildingsObstacles;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyDictionary<ushort, IReadOnlyList<MultiBrush>> RepaintTiles;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<ushort> RampTiles;
+			[FieldLoader.Ignore]
+			public readonly LatTiler LatTiler;
 
 			[FieldLoader.Ignore]
 			public readonly ResourceTypeInfo DefaultResource;
@@ -229,8 +244,6 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly IReadOnlyList<string> WaterCliffSegmentTypes;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<string> CliffSegmentTypes;
-			[FieldLoader.Ignore]
-			public readonly IReadOnlyList<string> RoadSegmentTypes;
 
 			public Parameters(Map map, MiniYaml my)
 			{
@@ -251,6 +264,12 @@ namespace OpenRA.Mods.Cnc.Traits
 					},
 					v => MultiBrush.LoadCollection(map, v.Value) as IReadOnlyList<MultiBrush>);
 				RepaintTiles ??= ImmutableDictionary<ushort, IReadOnlyList<MultiBrush>>.Empty;
+
+				RampTiles = FieldLoader.GetValue<List<ushort>>(
+					nameof(RampTiles),
+					my.NodeWithKey(nameof(RampTiles)).Value.Value);
+				var latTilerMy = my.NodeWithKeyOrDefault("LatTiler");
+				LatTiler = new LatTiler(latTilerMy.Value);
 
 				var resourceTypes = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes;
 				if (!resourceTypes.TryGetValue(my.NodeWithKey("DefaultResource").Value.Value, out DefaultResource))
@@ -300,13 +319,10 @@ namespace OpenRA.Mods.Cnc.Traits
 
 				ClearSegmentTypes = ParseSegmentTypes("ClearSegmentTypes");
 				BeachSegmentTypes = ParseSegmentTypes("BeachSegmentTypes");
-				if (WaterRoughness > 0)
+				if (WaterCliffs)
 					WaterCliffSegmentTypes = ParseSegmentTypes("WaterCliffSegmentTypes");
 
 				CliffSegmentTypes = ParseSegmentTypes("CliffSegmentTypes");
-				RoadSegmentTypes = ParseSegmentTypes("RoadSegmentTypes");
-
-				Validate(terrainInfo);
 			}
 
 			static object MirrorLoader(MiniYaml my)
@@ -337,137 +353,6 @@ namespace OpenRA.Mods.Cnc.Traits
 						else
 							throw new YamlException($"Invalid resource spawn weight `{subMy.Value}`");
 					});
-			}
-
-			public void Validate(ITemplatedTerrainInfo terrainInfo)
-			{
-				if (Rotations < 1)
-					throw new MapGenerationException("Rotations must be >= 1");
-				if (TerrainFeatureSize < 1)
-					throw new MapGenerationException("TerrainFeatureSize must be >= 1");
-				if (ForestFeatureSize < 1)
-					throw new MapGenerationException("ForestFeatureSize must be >= 1");
-				if (ResourceFeatureSize < 1)
-					throw new MapGenerationException("ResourceFeatureSize must be >= 1");
-				if (CivilianBuildingsFeatureSize < 1)
-					throw new MapGenerationException("CivilianBuildingsFeatureSize must be >= 1");
-				if (TerrainSmoothing < 0 || TerrainSmoothing > MatrixUtils.MaxBinomialKernelRadius)
-					throw new MapGenerationException($"TerrainSmoothing must be between 0 and {MatrixUtils.MaxBinomialKernelRadius} inclusive");
-				if (WaterRoughness > 0 && MinimumCoastStraight < 0)
-					throw new MapGenerationException("MinimumCoastStraight must be >= 0");
-				if (SmoothingThreshold < (FractionMax + 1) / 2 || SmoothingThreshold > FractionMax)
-					throw new MapGenerationException($"SmoothingThreshold must be between {(FractionMax + 1) / 2} and {FractionMax} inclusive");
-				if (MinimumLandSeaThickness < 1)
-					throw new MapGenerationException("MinimumLandSeaThickness must be >= 1");
-				if (MinimumMountainThickness < 1)
-					throw new MapGenerationException("MinimumMountainThickness must be >= 1");
-				if (Water < 0 || Water > FractionMax)
-					throw new MapGenerationException($"Water must be between 0 and {FractionMax} inclusive");
-				if (Forests < 0 || Forests > FractionMax)
-					throw new MapGenerationException($"Forest must be between 0 and {FractionMax} inclusive");
-				if (ForestCutout < 0)
-					throw new MapGenerationException("ForestCutout must be >= 0");
-				if (MaximumCutoutSpacing < 0)
-					throw new MapGenerationException("TopologyAugmentationThreshold must be >= 0");
-				if (ForestClumpiness < 0)
-					throw new MapGenerationException("ForestClumpiness must be >= 0");
-				if (Mountains < 0 || Mountains > FractionMax)
-					throw new MapGenerationException($"Mountains must be between 0 and {FractionMax} inclusive");
-				if (Roughness < 0 || Roughness > FractionMax)
-					throw new MapGenerationException("Roughness must be between 0 and {FractionMax}");
-				if (WaterRoughness < 0 || WaterRoughness > FractionMax)
-					throw new MapGenerationException("WaterRoughness must be between 0 and {FractionMax}");
-				if (RoughnessRadius < 1)
-					throw new MapGenerationException("RoughnessRadius must be >= 1");
-				if (MaximumAltitude < 0)
-					throw new MapGenerationException("MaximumAltitude must be >= 0");
-				if (MinimumTerrainContourSpacing < 0)
-					throw new MapGenerationException("MinimumTerrainContourSpacing must be >= 0");
-				if (WaterRoughness > 0 && MinimumBeachLength < 1)
-					throw new MapGenerationException("MinimumBeachLength must be >= 1");
-				if (WaterRoughness > 0 && MinimumCliffLength < 1)
-					throw new MapGenerationException("MinimumWaterCliffLength must be >= 1");
-				if (MinimumCliffLength < 1)
-					throw new MapGenerationException("MinimumCliffLength must be >= 1");
-				if (RoadSpacing < 0)
-					throw new MapGenerationException("RoadSpacing must be >= 0");
-				if (RoadShrink < 0)
-					throw new MapGenerationException("RoadShrink must be >= 0");
-				if (Players < 0)
-					throw new MapGenerationException("Players must be >= 0");
-				if (CentralSpawnReservationFraction < 0)
-					throw new MapGenerationException("CentralSpawnReservationFraction must be >= 0");
-				if (AreaEntityBonus < 0)
-					throw new MapGenerationException("PlayableAreaDensityBonus must be >= 0");
-				if (PlayerCountEntityBonus < 0)
-					throw new MapGenerationException("PlayerCountDensityBonus must be >= 0");
-				if (SpawnRegionSize < 1)
-					throw new MapGenerationException("SpawnRegionSize must be >= 1");
-				if (SpawnReservation < 1)
-					throw new MapGenerationException("SpawnReservation must be >= 1");
-				if (SpawnBuildSize < 1)
-					throw new MapGenerationException("SpawnBuildSize must be >= 1");
-				if (MinimumSpawnRadius < 1)
-					throw new MapGenerationException("MinimumSpawnRadius must be >= 1");
-				if (SpawnResourceSpawns < 0)
-					throw new MapGenerationException("SpawnResourceSpawns must be >= 0");
-				if (ResourceSpawnReservation < 1)
-					throw new MapGenerationException("ResourceSpawnReservation must be >= 1");
-				if (MaximumExpansionResourceSpawns < 0)
-					throw new MapGenerationException("MaximumExpansionResourceSpawns must be >= 0");
-				if (MinimumExpansionSize < 1)
-					throw new MapGenerationException("MinimumExpansionSize must be >= 1");
-				if (MaximumExpansionSize < 1)
-					throw new MapGenerationException("MaximumExpansionSize must be >= 1");
-				if (MinimumExpansionSize > MaximumExpansionSize)
-					throw new MapGenerationException("MinimumExpansionSize must be <= maximumExpansionSize");
-				if (ExpansionBorder < 1)
-					throw new MapGenerationException("ExpansionBorder must be >= 1");
-				if (ExpansionInner < 1)
-					throw new MapGenerationException("ExpansionInner must be >= 1");
-				if (MaximumResourceSpawnsPerExpansion < 1)
-					throw new MapGenerationException("MaximumResourceSpawnsPerExpansion must be >= 1");
-				if (MinimumBuildings < 0)
-					throw new MapGenerationException("MinimumBuildings must be >= 0");
-				if (MaximumBuildings < 0)
-					throw new MapGenerationException("MaximumBuildings must be >= 0");
-				if (MinimumBuildings > MaximumBuildings)
-					throw new MapGenerationException("MinimumBuildings must be <= maximumBuildings");
-				if (CivilianBuildings < 0 || CivilianBuildings > FractionMax)
-					throw new MapGenerationException($"CivilianBuildings must be between 0 and {FractionMax} inclusive");
-				if (CivilianBuildingDensity < 0 || CivilianBuildingDensity > FractionMax)
-					throw new MapGenerationException($"CivilianBuildingDensity must be between 0 and {FractionMax} inclusive");
-				if (MinimumCivilianBuildingDensity < 0 || MinimumCivilianBuildingDensity > FractionMax)
-					throw new MapGenerationException($"MinimumCivilianBuildingDensity must be between 0 and {FractionMax} inclusive");
-				if (CivilianBuildingDensityRadius < 0)
-					throw new MapGenerationException("CivilianBuildingDensityRadius must be >= 0");
-				if (ResourcesPerPlayer < 0)
-					throw new MapGenerationException("ResourcesPerPlayer must be >= 0");
-				if (OreUniformity < 0)
-					throw new MapGenerationException("OreUniformity must be >= 0");
-				if (OreClumpiness < 0)
-					throw new MapGenerationException("OreClumpiness must be >= 0");
-				foreach (var kv in BuildingWeights)
-					if (kv.Value < 0)
-						throw new MapGenerationException("BuildingWeights.* must be >= 0");
-				foreach (var kv in ResourceSpawnWeights)
-					if (kv.Value < 0)
-						throw new MapGenerationException("ResourceSpawnWeights.* must be >= 0");
-				foreach (var kv in ResourceSpawnWeights)
-					if (!ResourceSpawnSeeds.ContainsKey(kv.Key))
-						throw new MapGenerationException($"ResourceSpawnSeeds does not contain possible resource spawn `{kv.Key}`");
-
-				if (!(terrainInfo.Templates.TryGetValue(LandTile, out var landTemplate) && landTemplate.Contains(0)))
-					throw new MapGenerationException("LandTile is not valid");
-				if (!(terrainInfo.Templates.TryGetValue(LandTile, out var waterTemplate) && waterTemplate.Contains(0)))
-					throw new MapGenerationException("WaterTile is not valid");
-
-				if (Players > 32)
-					throw new MapGenerationException("Total number of players must not exceed 32");
-
-				var symmetryCount = Symmetry.RotateAndMirrorProjectionCount(Rotations, Mirror);
-				if (Players % symmetryCount != 0)
-					throw new MapGenerationException($"Total number of players must be a multiple of {symmetryCount}");
 			}
 		}
 
@@ -510,10 +395,6 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 
 			var cellBounds = CellLayerUtils.CellBounds(map);
-			int2 CVecToMatrixXY(CVec cvec)
-			{
-				return new int2(cvec.X, cvec.Y) - cellBounds.TopLeft;
-			}
 
 			// Use `random` to derive separate independent random number generators.
 			//
@@ -535,7 +416,6 @@ namespace OpenRA.Mods.Cnc.Traits
 			var symmetryTilingRandom = new MersenneTwister(random.Next());
 			var debrisTilingRandom = new MersenneTwister(random.Next());
 			var resourceRandom = new MersenneTwister(random.Next());
-			var roadTilingRandom = new MersenneTwister(random.Next());
 			var playerRandom = new MersenneTwister(random.Next());
 			var expansionRandom = new MersenneTwister(random.Next());
 			var buildingRandom = new MersenneTwister(random.Next());
@@ -550,8 +430,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			RampTiler rampTiler;
 			{
-				var templates = new ushort[] { 0, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57 };
-				var brushes = templates
+				var brushes = param.RampTiles
 					.Select(t => new MultiBrush().WithTemplate(map, t, CVec.Zero))
 					.ToList();
 				rampTiler = new RampTiler(map, brushes);
@@ -561,7 +440,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				ShouldTile = false,
 				SegmentType = param.ClearSegmentTypes[0],
-				MinimumLength = 4,
+				MinimumLength = param.MinimumClearLength,
 			};
 			var beachZone = new Terraformer.PathPartitionZone()
 			{
@@ -608,12 +487,12 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			var coast = MatrixUtils.BordersToPoints(landPlan);
 			List<TilingPath> coastPaths;
-			if (param.WaterRoughness > 0)
+			if (param.WaterCliffs)
 			{
 				var waterCliffZone = new Terraformer.PathPartitionZone()
 				{
 					SegmentType = param.WaterCliffSegmentTypes[0],
-					MinimumLength = param.MinimumCliffLength,
+					MinimumLength = param.MinimumWaterCliffLength,
 					MaximumDeviation = param.MinimumLandSeaThickness - 1,
 				};
 				var waterCliffMask = MatrixUtils.CalibratedBooleanThreshold(
@@ -655,20 +534,23 @@ namespace OpenRA.Mods.Cnc.Traits
 				null)
 					?? throw new MapGenerationException("Could not fit tiles for coast");
 
-			if (param.WaterRoughness > 0)
+			if (param.WaterCliffs)
 			{
 				elevationPlan = terraformer.SliceElevation(
 					elevation,
 					elevationPlan,
-					param.Mountains,
+					1024,
 					param.MinimumTerrainContourSpacing);
 
 				heightMap.SetCellHeights(
 					4,
 					CellLayerUtils.Map(landCoastWater, v => v == Terraformer.Side.In));
 				heightMap.MarkUntileable(
-					CellLayerUtils.Map(landCoastWater, v => v == Terraformer.Side.None));
-				heightMap.Soften(16);
+					CellLayerUtils.Map(map.Height, v => v != 0));
+				heightMap.SeedHeights(
+					heightMap.Target.Enumerate()
+						.Where(v => v.Value == 0)
+						.Select(v => (v.Xy, 8, (byte)0)));
 			}
 
 			heightMap.MarkUntileable(
@@ -710,14 +592,14 @@ namespace OpenRA.Mods.Cnc.Traits
 							[cliffZone, clearZone],
 							partitionMask,
 							param.SegmentedBrushes,
-							/*param.MinimumCliffStraight*/2);
+							param.MinimumCliffStraight);
 
 						if (tilingPaths.Count > 0)
 							tallContours.Add(contour);
 						else
 							shortContours.Add(contour);
 
-						var baseHeight = heightMap.Target[contour[0]];
+						var baseHeight = contour.Max(xy => heightMap.Target[xy]);
 
 						foreach (var tilingPath in tilingPaths)
 						{
@@ -831,7 +713,6 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 
 			var zoneable = terraformer.GetZoneable(param.ZoneableTerrain, playable);
-			terraformer.ZoneFromRamps(zoneable, false);
 
 			if (param.CreateEntities)
 			{
@@ -976,6 +857,13 @@ namespace OpenRA.Mods.Cnc.Traits
 						targetResourceValue,
 						true);
 					terraformer.ZoneFromResources(zoneable, false);
+
+					// Veins should be max density.
+					var veinType = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes["Veins"];
+					var veinResourceTile = new ResourceTile(veinType.ResourceIndex, veinType.MaxDensity);
+					foreach (var mpos in map.Resources.CellRegion.MapCoords)
+						if (map.Resources[mpos].Type == veinType.ResourceIndex)
+							map.Resources[mpos] = veinResourceTile;
 				}
 
 				// CivilianBuildings
@@ -998,48 +886,26 @@ namespace OpenRA.Mods.Cnc.Traits
 				}
 			}
 
+			void DecorateFloorTiles(ushort tile, int fraction, CellLayer<bool> addIn = null)
 			{
 				var tileable = terraformer.CheckSpace(param.LandTile);
-				var noise = terraformer.BooleanNoise(groundTypeNoiseRandom, 10240, 125);
+				var noise = terraformer.BooleanNoise(groundTypeNoiseRandom, 10240, fraction);
 				noise = CellLayerUtils.Intersect([noise, zoneable]);
-				if (forestPlan != null)
-					noise = CellLayerUtils.Union([noise, forestPlan]);
+				if (addIn != null)
+					noise = CellLayerUtils.Union([noise, addIn]);
 
 				noise = CellLayerUtils.Intersect([noise, tileable]);
 				noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
 				foreach (var cpos in map.Tiles.CellRegion)
 					if (noise[cpos])
-						map.Tiles[cpos] = new TerrainTile(626, 0);
+						map.Tiles[cpos] = new TerrainTile(tile, 0);
 			}
 
-			{
-				var tileable = terraformer.CheckSpace(param.LandTile);
-				var noise = terraformer.BooleanNoise(groundTypeNoiseRandom, 10240, 125);
-				noise = CellLayerUtils.Intersect([noise, tileable, zoneable]);
-				noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
-				foreach (var cpos in map.Tiles.CellRegion)
-					if (noise[cpos])
-						map.Tiles[cpos] = new TerrainTile(535, 0);
-			}
+			DecorateFloorTiles(param.GreenTile, param.Green, forestPlan);
+			DecorateFloorTiles(param.SandTile, param.Sand);
+			DecorateFloorTiles(param.RoughTile, param.Rough);
 
-			{
-				var tileable = terraformer.CheckSpace(param.LandTile);
-				var noise = terraformer.BooleanNoise(groundTypeNoiseRandom, 10240, 125);
-				noise = CellLayerUtils.Intersect([noise, tileable, zoneable]);
-				noise = terraformer.ImproveSymmetry(noise, true, (a, b) => a && b);
-				foreach (var cpos in map.Tiles.CellRegion)
-					if (noise[cpos])
-						map.Tiles[cpos] = new TerrainTile(150, 0);
-			}
-
-			var tiler = new LatTiler(
-				[
-					new LatTiler.LatRule(150, 150, null, [150, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166]),
-					new LatTiler.LatRule(535, 535, null, [535, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551]),
-					new LatTiler.LatRule(626, 626, null, [626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642]),
-				],
-				ImmutableDictionary<ushort, ushort>.Empty);
-			tiler.Replace(pickAnyRandom, map);
+			param.LatTiler?.Replace(pickAnyRandom, map);
 
 			// Cosmetically repaint tiles
 			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);

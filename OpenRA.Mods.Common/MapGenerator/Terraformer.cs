@@ -381,7 +381,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			CheckHasMapShapeOrNull(mask);
 
-			var zoneable = CheckSpace(zoneableTerrain, true, true, true);
+			var zoneable = CheckSpace(zoneableTerrain, true, true, true, true);
 			if (mask != null)
 				zoneable = CellLayerUtils.Intersect([zoneable, mask]);
 

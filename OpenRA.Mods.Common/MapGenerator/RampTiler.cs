@@ -318,30 +318,28 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Target[CPosToXy(cpos + new CVec(0, 1))] = height;
 			}
 
-			public void BinomialBlur(int blur)
+			/// <summary>
+			/// Sets specified corners to a given height and expands outward for radius, without
+			/// expanding through unadjustable points.
+			/// </summary>
+			public void SeedHeights(IEnumerable<(int2 Xy, int Radius, byte Height)> corners)
 			{
-				var extended = Target.Clone();
-				var touched = new Matrix<bool>(Target.Size);
-
-				byte? Filler(int2 xy, byte prop)
+				var expandable = Adjustable.Clone();
+				(int Radius, byte Height)? Filler(int2 xy, (int Radius, byte Height) prop)
 				{
-					if (touched[xy])
+					if (!expandable[xy] || prop.Radius == 0)
 						return null;
 
-					touched[xy] = true;
-					extended[xy] = prop;
-					return prop;
+					expandable[xy] = false;
+					Target[xy] = prop.Height;
+					return (prop.Radius - 1, prop.Height);
 				}
 
 				MatrixUtils.FloodFill(
-					extended.Size,
-					Adjustable.Enumerate().Where(i => i.Value).Select(i => (i.Xy, Target[i.Xy])),
+					Target.Size,
+					corners.Select(corner => (corner.Xy, (corner.Radius, corner.Height))),
 					Filler,
 					DirectionExts.Spread4);
-
-				SetHeights(MatrixUtils.BinomialBlur(
-					extended.Map(v => (int)v),
-					blur).Map(v => (byte)v));
 			}
 
 			public void Soften(int radius)
