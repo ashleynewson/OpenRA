@@ -10,6 +10,7 @@
 						Rotations: 1
 						Mirror: None
 						TerrainFeatureSize: 20480
+						RampFeatureSize: 16384
 						ForestFeatureSize: 20480
 						ResourceFeatureSize: 20480
 						CivilianBuildingsFeatureSize: 10240
@@ -17,8 +18,8 @@
 						Mountains: 300
 						Forests: 25
 						Green: 125
-						Sand: 125
-						Rough: 125
+						Sand: 150
+						Rough: 250
 						ForestCutout: 2
 						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
@@ -37,6 +38,8 @@
 						MinimumWaterCliffLength: 10
 						MinimumCliffLength: 10
 						MinimumClearLength: 4
+						BeachSpreadWhenWaterCliffing: 8
+						RampSoften: 16
 						ForestClumpiness: 1
 						DenyWalledAreas: True
 						EnforceSymmetry: 0

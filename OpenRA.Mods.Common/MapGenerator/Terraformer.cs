@@ -2273,5 +2273,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			return decorable;
 		}
+
+		/// <summary>
+		/// Get the highest cell height in a MultiBrush collection. Does not consider ramps.
+		/// </summary>
+		public byte MaxHeightOfMultiBrushes(IEnumerable<MultiBrush> brushes)
+		{
+			return brushes
+				.SelectMany(b => b.GetHeightsAndRamps())
+				.Max(v => (byte)v.Height);
+		}
+
+		/// <summary>
+		/// Get the highest cell height in a MultiBrush collection filtered by segment inner type.
+		/// Does not consider ramps.
+		/// </summary>
+		public byte MaxHeightOfSegmentType(string type, IEnumerable<MultiBrush> brushes)
+		{
+			return MaxHeightOfMultiBrushes(
+				brushes.Where(b => b.Segment?.HasInnerType(type) ?? false));
+		}
 	}
 }

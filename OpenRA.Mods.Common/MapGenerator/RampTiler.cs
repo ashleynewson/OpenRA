@@ -344,17 +344,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			public void Soften(int radius)
 			{
-				var newNumerator = Target.Map(v => (long)v);
-				var newDenominator = new Matrix<long>(Target.Size).Fill(1);
+				// Split the softening into multiple steps if needed to avoid numeric limitations.
+				// Make sure the last step isn't too small to improve precision.
+				while (radius > 12)
+				{
+					Soften(8);
+					radius -= 8;
+				}
+
+				var newNumerator = Target.Map(v => (int)v);
+				var newDenominator = new Matrix<int>(Target.Size).Fill(1);
 
 				for (var iteration = 0; iteration < radius; iteration++)
 				{
 					var oldNumerator = newNumerator;
 					var oldDenominator = newDenominator;
-					newNumerator = new Matrix<long>(Target.Size);
-					newDenominator = new Matrix<long>(Target.Size);
+					newNumerator = new Matrix<int>(Target.Size);
+					newDenominator = new Matrix<int>(Target.Size);
 
-					(long Numerator, long Denominator, bool First)? Filler(int2 xy, (long Numerator, long Denominator, bool First) prop)
+					(int Numerator, int Denominator, bool First)? Filler(int2 xy, (int Numerator, int Denominator, bool First) prop)
 					{
 						if (Adjustable[xy])
 						{

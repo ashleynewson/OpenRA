@@ -23,7 +23,7 @@ using static OpenRA.Mods.Common.Traits.ResourceLayerInfo;
 namespace OpenRA.Mods.Cnc.Traits
 {
 	[TraitLocation(SystemActors.EditorWorld)]
-	[Desc("A map generator that clears a map.")]
+	[Desc("A map generator purpose-built for Tiberian Sun.")]
 	public sealed class TSMapGeneratorInfo : TraitInfo, IEditorMapGeneratorInfo
 	{
 		[FieldLoader.Require]
@@ -85,6 +85,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			[FieldLoader.Require]
 			public readonly int TerrainFeatureSize = default;
 			[FieldLoader.Require]
+			public readonly int RampFeatureSize = default;
+			[FieldLoader.Require]
 			public readonly int ForestFeatureSize = default;
 			[FieldLoader.Require]
 			public readonly int ResourceFeatureSize = default;
@@ -110,7 +112,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly int TerrainSmoothing = default;
 			[FieldLoader.Require]
 			public readonly int SmoothingThreshold = default;
-			public readonly int MinimumCoastStraight = -1;
+			public readonly int MinimumCoastStraight = 0;
 			[FieldLoader.Require]
 			public readonly int MinimumCliffStraight = default;
 			[FieldLoader.Require]
@@ -125,7 +127,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly int Roughness = default;
 			[FieldLoader.Require]
 			public readonly bool WaterCliffs = default;
-			public readonly int WaterRoughness = -1;
+			public readonly int WaterRoughness = 0;
 			[FieldLoader.Require]
 			public readonly int MinimumTerrainContourSpacing = default;
 			[FieldLoader.Require]
@@ -135,6 +137,9 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly int MinimumCliffLength = default;
 			[FieldLoader.Require]
 			public readonly int MinimumClearLength = default;
+			public readonly int BeachSpreadWhenWaterCliffing = 0;
+			[FieldLoader.Require]
+			public readonly int RampSoften = default;
 			[FieldLoader.Require]
 			public readonly int ForestClumpiness = default;
 			[FieldLoader.Require]
@@ -237,13 +242,13 @@ namespace OpenRA.Mods.Cnc.Traits
 			[FieldLoader.Ignore]
 			public readonly IReadOnlySet<byte> ZoneableTerrain;
 			[FieldLoader.Ignore]
-			public readonly IReadOnlyList<string> ClearSegmentTypes;
+			public readonly string ClearSegmentType;
 			[FieldLoader.Ignore]
-			public readonly IReadOnlyList<string> BeachSegmentTypes;
+			public readonly string BeachSegmentType;
 			[FieldLoader.Ignore]
-			public readonly IReadOnlyList<string> WaterCliffSegmentTypes;
+			public readonly string WaterCliffSegmentType;
 			[FieldLoader.Ignore]
-			public readonly IReadOnlyList<string> CliffSegmentTypes;
+			public readonly string CliffSegmentType;
 
 			public Parameters(Map map, MiniYaml my)
 			{
@@ -305,24 +310,17 @@ namespace OpenRA.Mods.Cnc.Traits
 						.ToImmutableHashSet();
 				}
 
-				IReadOnlyList<string> ParseSegmentTypes(string key)
-				{
-					return my.NodeWithKey(key).Value.Value
-						.Split(',', StringSplitOptions.RemoveEmptyEntries)
-						.ToImmutableArray();
-				}
-
 				ClearTerrain = ParseTerrainIndexes("ClearTerrain");
 				PlayableTerrain = ParseTerrainIndexes("PlayableTerrain");
 				DominantTerrain = ParseTerrainIndexes("DominantTerrain");
 				ZoneableTerrain = ParseTerrainIndexes("ZoneableTerrain");
 
-				ClearSegmentTypes = ParseSegmentTypes("ClearSegmentTypes");
-				BeachSegmentTypes = ParseSegmentTypes("BeachSegmentTypes");
+				ClearSegmentType = my.NodeWithKey("ClearSegmentTypes").Value.Value;
+				BeachSegmentType = my.NodeWithKey("BeachSegmentTypes").Value.Value;
 				if (WaterCliffs)
-					WaterCliffSegmentTypes = ParseSegmentTypes("WaterCliffSegmentTypes");
+					WaterCliffSegmentType = my.NodeWithKey("WaterCliffSegmentTypes").Value.Value;
 
-				CliffSegmentTypes = ParseSegmentTypes("CliffSegmentTypes");
+				CliffSegmentType = my.NodeWithKey("CliffSegmentTypes").Value.Value;
 			}
 
 			static object MirrorLoader(MiniYaml my)
@@ -439,18 +437,18 @@ namespace OpenRA.Mods.Cnc.Traits
 			var clearZone = new Terraformer.PathPartitionZone()
 			{
 				ShouldTile = false,
-				SegmentType = param.ClearSegmentTypes[0],
+				SegmentType = param.ClearSegmentType,
 				MinimumLength = param.MinimumClearLength,
 			};
 			var beachZone = new Terraformer.PathPartitionZone()
 			{
-				SegmentType = param.BeachSegmentTypes[0],
+				SegmentType = param.BeachSegmentType,
 				MinimumLength = param.MinimumBeachLength,
 				MaximumDeviation = param.MinimumLandSeaThickness - 1,
 			};
 			var cliffZone = new Terraformer.PathPartitionZone()
 			{
-				SegmentType = param.CliffSegmentTypes[0],
+				SegmentType = param.CliffSegmentType,
 				MinimumLength = param.MinimumCliffLength,
 				MaximumDeviation = param.MinimumMountainThickness - 1,
 			};
@@ -491,7 +489,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				var waterCliffZone = new Terraformer.PathPartitionZone()
 				{
-					SegmentType = param.WaterCliffSegmentTypes[0],
+					SegmentType = param.WaterCliffSegmentType,
 					MinimumLength = param.MinimumWaterCliffLength,
 					MaximumDeviation = param.MinimumLandSeaThickness - 1,
 				};
@@ -520,8 +518,8 @@ namespace OpenRA.Mods.Cnc.Traits
 								param.SegmentedBrushes,
 								beach,
 								param.MinimumLandSeaThickness - 1,
-								param.BeachSegmentTypes[0],
-								param.BeachSegmentTypes[0])
+								param.BeachSegmentType,
+								param.BeachSegmentType)
 									.ExtendEdge(4))
 					.ToList();
 			}
@@ -534,23 +532,31 @@ namespace OpenRA.Mods.Cnc.Traits
 				null)
 					?? throw new MapGenerationException("Could not fit tiles for coast");
 
+			var cliffHeight = terraformer.MaxHeightOfSegmentType(
+				param.CliffSegmentType,
+				param.SegmentedBrushes);
+
 			if (param.WaterCliffs)
 			{
+				var waterCliffHeight = terraformer.MaxHeightOfSegmentType(
+					param.WaterCliffSegmentType,
+					param.SegmentedBrushes);
+
 				elevationPlan = terraformer.SliceElevation(
 					elevation,
 					elevationPlan,
-					1024,
+					FractionMax,
 					param.MinimumTerrainContourSpacing);
 
 				heightMap.SetCellHeights(
-					4,
+					waterCliffHeight,
 					CellLayerUtils.Map(landCoastWater, v => v == Terraformer.Side.In));
 				heightMap.MarkUntileable(
 					CellLayerUtils.Map(map.Height, v => v != 0));
 				heightMap.SeedHeights(
 					heightMap.Target.Enumerate()
 						.Where(v => v.Value == 0)
-						.Select(v => (v.Xy, 8, (byte)0)));
+						.Select(v => (v.Xy, param.BeachSpreadWhenWaterCliffing, (byte)0)));
 			}
 
 			heightMap.MarkUntileable(
@@ -636,7 +642,7 @@ namespace OpenRA.Mods.Cnc.Traits
 					}
 
 					heightMap.AdjustCellHeights(1, shortMask);
-					heightMap.AdjustCellHeights(4, tallMask);
+					heightMap.AdjustCellHeights(cliffHeight, tallMask);
 				}
 			}
 
@@ -648,14 +654,14 @@ namespace OpenRA.Mods.Cnc.Traits
 					heightMap.Target.Size,
 					terraformer.Rotations,
 					terraformer.Mirror,
-					16 * 1024,
+					param.RampFeatureSize,
 					NoiseUtils.PinkAmplitude);
 				noise = MatrixUtils.BinomialBlur(noise, 1);
 				noise = MatrixUtils.NormalizeRangeInPlace(noise, 3);
 				for (var i = 0; i < noise.Data.Length; i++)
 					heightMap.Target[i] = (byte)Math.Clamp(noise[i] + heightMap.Target[i], byte.MinValue, byte.MaxValue);
 
-				heightMap.Soften(16);
+				heightMap.Soften(param.RampSoften);
 				heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
 					?? throw new MapGenerationException("created unfixable heightmap");
 				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom)
@@ -905,9 +911,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			DecorateFloorTiles(param.SandTile, param.Sand);
 			DecorateFloorTiles(param.RoughTile, param.Rough);
 
-			param.LatTiler?.Replace(pickAnyRandom, map);
-
 			// Cosmetically repaint tiles
+			param.LatTiler?.Replace(pickAnyRandom, map);
 			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);
 
 			terraformer.BakeMap();
