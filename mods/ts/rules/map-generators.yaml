@@ -1,5 +1,5 @@
 ^MapGenerators:
-	TSMapGenerator@clear:
+	TSMapGenerator@ts:
 		Type: ts
 		Name: map-generator-ts
 		Tilesets: TEMPERATE
@@ -17,9 +17,6 @@
 						Water: 200
 						Mountains: 300
 						Forests: 25
-						Green: 125
-						Sand: 150
-						Rough: 250
 						ForestCutout: 2
 						MaximumCutoutSpacing: 12
 						TerrainSmoothing: 4
@@ -83,12 +80,18 @@
 						CivilianBuildingsObstacles: CivilianBuildings
 						LandTile: 0
 						WaterTile: 341
-						GreenTile: 626
-						SandTile: 535
-						RoughTile: 150
+						ForestFloor: 125
 						RepaintTiles:
 							341: Water
 						RampTiles: 0, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+			MultiChoiceOption@hidden_tileset_overrides:
+				Choice@temperat:
+					Tileset: TEMPERATE
+					Settings:
+						ForestFloorTile: 626
+						OtherGround:
+							535: 150
+							150: 250
 						LatTiler:
 							Rule@Rough:
 								Main: 150
@@ -102,6 +105,27 @@
 								Main: 626
 								Low: 626
 								Replacements: 626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642
+				Choice@snow:
+					Tileset: SNOW
+					Settings:
+						ForestFloorTile: 150
+						OtherGround:
+							150: 250
+							989: 150
+							1006: 150
+						LatTiler:
+							Rule@Rough:
+								Main: 150
+								Low: 150
+								Replacements: 150, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166
+							Rule@Rock:
+								Main: 989
+								Low: 989
+								Replacements: 989, 991, 992, 993, 994, 995, 996, 997, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005
+							Rule@Grey:
+								Main: 1006
+								Low: 1006
+								Replacements: 1006, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1007
 			IntegerOption@Seed:
 				Label: label-ts-map-generator-option-seed
 				Parameter: Seed
@@ -402,47 +426,78 @@
 					Label: label-ts-map-generator-choice-civilian-density-max
 					Settings:
 						CivilianBuildings: 1000
-			BooleanOption@DenyWalledArea:
-				Label: label-ts-map-generator-option-deny-walled-areas
-				Parameter: DenyWalledAreas
-				Default: True
-				Priority: 1
-			BooleanOption@WaterCliffs:
-				Label: label-ts-map-generator-option-water-cliffs
-				Parameter: WaterCliffs
-				Default: False
-				Priority: 1
+			MultiChoiceOption@Coastlines:
+				Label: label-ts-map-generator-option-coastlines
+				Default: Beaches
+				Priority: 3
+				Choice@Beaches:
+					Label: label-ts-map-generator-choice-coastlines-beaches
+					Settings:
+						WaterCliffs: False
+				Choice@SunkenBeaches:
+					Label: label-ts-map-generator-choice-coastlines-sunken-beaches
+					Settings:
+						WaterCliffs: True
+						WaterRoughness: 0
+				Choice@TemperateCliffs:
+					Label: label-ts-map-generator-choice-coastlines-cliffs
+					Tileset: TEMPERATE
+					Settings:
+						WaterCliffs: True
+						WaterRoughness: 1000
+				Choice@SnowCliffs:
+					Label: label-ts-map-generator-choice-coastlines-cliffs
+					Tileset: SNOW
+					Settings:
+						WaterCliffs: True
+						WaterRoughness: 1000
+						IceLatTiler:
+							Rule@Ice:
+								Main: 341
+								Low: 341
+								Replacements: 341, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470
+				Choice@TemperateMixed:
+					Label: label-ts-map-generator-choice-coastlines-mixed
+					Tileset: TEMPERATE
+					Settings:
+						WaterCliffs: True
+				Choice@SnowMixed:
+					Label: label-ts-map-generator-choice-coastlines-mixed
+					Tileset: SNOW
+					Settings:
+						WaterCliffs: True
+						BeachSegmentTypes: IceShore
+						IceLatTiler:
+							Rule@Ice:
+								Main: 341
+								Low: 341
+								Replacements: 341, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470
 
 	ClearMapGenerator@clear:
 		Type: clear
 		Name: map-generator-clear
-		Tilesets: TEMPERATE
+		Tilesets: TEMPERATE, SNOW
 		Settings:
 			MultiChoiceOption@Tile:
 				Label: label-clear-map-generator-option-tile
 				Choice@Clear:
 					Label: label-clear-map-generator-choice-tile-clear
-					Tileset: TEMPERATE
 					Settings:
 						Tile: 0
 				Choice@Snow:
 					Label: label-clear-map-generator-choice-tile-snow
-					Tileset: TEMPERATE
 					Settings:
 						Tile: 4
 				Choice@Blank:
 					Label: label-clear-map-generator-choice-tile-blank
-					Tileset: TEMPERATE
 					Settings:
 						Tile: 12
 				Choice@Rough:
 					Label: label-clear-map-generator-choice-tile-rough
-					Tileset: TEMPERATE
 					Settings:
 						Tile: 150
 				Choice@Water:
 					Label: label-clear-map-generator-choice-tile-water
-					Tileset: TEMPERATE
 					Settings:
 						Tile: 341
 				Choice@Ground01:
@@ -460,7 +515,7 @@
 					Tileset: TEMPERATE
 					Settings:
 						Tile: 626
-				Choice@Pavement:
+				Choice@TemperatePavement:
 					Label: label-clear-map-generator-choice-tile-pavement
 					Tileset: TEMPERATE
 					Settings:
@@ -475,8 +530,23 @@
 					Tileset: TEMPERATE
 					Settings:
 						Tile: 977
+				Choice@Rock:
+					Label: label-clear-map-generator-choice-tile-rock
+					Tileset: SNOW
+					Settings:
+						Tile: 989
 				Choice@BlueMold:
 					Label: label-clear-map-generator-choice-tile-bluemold
 					Tileset: TEMPERATE
 					Settings:
 						Tile: 1002
+				Choice@Grey:
+					Label: label-clear-map-generator-choice-tile-grey
+					Tileset: SNOW
+					Settings:
+						Tile: 1006
+				Choice@SnowPavement:
+					Label: label-clear-map-generator-choice-tile-pavement
+					Tileset: SNOW
+					Settings:
+						Tile: 1031

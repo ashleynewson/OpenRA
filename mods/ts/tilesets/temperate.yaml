@@ -80,6 +80,8 @@ Terrain:
 		Type: Jumpjet
 		Color: 745537
 
+# Formerly generated using LegacyTilesetImporter.cs.
+# Contains manual modifications.
 Templates:
 	Template@0:
 		Categories: Clear
@@ -20634,6 +20636,7 @@ Templates:
 				MaxColor: 585349
 				ZOffset: -12
 				ZRamp: 0
+
 MultiBrushCollections:
 	Segmented:
 		MultiBrush@Cliff_60:

@@ -99,11 +99,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			[FieldLoader.Require]
 			public readonly int Forests = default;
 			[FieldLoader.Require]
-			public readonly int Green = default;
-			[FieldLoader.Require]
-			public readonly int Sand = default;
-			[FieldLoader.Require]
-			public readonly int Rough = default;
+			public readonly int ForestFloor = default;
 			[FieldLoader.Require]
 			public readonly int ForestCutout = default;
 			[FieldLoader.Require]
@@ -205,12 +201,6 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly ushort LandTile = default;
 			[FieldLoader.Require]
 			public readonly ushort WaterTile = default;
-			[FieldLoader.Require]
-			public readonly ushort GreenTile = default;
-			[FieldLoader.Require]
-			public readonly ushort SandTile = default;
-			[FieldLoader.Require]
-			public readonly ushort RoughTile = default;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> SegmentedBrushes;
 			[FieldLoader.Ignore]
@@ -219,12 +209,18 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly IReadOnlyList<MultiBrush> UnplayableObstacles;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<MultiBrush> CivilianBuildingsObstacles;
+			[FieldLoader.Require]
+			public readonly ushort ForestFloorTile = default;
+			[FieldLoader.Ignore]
+			public readonly IReadOnlyList<(ushort, int)> OtherGround;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyDictionary<ushort, IReadOnlyList<MultiBrush>> RepaintTiles;
 			[FieldLoader.Ignore]
 			public readonly IReadOnlyList<ushort> RampTiles;
 			[FieldLoader.Ignore]
 			public readonly LatTiler LatTiler;
+			[FieldLoader.Ignore]
+			public readonly LatTiler IceLatTiler = null;
 
 			[FieldLoader.Ignore]
 			public readonly ResourceTypeInfo DefaultResource;
@@ -259,6 +255,17 @@ namespace OpenRA.Mods.Cnc.Traits
 				ForestObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("ForestObstacles").Value.Value);
 				UnplayableObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("UnplayableObstacles").Value.Value);
 				CivilianBuildingsObstacles = MultiBrush.LoadCollection(map, my.NodeWithKey("CivilianBuildingsObstacles").Value.Value);
+				OtherGround = my.NodeWithKeyOrDefault("OtherGround")?.Value.Nodes.Select(
+					n =>
+					{
+						if (!Exts.TryParseUshortInvariant(n.Key, out var tile))
+							throw new YamlException($"OtherGround {n.Key} is not a ushort");
+
+						if (!Exts.TryParseInt32Invariant(n.Value.Value, out var fraction))
+							throw new YamlException($"OtherGround {n.Key} has invalid fraction (should be 0 to {FractionMax})");
+
+						return (tile, fraction);
+					}).ToList();
 				RepaintTiles = my.NodeWithKeyOrDefault("RepaintTiles")?.Value.ToDictionary(
 					k =>
 					{
@@ -273,8 +280,9 @@ namespace OpenRA.Mods.Cnc.Traits
 				RampTiles = FieldLoader.GetValue<List<ushort>>(
 					nameof(RampTiles),
 					my.NodeWithKey(nameof(RampTiles)).Value.Value);
-				var latTilerMy = my.NodeWithKeyOrDefault("LatTiler");
-				LatTiler = new LatTiler(latTilerMy.Value);
+				LatTiler = new LatTiler(my.NodeWithKey("LatTiler").Value);
+				if (my.NodeWithKeyOrDefault("IceLatTiler") != null)
+					IceLatTiler = new LatTiler(my.NodeWithKeyOrDefault("IceLatTiler").Value);
 
 				var resourceTypes = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes;
 				if (!resourceTypes.TryGetValue(my.NodeWithKey("DefaultResource").Value.Value, out DefaultResource))
@@ -907,12 +915,13 @@ namespace OpenRA.Mods.Cnc.Traits
 						map.Tiles[cpos] = new TerrainTile(tile, 0);
 			}
 
-			DecorateFloorTiles(param.GreenTile, param.Green, forestPlan);
-			DecorateFloorTiles(param.SandTile, param.Sand);
-			DecorateFloorTiles(param.RoughTile, param.Rough);
+			DecorateFloorTiles(param.ForestFloorTile, param.ForestFloor, forestPlan);
+			foreach (var (tile, fraction) in param.OtherGround)
+				DecorateFloorTiles(tile, fraction);
 
 			// Cosmetically repaint tiles
-			param.LatTiler?.Replace(pickAnyRandom, map);
+			param.LatTiler.Replace(pickAnyRandom, map);
+			param.IceLatTiler?.Replace(pickAnyRandom, map);
 			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);
 
 			terraformer.BakeMap();

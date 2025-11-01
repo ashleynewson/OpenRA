@@ -854,8 +854,12 @@ label-clear-map-generator-choice-tile-crystal =
    .label = Crystal
 label-clear-map-generator-choice-tile-swamp =
    .label = Swamp
+label-clear-map-generator-choice-tile-rock =
+   .label = Rock
 label-clear-map-generator-choice-tile-bluemold =
    .label = Blue Mold
+label-clear-map-generator-choice-tile-grey =
+   .label = Grey
 
 label-ts-map-generator-option-seed = Seed
 
@@ -978,3 +982,13 @@ label-ts-map-generator-choice-civilian-density-very-high =
    .label = Very High
 label-ts-map-generator-choice-civilian-density-max =
    .label = Maximum
+
+label-ts-map-generator-option-coastlines = Coastlines
+label-ts-map-generator-choice-coastlines-beaches =
+   .label = Beaches
+label-ts-map-generator-choice-coastlines-sunken-beaches =
+   .label = Sunken Beaches
+label-ts-map-generator-choice-coastlines-cliffs =
+   .label = Cliffs
+label-ts-map-generator-choice-coastlines-mixed =
+   .label = Mixed
