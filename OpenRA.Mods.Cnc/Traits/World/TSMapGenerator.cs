@@ -653,7 +653,7 @@ namespace OpenRA.Mods.Cnc.Traits
 					heightMapNoiseRandom,
 					heightMap.Target.Size,
 					terraformer.Rotations,
-					terraformer.Mirror,
+					terraformer.WMirror.ForCPos(),
 					param.RampFeatureSize,
 					NoiseUtils.PinkAmplitude);
 				noise = MatrixUtils.BinomialBlur(noise, 1);

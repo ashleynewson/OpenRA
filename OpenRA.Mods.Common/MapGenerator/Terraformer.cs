@@ -106,7 +106,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public readonly Map Map;
 		public readonly ModData ModData;
 		public readonly List<ActorPlan> ActorPlans;
-		public readonly Symmetry.Mirror Mirror;
+		public readonly Symmetry.WMirror WMirror;
 		public readonly int Rotations;
 
 		readonly ITerrainInfo terrainInfo;
@@ -128,7 +128,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Map = map;
 			ModData = modData;
 			ActorPlans = actorPlans;
-			Mirror = mirror;
+			WMirror = new Symmetry.WMirror(mirror, map.Grid.Type);
 			Rotations = rotations;
 
 			terrainInfo = modData.DefaultTerrainInfo[map.Tileset];
@@ -209,7 +209,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Symmetry.RotateAndMirrorOverCPos(
 				layer,
 				Rotations,
-				Mirror,
+				WMirror,
 				(sources, destination)
 					=> newLayer[destination] = sources
 						.Select(source => layer.TryGetValue(source, out var value) ? value : outsideValue)
@@ -385,7 +385,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			if (mask != null)
 				zoneable = CellLayerUtils.Intersect([zoneable, mask]);
 
-			if (Rotations > 1 || Mirror != Symmetry.Mirror.None)
+			if (Rotations > 1 || WMirror.HasMirror)
 			{
 				// Reserve the center of the map - otherwise it will mess with symmetries
 				CellLayerUtils.OverCircle(
@@ -425,7 +425,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Symmetry.RotateAndMirrorOverCPos(
 				projectionSpacing,
 				Rotations,
-				Mirror,
+				WMirror,
 				(projections, cpos) =>
 					projectionSpacing[cpos] = Symmetry.ProjectionProximity(projections) / 2);
 			return projectionSpacing;
@@ -457,7 +457,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Symmetry.RotateAndMirrorOverCPos(
 				incompatibilities,
 				Rotations,
-				Mirror,
+				WMirror,
 				(CPos[] sources, CPos destination) =>
 				{
 					if (!dominant[destination])
@@ -559,7 +559,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Symmetry.RotateAndMirrorOverCPos(
 					regionMask,
 					Rotations,
-					Mirror,
+					WMirror,
 					TestSymmetry);
 
 				for (var id = 0; id < symmetryScore.Length; id++)
@@ -740,7 +740,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			CheckHasMapShapeOrNull(zoneable);
 			var projections = Symmetry.RotateAndMirrorActorPlan(
-				actorPlan, Rotations, Mirror);
+				actorPlan, Rotations, WMirror);
 			ActorPlans.AddRange(projections);
 			if (zoneable != null)
 				foreach (var projection in projections)
@@ -1013,7 +1013,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				random,
 				noise,
 				Rotations,
-				Mirror,
+				WMirror,
 				noiseFeatureSize,
 				wavelength => NoiseUtils.ClumpinessAmplitude(wavelength, clumpiness));
 
@@ -1036,7 +1036,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				random,
 				CellLayerUtils.CellBounds(Map).Size.ToInt2(),
 				Rotations,
-				Mirror,
+				WMirror.ForCPos(),
 				noiseFeatureSize,
 				NoiseUtils.PinkAmplitude);
 			MatrixUtils.NormalizeRangeInPlace(elevation, 1024);
@@ -1065,7 +1065,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				random,
 				pattern,
 				Rotations,
-				Mirror,
+				WMirror,
 				noiseFeatureSize,
 				wavelength => NoiseUtils.ClumpinessAmplitude(wavelength, clumpiness));
 			{
@@ -1779,7 +1779,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						chosenMPos.ToCPos(Map),
 						space,
 						Rotations,
-						Mirror);
+						WMirror);
 					foreach (var projection in projections)
 					{
 						if (space.Contains(projection))
@@ -1826,7 +1826,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			// For awkward symmetries, we try harder to make sure roads are fairer.
 			// This can degrade the quantity of roads, though.
 			var imperfectSymmetry =
-				Mirror != Symmetry.Mirror.None ||
+				WMirror.HasMirror ||
 				Rotations == 3 ||
 				Rotations >= 5;
 			var gridType = Map.Grid.Type;
@@ -1905,7 +1905,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						{
 							var cposPath = CellLayerUtils.FromMatrixPoints([path], space)[0];
 							var projectedPoints = cposPath
-								.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, Rotations, Mirror))
+								.SelectMany(p => Symmetry.RotateAndMirrorCPos(p, space, Rotations, WMirror))
 								.ToArray();
 							var matrixPoints = CellLayerUtils.ToMatrixPoints([projectedPoints], space)[0];
 							if (!matrixPoints.All(p => !nearPath.ContainsXY(p) || nearPath[p]))
@@ -2163,7 +2163,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 				var chosenMPos = PriorityMPos(n);
 				var chosenCPos = chosenMPos.ToCPos(gridType);
-				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Rotations, Mirror))
+				foreach (var cpos in Symmetry.RotateAndMirrorCPos(chosenCPos, plan, Rotations, WMirror))
 					if (Map.Resources.Contains(cpos))
 						remaining -= AddResource(cpos);
 			}
@@ -2219,7 +2219,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				random,
 				decorationNoise,
 				Rotations,
-				Mirror,
+				WMirror,
 				featureSize,
 				NoiseUtils.WhiteAmplitude);
 
@@ -2228,7 +2228,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				random,
 				densityNoise,
 				Rotations,
-				Mirror,
+				WMirror,
 				1024,
 				NoiseUtils.PinkAmplitude);
 			var densityMask = CellLayerUtils.CalibratedBooleanThreshold(
