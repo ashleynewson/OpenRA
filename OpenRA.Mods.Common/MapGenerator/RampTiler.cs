@@ -575,11 +575,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			for (var i = 0; i < 8; i++)
 			{
 				var connection = (Riser.Connection)i;
-				// var fromCVec = Riser.ConnectionFromCorner(connection);
 				var toCVec = Riser.ConnectionToCorner(connection);
-				// var fromCPos = cpos + fromCVec;
 				var toCPos = cpos + toCVec;
-				// var fromXy = heightMap.CPosToXy(fromCPos);
 				var toXy = heightMap.CPosToXy(toCPos);
 				if (!(heightMap.Adjustable.ContainsXY(toXy) && heightMap.Adjustable[toXy]))
 					continue;
@@ -713,16 +710,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (!heightMap.Tileable[cpos])
 					continue;
 
+				var xy = heightMap.CPosToXy(cpos);
+				if (
+					heightMap.PermissiveCorners.Contains(xy) ||
+					heightMap.PermissiveCorners.Contains(xy + new int2(1, 0)) ||
+					heightMap.PermissiveCorners.Contains(xy + new int2(1, 1)) ||
+					heightMap.PermissiveCorners.Contains(xy + new int2(0, 1)))
 				{
-					var xy = heightMap.CPosToXy(cpos);
-					if (
-						heightMap.PermissiveCorners.Contains(xy) ||
-						heightMap.PermissiveCorners.Contains(xy + new int2(1, 0)) ||
-						heightMap.PermissiveCorners.Contains(xy + new int2(1, 1)) ||
-						heightMap.PermissiveCorners.Contains(xy + new int2(0, 1)))
-					{
-						continue;
-					}
+					continue;
 				}
 
 				var tl = tlCorners[cpos];
@@ -741,7 +736,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 					Math.Abs(bl - tl) > 1)
 				{
 					return (null, null);
-					// throw new ArgumentException("cornerHeights has adjacent cell corners with a height difference > 1");
 				}
 
 				var lookup = tl | (tr << 2) | (br << 4) | (bl << 6);

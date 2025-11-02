@@ -472,6 +472,11 @@
 								Main: 341
 								Low: 341
 								Replacements: 341, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470
+			BooleanOption@DenyWalledArea:
+				Label: label-ts-map-generator-option-deny-walled-areas
+				Parameter: DenyWalledAreas
+				Default: True
+				Priority: 1
 
 	ClearMapGenerator@clear:
 		Type: clear

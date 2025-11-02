@@ -964,9 +964,6 @@ label-ts-map-generator-choice-density-area-high =
 label-ts-map-generator-choice-density-area-very-high =
    .label = Very High
 
-label-ts-map-generator-option-deny-walled-areas = Obstruct walled areas
-label-ts-map-generator-option-water-cliffs = Water cliffs
-
 label-ts-map-generator-option-civilian-density = Civilian Density
 label-ts-map-generator-choice-civilian-density-default =
    .label = Default
@@ -992,3 +989,5 @@ label-ts-map-generator-choice-coastlines-cliffs =
    .label = Cliffs
 label-ts-map-generator-choice-coastlines-mixed =
    .label = Mixed
+
+label-ts-map-generator-option-deny-walled-areas = Obstruct walled areas
