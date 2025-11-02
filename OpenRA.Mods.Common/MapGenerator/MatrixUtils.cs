@@ -1146,7 +1146,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (prop == FirstPassSentinel)
 					return chirality[point];
 
-				if (chirality[point] != 0)
+				if (chirality[point] != 0 || prop == 0)
 					return null;
 				chirality[point] = prop;
 				return prop;
