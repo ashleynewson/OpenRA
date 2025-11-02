@@ -259,7 +259,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 			if (plan.AutoStart != Direction.None)
 				yield return new CircleAnnotationRenderable(
-					CornerOfCell(plan.FirstPoint) - map.Offset(plan.AutoEnd.ToCVec(), 0) * 768 / 1024,
+					CornerOfCell(plan.FirstPoint) - map.Offset(plan.AutoStart.ToCVec(), 0) * 768 / 1024,
 					new WDist(256),
 					2,
 					plan.Start != Direction.None ? Color.Magenta : Color.Gray,
