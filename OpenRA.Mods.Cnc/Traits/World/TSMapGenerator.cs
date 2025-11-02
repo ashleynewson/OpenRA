@@ -670,8 +670,9 @@ namespace OpenRA.Mods.Cnc.Traits
 					heightMap.Target[i] = (byte)Math.Clamp(noise[i] + heightMap.Target[i], byte.MinValue, byte.MaxValue);
 
 				heightMap.Soften(param.RampSoften);
-				heightMap = heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle)
-					?? throw new MapGenerationException("created unfixable heightmap");
+				if (!heightMap.Constrain(RampTiler.AdjustmentMode.LowerMiddle))
+					throw new MapGenerationException("created unfixable heightmap");
+
 				var brush = rampTiler.TileHeightMap(heightMap, rampTilingRandom)
 					?? throw new MapGenerationException("created invalid heightmap");
 				terraformer.PaintTiling(rampTilingRandom, brush, 0);

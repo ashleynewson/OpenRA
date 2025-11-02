@@ -23,7 +23,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 	{
 		public sealed class HeightMap
 		{
-			readonly Map map;
 			public readonly Rectangle CellBounds;
 			public readonly Matrix<byte> Target;
 			public readonly Matrix<byte> LowerBound;
@@ -36,7 +35,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 			public HeightMap(Map map)
 			{
-				this.map = map;
 				CellBounds = CellLayerUtils.CellBounds(map);
 				var size = CellBounds.Size.ToInt2() + new int2(1, 1);
 				Target = new Matrix<byte>(size);
@@ -79,34 +77,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 				}
 
 				PermissiveCorners = permissiveCorners.ToImmutableHashSet();
-			}
-
-			HeightMap(
-				Map map,
-				Rectangle cellBounds,
-				Matrix<byte> target,
-				Matrix<byte> lowerBounds,
-				Matrix<byte> upperBounds,
-				Matrix<bool> adjustable,
-				CellLayer<bool> tileable,
-				ImmutableHashSet<int2> permissiveCorners)
-			{
-				this.map = map;
-				CellBounds = cellBounds;
-				Target = target;
-				LowerBound = lowerBounds;
-				UpperBound = upperBounds;
-				Adjustable = adjustable;
-				Tileable = tileable;
-				PermissiveCorners = permissiveCorners;
-			}
-
-			public void SetHeights(Matrix<byte> heights)
-			{
-				if (heights.Size != Target.Size)
-					throw new ArgumentException("heights matrix has wrong size");
-				for (var i = 0; i < Target.Data.Length; i++)
-					Target[i] = Adjustable[i] ? heights[i] : (byte)0;
 			}
 
 			public int2 CPosToXy(CPos cpos)
@@ -221,7 +191,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return matrix;
 			}
 
-			public HeightMap Constrain(AdjustmentMode mode)
+			public bool Constrain(AdjustmentMode mode)
 			{
 				var forcedMaximum = GetLowerHull(UpperBound.Clone());
 				var forcedMinimum = GetUpperHull(LowerBound.Clone());
@@ -235,7 +205,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 							continue;
 
 						if (forcedMinimum[x, y] > forcedMaximum[x, y])
-							return null;
+							return false;
 						else if (constrained[x, y] < forcedMinimum[x, y])
 							constrained[x, y] = forcedMinimum[x, y];
 						else if (constrained[x, y] > forcedMaximum[x, y])
@@ -267,15 +237,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 						throw new ArgumentException("invalid fitting mode");
 				}
 
-				return new HeightMap(
-					map,
-					CellBounds,
-					constrained,
-					LowerBound.Clone(),
-					UpperBound.Clone(),
-					Adjustable.Clone(),
-					CellLayerUtils.Clone(Tileable),
-					PermissiveCorners);
+				constrained.CopyTo(Target);
+
+				return true;
 			}
 
 			/// <summary>
@@ -438,7 +402,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		readonly Map map;
-		readonly Rectangle cellBounds;
 
 		// Contains single-tile brushes with zero height offset.
 		readonly RampProperties[] rampProperties;
@@ -450,7 +413,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		public RampTiler(Map map, IReadOnlyList<MultiBrush> brushes)
 		{
 			this.map = map;
-			cellBounds = CellLayerUtils.CellBounds(map);
 			var heightStep = map.Grid.TileScale / 2;
 
 			var rampsToBrushes = new Dictionary<byte, List<MultiBrush>>();
@@ -497,55 +459,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 					rampLookup[lookup].Add(ramp);
 				}
 			}
-		}
-
-		public byte GetTileHeightAt(CPos cpos)
-		{
-			if (!map.Height.Contains(cpos))
-				return 0;
-
-			return map.Height[cpos];
-		}
-
-		public byte GetRampTypeAt(CPos cpos)
-		{
-			if (!map.Tiles.Contains(cpos))
-				return 0;
-
-			return map.Rules.TerrainInfo.GetTerrainInfo(map.Tiles[cpos]).RampType;
-		}
-
-		public byte GetCornerHeightAt(CPos cpos)
-		{
-			var height = 0;
-			var br = cpos;
-			var bl = cpos - new CVec(1, 0);
-			var tl = cpos - new CVec(1, 1);
-			var tr = cpos - new CVec(0, 1);
-			height = Math.Max(height, GetTileHeightAt(br) + rampProperties[GetRampTypeAt(br)].Tl);
-			height = Math.Max(height, GetTileHeightAt(bl) + rampProperties[GetRampTypeAt(bl)].Tr);
-			height = Math.Max(height, GetTileHeightAt(tl) + rampProperties[GetRampTypeAt(tl)].Br);
-			height = Math.Max(height, GetTileHeightAt(tr) + rampProperties[GetRampTypeAt(tr)].Bl);
-			return (byte)height;
-		}
-
-		public byte GetCornerHeightAtMatrixXy(int2 xy)
-		{
-			return GetCornerHeightAt(new CPos(xy.X + cellBounds.TopLeft.X, xy.Y + cellBounds.TopLeft.Y));
-		}
-
-		public byte GetRampedCellHeightAt(CPos cpos)
-		{
-			var height = 0;
-			var tl = cpos;
-			var tr = cpos + new CVec(1, 0);
-			var br = cpos + new CVec(1, 1);
-			var bl = cpos + new CVec(0, 1);
-			height = Math.Max(height, GetCornerHeightAt(tl));
-			height = Math.Max(height, GetCornerHeightAt(tr));
-			height = Math.Max(height, GetCornerHeightAt(br));
-			height = Math.Max(height, GetCornerHeightAt(bl));
-			return (byte)height;
 		}
 
 		public byte GetConnectionHeight(byte height, TerrainTileInfo info, Riser.Connection connection)
