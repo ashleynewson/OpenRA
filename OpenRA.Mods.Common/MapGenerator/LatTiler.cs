@@ -18,16 +18,27 @@ using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapGenerator
 {
+	/// <summary>
+	/// Replaces tiles with the appropriate LAT transition tile.
+	/// </summary>
 	public sealed class LatTiler
 	{
+		/// <summary
+		/// Defines how a tile should be replaced based on its neighboring tiles.
+		/// </summary>
 		public class LatRule
 		{
+			/// <summary>The tile type that this rule considers to replace.</summary>
 			[FieldLoader.Require]
 			public readonly ushort Main;
+
+			/// <summary>Required type of a neighboring tile to match as a low bit in the lookup.</summary>
 			public readonly ushort? Low = null;
+
+			/// <summary>Required type of a neighboring tile to match as a high bit in the lookup.</summary>
 			public readonly ushort? High = null;
 
-			// Array index is a bitmask of U=1, R=2, D=4, L=8.
+			/// <summary>Replacement lookup table. Array index is a bitmask of U=1, R=2, D=4, L=8.</summary>
 			[FieldLoader.Ignore]
 			public readonly ImmutableArray<ushort> Replacements;
 
@@ -63,6 +74,10 @@ namespace OpenRA.Mods.Common.MapGenerator
 					throw new ArgumentException("Replacements did not have 16 elements");
 			}
 
+			/// <summary>
+			/// Given a tile type and its neighboring tile types, determine whether this rule
+			/// specifies a replacement tile type and return it if so (else null).
+			/// </summary>
 			public ushort? OfferReplacement(ushort main, ushort[] adjacents)
 			{
 				if (main != Main)
@@ -87,6 +102,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 					(CheckBit(adjacents[3]) ? 8 : 0);
 				return Replacements[index];
 			}
+		}
+
+		static TerrainTile PickTile(MersenneTwister random, ITemplatedTerrainInfo templatedTerrainInfo, ushort tileType)
+		{
+			if (random != null && templatedTerrainInfo != null && templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
+				return new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
+			else
+				return new TerrainTile(tileType, 0);
 		}
 
 		readonly ImmutableArray<LatRule> latRules;
@@ -134,19 +157,18 @@ namespace OpenRA.Mods.Common.MapGenerator
 			this.canonicalizations = canonicalizations.ToImmutableDictionary();
 		}
 
-		public ushort CanonicalType(TerrainTile tile)
+		ushort CanonicalType(TerrainTile tile)
 		{
 			return canonicalizations.GetValueOrDefault(tile.Type, tile.Type);
 		}
 
-		static TerrainTile PickTile(MersenneTwister random, ITemplatedTerrainInfo templatedTerrainInfo, ushort tileType)
-		{
-			if (random != null && templatedTerrainInfo != null && templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
-				return new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
-			else
-				return new TerrainTile(tileType, 0);
-		}
-
+		/// <summary>
+		/// Provided a CellLayer of tiles, runs (first matching) rules against all tiles.
+		/// </summary>
+		/// <param name="random">Optional random source for picking tile indices.</param>
+		/// <param name="templatedTerrainInfo">Optional, used for picking tile indices.</param>
+		/// <param name="original">CellLayer of tiles.</param>
+		/// <returns>A copy of the original CellLayer with applicable replacements made.</returns>
 		public CellLayer<TerrainTile> OfferReplacements(
 			MersenneTwister random,
 			ITemplatedTerrainInfo templatedTerrainInfo,
@@ -183,6 +205,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return replaced;
 		}
 
+		/// <summary>
+		/// Wrapper over OfferReplacements. Runs rules over all tiles in a map, modifying the map.
+		/// </summary>
 		public void Replace(MersenneTwister random, Map map)
 		{
 			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
