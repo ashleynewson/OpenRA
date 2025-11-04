@@ -401,6 +401,31 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
+		public static CVec ConnectionToAdjacentCorner(Riser.Connection connection)
+		{
+			switch (connection)
+			{
+				case Riser.Connection.LU:
+					return new CVec(-1, 0);
+				case Riser.Connection.UL:
+					return new CVec(0, -1);
+				case Riser.Connection.UR:
+					return new CVec(1, -1);
+				case Riser.Connection.RU:
+					return new CVec(2, 0);
+				case Riser.Connection.RD:
+					return new CVec(2, 1);
+				case Riser.Connection.DR:
+					return new CVec(1, 2);
+				case Riser.Connection.DL:
+					return new CVec(0, 2);
+				case Riser.Connection.LD:
+					return new CVec(-1, 1);
+			}
+
+			throw new ArgumentException("invalid connection");
+		}
+
 		readonly Map map;
 
 		// Contains single-tile brushes with zero height offset.
@@ -488,7 +513,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			for (var i = 0; i < 8; i++)
 			{
 				var connection = (Riser.Connection)i;
-				var toCVec = Riser.ConnectionToCorner(connection);
+				var toCVec = ConnectionToAdjacentCorner(connection);
 				var toCPos = cpos + toCVec;
 				var toXy = heightMap.CPosToXy(toCPos);
 				if (!(heightMap.Adjustable.ContainsXY(toXy) && heightMap.Adjustable[toXy]))

@@ -41,8 +41,20 @@ namespace OpenRA
 		float MaxHeightColorBrightness { get; }
 	}
 
+	/// <summary>
+	/// Describes expected discontinuities in height with neighboring tiles. Each tile has eight
+	/// outgoing riser connections in a formation resembling a hash symbol (#). These specify the
+	/// height of each neighboring cell corner relative to the template height. For example, a
+	/// cliff tile might have a Height of 4 in the template, but connect to a lower tile at height
+	/// 0 for some of its corners.
+	/// </summary>
 	public readonly struct Riser
 	{
+		/// <summary>
+		/// Corner connection of a Riser definition.
+		/// UL means "the upper (-Y) neighboring cell, leftward adjoining (-X) corner", whereas
+		/// LU means "the leftward (-X) neighboring cell, upper adjoining (-Y) corner".
+		/// </summary>
 		public enum Connection
 		{
 			UL = 0,
@@ -55,81 +67,23 @@ namespace OpenRA
 			LU = 7,
 		}
 
-		public static CVec ConnectionToCell(Connection connection)
-		{
-			switch (connection)
-			{
-				case Connection.UL:
-				case Connection.UR:
-					return new CVec(0, -1);
-				case Connection.RU:
-				case Connection.RD:
-					return new CVec(1, 0);
-				case Connection.DR:
-				case Connection.DL:
-					return new CVec(0, 1);
-				case Connection.LD:
-				case Connection.LU:
-					return new CVec(-1, 0);
-			}
+		const byte Default = byte.MaxValue;
 
-			throw new ArgumentException("invalid connection");
-		}
-
-		public static CVec ConnectionFromCorner(Connection connection)
-		{
-			switch (connection)
-			{
-				case Connection.LU:
-				case Connection.UL:
-					return new CVec(0, 0);
-				case Connection.UR:
-				case Connection.RU:
-					return new CVec(1, 0);
-				case Connection.RD:
-				case Connection.DR:
-					return new CVec(1, 1);
-				case Connection.DL:
-				case Connection.LD:
-					return new CVec(0, 1);
-			}
-
-			throw new ArgumentException("invalid connection");
-		}
-
-		public static CVec ConnectionToCorner(Connection connection)
-		{
-			switch (connection)
-			{
-				case Connection.LU:
-					return new CVec(-1, 0);
-				case Connection.UL:
-					return new CVec(0, -1);
-				case Connection.UR:
-					return new CVec(1, -1);
-				case Connection.RU:
-					return new CVec(2, 0);
-				case Connection.RD:
-					return new CVec(2, 1);
-				case Connection.DR:
-					return new CVec(1, 2);
-				case Connection.DL:
-					return new CVec(0, 2);
-				case Connection.LD:
-					return new CVec(-1, 1);
-			}
-
-			throw new ArgumentException("invalid connection");
-		}
-
-		public const byte Default = byte.MaxValue;
 		readonly ulong bits = ulong.MaxValue;
 
-		public Riser()
-		{ }
-
-		public Riser(string definition)
+		/// <summary>
+		/// Parses a riser definition from MiniYaml. Two formats are accepted: an long-hand and a
+		/// short-hand. An example long-hand looks like "Riser: 6,6,0,0,0,0,6,6", specifying each
+		/// connection height explicitly. A short-hand may instead look like "Riser: LU=6", which
+		/// means set all left corners and upper corners to 6 (setting 4 connections in total),
+		/// leaving the rest default/automatic.
+		/// </summary>
+		public Riser(MiniYaml my)
 		{
+			if (my == null)
+				return;
+
+			var definition = my.Value;
 			if (definition == null)
 				return;
 
@@ -173,7 +127,7 @@ namespace OpenRA
 			}
 		}
 
-		public readonly byte? this[int i]
+		readonly byte? this[int i]
 		{
 			get
 			{
@@ -185,6 +139,10 @@ namespace OpenRA
 			}
 		}
 
+		/// <summary>
+		/// Fetch the expected height of the given connecting corner, or null if the tile's Height
+		/// value should be used instead.
+		/// </summary>
 		public readonly byte? this[Connection c]
 		{
 			get => this[(int)c];
@@ -205,7 +163,7 @@ namespace OpenRA
 		// Needs to be defined for subclasses
 		public static object LoadRiser(MiniYaml my)
 		{
-			return new Riser(my.NodeWithKeyOrDefault("Riser")?.Value.Value);
+			return new Riser(my.NodeWithKeyOrDefault("Riser")?.Value);
 		}
 
 		public Color GetColor(MersenneTwister random)
