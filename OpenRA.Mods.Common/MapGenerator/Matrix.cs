@@ -201,9 +201,11 @@ namespace OpenRA.Mods.Common.MapGenerator
 		{
 			if (Size != destination.Size)
 				throw new ArgumentException("source and destination have different size");
+
 			Data.CopyTo(destination.Data, 0);
 		}
 
+		/// <summary>Return an IEnumerable over the coordinates and values.</summary>
 		public IEnumerable<(int2 Xy, T Value)> Enumerate()
 		{
 			for (var y = 0; y < Size.Y; y++)

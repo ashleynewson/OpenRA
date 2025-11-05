@@ -636,14 +636,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 				for (var cx = 0; cx < input.Size.X; cx++)
 				{
 					long total = 0;
-					var samples = 0;
 					for (var ky = 0; ky < kernel.Size.Y; ky++)
 						for (var kx = 0; kx < kernel.Size.X; kx++)
 						{
 							var x = cx + kx - kernelCenter.X;
 							var y = cy + ky - kernelCenter.Y;
 							total += input[input.ClampXY(new int2(x, y))] * kernel[kx, ky];
-							samples++;
 						}
 
 					output[cx, cy] = total;
@@ -654,7 +652,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 		/// <summary>
 		/// Apply an aggregator over submatrices of input with a given size and store it to an
-		/// output, returning the output.
+		/// output, returning the output. Sampling a coordinate outside of the input matrix uses
+		/// the closest coordinate inside the matrix.
 		/// </summary>
 		public static Matrix<R> KernelAggregate<T, R>(
 			Matrix<T> input,
@@ -735,47 +734,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 
 					output[cx, cy] = (int)(sumOfSquares / samples);
 				}
-
-			return output;
-		}
-
-		/// <summary>
-		/// Determines the strength and consistency of a slope within a given radius.
-		/// Note that this isn't the gradient between both ends of the radius, but considers all
-		/// points within the radius. A high-range input should be provided to maximum output
-		/// precision.
-		/// </summary>
-		public static Matrix<int> SlopeStrength(Matrix<int> input, int radius)
-		{
-			var output = new Matrix<int>(input.Size);
-			for (var cy = 0; cy < output.Size.Y; cy++)
-			{
-				for (var cx = 0; cx < output.Size.X; cx++)
-				{
-					var samples = 0;
-					var dx = 0;
-					var dy = 0;
-					for (var ry = -radius; ry <= radius; ry++)
-						for (var rx = -radius; rx <= radius; rx++)
-						{
-							var y = cy + ry;
-							var x = cx + rx;
-							if (!input.ContainsXY(x, y))
-								continue;
-							var value = input[x, y];
-
-							if (rx != 0)
-								dx += value / rx;
-
-							if (ry != 0)
-								dy += value / ry;
-
-							samples++;
-						}
-
-					output[cx, cy] = (Math.Abs(dx) + Math.Abs(dy)) / samples;
-				}
-			}
 
 			return output;
 		}
