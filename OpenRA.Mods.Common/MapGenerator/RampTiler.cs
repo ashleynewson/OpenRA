@@ -19,19 +19,51 @@ using OpenRA.Support;
 
 namespace OpenRA.Mods.Common.MapGenerator
 {
+	/// <summary>Combines ramp tiles to fit a target height map.</summary>
 	public sealed class RampTiler
 	{
+		static readonly ImmutableArray<CVec> CellsAroundCorner = [
+			new(0, 0), new(-1, 0), new(0, -1), new(-1, -1)
+		];
+		static readonly ImmutableArray<int2> CornersAroundCell = [
+			new(0, 0), new(1, 0), new(0, 1), new(1, 1)
+		];
+
+		public enum AdjustmentMode
+		{
+			/// <summary>Heights will only increase if absolutely necessary.</summary>
+			Minimal,
+
+			/// <summary>Heights will be a rounded down median of minimal and maximal.</summary>
+			LowerMiddle,
+
+			/// <summary>Heights will be a rounded up median of minimal and maximal.</summary>
+			UpperMiddle,
+
+			/// <summary>Heights will only decrease if absolutely necessary.</summary>
+			Maximal,
+		}
+
+		/// <summary>Height targets and constraints for tiling a map with ramps.</summary>
 		public sealed class HeightMap
 		{
+			/// <summary>Mapping from Matrix to CellLayer space.</summary>
 			public readonly Rectangle CellBounds;
-			public readonly Matrix<byte> Target;
-			public readonly Matrix<byte> LowerBound;
-			public readonly Matrix<byte> UpperBound;
-			public readonly Matrix<bool> Adjustable;
-			public readonly CellLayer<bool> Tileable;
 
-			// Corners that belong only to one cell, and thus have no global constraints.
-			public readonly ImmutableHashSet<int2> PermissiveCorners;
+			/// <summary>Ideal cell corner heights.</summary>
+			public readonly Matrix<byte> Target;
+
+			/// <summary>Minimum permitted cell corner heights.</summary>
+			public readonly Matrix<byte> LowerBound;
+
+			/// <summary>Maximum permitted cell corner heights.</summary>
+			public readonly Matrix<byte> UpperBound;
+
+			/// <summary>Whether cell corner heights can deviate from Target when constraining or setting heights.</summary>
+			public readonly Matrix<bool> Adjustable;
+
+			/// <summary>Mask for cells to tile.</summary>
+			public readonly CellLayer<bool> Tileable;
 
 			public HeightMap(Map map)
 			{
@@ -43,51 +75,58 @@ namespace OpenRA.Mods.Common.MapGenerator
 				Adjustable = new Matrix<bool>(size).Fill(true);
 				Tileable = new CellLayer<bool>(map);
 				Tileable.Clear(true);
-				var permissiveCorners = new List<int2>();
 
 				for (var y = 0; y < size.Y; y++)
 				{
 					for (var x = 0; x < size.X; x++)
 					{
-						var cells = 0;
-
-						if (Tileable.Contains(XyToCPos(new int2(x, y))))
-							cells++;
-
-						if (Tileable.Contains(XyToCPos(new int2(x - 1, y))))
-							cells++;
-
-						if (Tileable.Contains(XyToCPos(new int2(x, y - 1))))
-							cells++;
-
-						if (Tileable.Contains(XyToCPos(new int2(x - 1, y - 1))))
-							cells++;
-
-						if (cells == 0)
+						if (!ContainsCorner(new int2(x, y)))
 						{
 							LowerBound[x, y] = byte.MaxValue;
 							UpperBound[x, y] = byte.MinValue;
 							Adjustable[x, y] = false;
 						}
-						else if (cells == 1)
-						{
-							permissiveCorners.Add(new int2(x, y));
-						}
 					}
 				}
-
-				PermissiveCorners = permissiveCorners.ToImmutableHashSet();
 			}
 
+			/// <summary>Helper to convert from CellLayer to Matrix space.</summary>
 			public int2 CPosToXy(CPos cpos)
 			{
 				return new int2(cpos.X, cpos.Y) - CellBounds.TopLeft;
 			}
 
+			/// <summary>Helper to convert from Matrix to CellLayer space.</summary>
 			public CPos XyToCPos(int2 xy)
 			{
 				xy += CellBounds.TopLeft;
 				return new CPos(xy.X, xy.Y);
+			}
+
+			/// <summary>Return true iff a map cell has a full 4 adjacent cells.</summary>
+			public bool IsInternalCell(CPos cpos)
+			{
+				return DirectionExts.Spread4CVec
+					.Select(cvec => cpos + cvec)
+					.All(Tileable.Contains);
+			}
+
+			/// <summary>Return true iff a cell corner has a full 4 adjacent corners.</summary>
+			public bool IsInternalCorner(int2 xy)
+			{
+				var cpos = XyToCPos(xy);
+				return CellsAroundCorner
+					.Select(cvec => cpos + cvec)
+					.Count(Tileable.Contains) >= 3;
+			}
+
+			/// <summary>Return true if a corner touches any cell within the map.</summary>
+			public bool ContainsCorner(int2 xy)
+			{
+				var cpos = XyToCPos(xy);
+				return CellsAroundCorner
+					.Select(cvec => cpos + cvec)
+					.Any(Tileable.Contains);
 			}
 
 			public void MarkUntileable(CellLayer<bool> mask)
@@ -97,10 +136,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 						MarkUntileable(cpos);
 			}
 
-			/// <summary>
-			/// Updates the corner heights of given cells (each cell has 4 corners) according to what
-			/// is currently in the map.
-			/// </summary>
 			public void MarkUntileable(IEnumerable<CPos> cells)
 			{
 				foreach (var cpos in cells)
@@ -108,35 +143,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			/// <summary>
-			/// Mark all corners of a CPos cell as untileable.
+			/// Updates the corner heights of a given cell (each cell has 4 corners) according to what
+			/// is currently in the map, and do not include the cell in the ramp tiling result.
 			/// </summary>
-			/// <param name="cpos">Tile to commit. Must be within the map.</param>
 			public void MarkUntileable(CPos cpos)
 			{
 				if (!Tileable.Contains(cpos))
 					return;
 
 				Tileable[cpos] = false;
+				var xy = CPosToXy(cpos);
 
-				Adjustable[CPosToXy(cpos)] = false;
-				Adjustable[CPosToXy(cpos + new CVec(1, 0))] = false;
-				Adjustable[CPosToXy(cpos + new CVec(1, 1))] = false;
-				Adjustable[CPosToXy(cpos + new CVec(0, 1))] = false;
-
-				Target[CPosToXy(cpos)] = 0;
-				Target[CPosToXy(cpos + new CVec(1, 0))] = 0;
-				Target[CPosToXy(cpos + new CVec(1, 1))] = 0;
-				Target[CPosToXy(cpos + new CVec(0, 1))] = 0;
-
-				LowerBound[CPosToXy(cpos)] = byte.MaxValue;
-				LowerBound[CPosToXy(cpos + new CVec(1, 0))] = byte.MaxValue;
-				LowerBound[CPosToXy(cpos + new CVec(1, 1))] = byte.MaxValue;
-				LowerBound[CPosToXy(cpos + new CVec(0, 1))] = byte.MaxValue;
-
-				UpperBound[CPosToXy(cpos)] = 0;
-				UpperBound[CPosToXy(cpos + new CVec(1, 0))] = 0;
-				UpperBound[CPosToXy(cpos + new CVec(1, 1))] = 0;
-				UpperBound[CPosToXy(cpos + new CVec(0, 1))] = 0;
+				foreach (var offset in CornersAroundCell)
+				{
+					var corner = xy + offset;
+					Target[corner] = 0;
+					LowerBound[corner] = byte.MaxValue;
+					UpperBound[corner] = byte.MinValue;
+					Adjustable[corner] = false;
+				}
 			}
 
 			IEnumerable<(int2 XY, (byte Height, bool First) Prop)> FillSeeds(Matrix<byte> heights)
@@ -147,6 +172,19 @@ namespace OpenRA.Mods.Common.MapGenerator
 							yield return (new int2(x, y), (heights[x, y], true));
 			}
 
+			// Given an input matrix of cell corner heights, finds the output height
+			// matrix where:
+			// - Each output[xy] <= input[xy]
+			// - Each output[xy] is no more than 1 height step away from its
+			//   (at most) 4 adjacent neighbors.
+			// - Each output[xy] is as high as it can possibly be otherwise.
+			//
+			// A 1D representation of this looks like:
+			//   4  ..x.....    ........
+			//   3  ....x...    ........
+			//   2  .x....xx -> .xx....x
+			//   1  x..x....    x..xx.x.
+			//   0  .....x..    .....x..
 			Matrix<byte> GetLowerHull(Matrix<byte> matrix)
 			{
 				(byte Lower, bool First)? Fill(int2 xy, (byte Lower, bool First) prop)
@@ -169,6 +207,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return matrix;
 			}
 
+			// Like GetLowerHull, but the other way around. :)
 			Matrix<byte> GetUpperHull(Matrix<byte> matrix)
 			{
 				(byte Upper, bool First)? Fill(int2 xy, (byte Upper, bool First) prop)
@@ -191,6 +230,15 @@ namespace OpenRA.Mods.Common.MapGenerator
 				return matrix;
 			}
 
+			/// <summary>
+			/// Attempt to constrain the Target heights such that all adjustable corners are
+			/// no more than 1 height step away from any adjacent corner,
+			/// and are within LowerBound and UpperBound.
+			/// </summary>
+			/// <param name="mode">How to set the height of targets than need to be adjusted.</param>
+			/// <returns>
+			/// Whether the constraints could be satisfied (and the target heights were updated).
+			/// </returns>
 			public bool Constrain(AdjustmentMode mode)
 			{
 				var forcedMaximum = GetLowerHull(UpperBound.Clone());
@@ -261,6 +309,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 							Target[x, y] = (byte)Math.Clamp(Target[x, y] + adjustment, byte.MinValue, byte.MaxValue);
 			}
 
+			/// <summary>Set the target height of all masked cells' corners to a target value.</summary>
 			public void SetCellHeights(byte height, CellLayer<bool> mask)
 			{
 				foreach (var cpos in mask.CellRegion)
@@ -268,18 +317,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 						SetCellHeight(height, cpos);
 			}
 
-			public void SetCellHeights(byte height, IEnumerable<CPos> cells)
-			{
-				foreach (var cpos in cells)
-					SetCellHeight(height, cpos);
-			}
-
+			/// <summary>Set the target height of a cell's corners to a target value.</summary>
 			public void SetCellHeight(byte height, CPos cpos)
 			{
-				Target[CPosToXy(cpos)] = height;
-				Target[CPosToXy(cpos + new CVec(1, 0))] = height;
-				Target[CPosToXy(cpos + new CVec(1, 1))] = height;
-				Target[CPosToXy(cpos + new CVec(0, 1))] = height;
+				var xy = CPosToXy(cpos);
+				foreach (var offset in CornersAroundCell)
+					Target[xy + offset] = height;
 			}
 
 			/// <summary>
@@ -306,20 +349,21 @@ namespace OpenRA.Mods.Common.MapGenerator
 					DirectionExts.Spread4);
 			}
 
-			public void Soften(int radius)
+			/// <summary>Blur Target heights, but only through adjustable space.</summary>
+			public void Soften(int distance)
 			{
 				// Split the softening into multiple steps if needed to avoid numeric limitations.
 				// Make sure the last step isn't too small to improve precision.
-				while (radius > 12)
+				while (distance > 12)
 				{
 					Soften(8);
-					radius -= 8;
+					distance -= 8;
 				}
 
 				var newNumerator = Target.Map(v => (int)v);
 				var newDenominator = new Matrix<int>(Target.Size).Fill(1);
 
-				for (var iteration = 0; iteration < radius; iteration++)
+				for (var iteration = 0; iteration < distance; iteration++)
 				{
 					var oldNumerator = newNumerator;
 					var oldDenominator = newDenominator;
@@ -355,21 +399,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
-		public enum AdjustmentMode
-		{
-			/// <summary>Heights will only increase if absolutely necessary.</summary>
-			Minimal,
-
-			/// <summary>Heights will be a be a rounded down median of minimal and maximal.</summary>
-			LowerMiddle,
-
-			/// <summary>Heights will be a be a rounded up median of minimal and maximal.</summary>
-			UpperMiddle,
-
-			/// <summary>Heights will only decrease if absolutely necessary.</summary>
-			Maximal,
-		}
-
 		record struct RampProperties
 		{
 			public MultiBrush[] Brushes;
@@ -401,7 +430,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
-		public static CVec ConnectionToAdjacentCorner(Riser.Connection connection)
+		static CVec ConnectionToAdjacentCorner(Riser.Connection connection)
 		{
 			switch (connection)
 			{
@@ -486,7 +515,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
-		public byte GetConnectionHeight(byte height, TerrainTileInfo info, Riser.Connection connection)
+		byte GetConnectionHeight(byte height, TerrainTileInfo info, Riser.Connection connection)
 		{
 			var riser = info.Riser;
 			var properties = rampProperties[info.RampType];
@@ -497,12 +526,20 @@ namespace OpenRA.Mods.Common.MapGenerator
 			return (byte)Math.Clamp(unclamped, byte.MinValue, byte.MaxValue);
 		}
 
+		/// <summary>
+		/// Pull the heights of untileable cells from the map into a heightMap,
+		/// providing anchor points for later constraints and tiling.
+		/// </summary>
 		public void PullHeightMap(HeightMap heightMap)
 		{
 			foreach (var cpos in heightMap.Tileable.CellRegion)
 				PullHeightMap(heightMap, cpos);
 		}
 
+		/// <summary>
+		/// Pull the heights of an untileable cell from the map into a heightMap,
+		/// providing anchor points for later constraints and tiling.
+		/// </summary>
 		public void PullHeightMap(HeightMap heightMap, CPos cpos)
 		{
 			if (!heightMap.Tileable.Contains(cpos) || heightMap.Tileable[cpos])
@@ -519,7 +556,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (!(heightMap.Adjustable.ContainsXY(toXy) && heightMap.Adjustable[toXy]))
 					continue;
 
-				if (heightMap.PermissiveCorners.Contains(toXy))
+				if (!heightMap.IsInternalCorner(toXy))
 					continue;
 
 				var connectionHeight = GetConnectionHeight(height, info, connection);
@@ -531,6 +568,12 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 		}
 
+		/// <summary>
+		/// Generate height and ramp CellLayers (as might be used in a Map) from a heightMap.
+		/// </summary>
+		/// <param name="heightMap">HeightMap to derive heights and ramps from.</param>
+		/// <param name="random">Random source for picking ramps with identical corner heights.</param>
+		/// <returns>The height and ramp CellLayers, or (null, null) if no solution is available.</returns>
 		public (CellLayer<byte> Heights, CellLayer<byte> Ramps) GenerateRampsAndHeights(
 			HeightMap heightMap,
 			MersenneTwister random)
@@ -648,15 +691,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (!heightMap.Tileable[cpos])
 					continue;
 
-				var xy = heightMap.CPosToXy(cpos);
-				if (
-					heightMap.PermissiveCorners.Contains(xy) ||
-					heightMap.PermissiveCorners.Contains(xy + new int2(1, 0)) ||
-					heightMap.PermissiveCorners.Contains(xy + new int2(1, 1)) ||
-					heightMap.PermissiveCorners.Contains(xy + new int2(0, 1)))
-				{
+				if (!heightMap.IsInternalCell(cpos))
 					continue;
-				}
 
 				var tl = tlCorners[cpos];
 				var tr = trCorners[cpos];
