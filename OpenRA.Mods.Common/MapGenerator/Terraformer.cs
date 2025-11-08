@@ -90,6 +90,20 @@ namespace OpenRA.Mods.Common.MapGenerator
 			In = 1,
 		}
 
+		public enum ResourceDensityMode
+		{
+			/// <summary>
+			/// For mods where density values are not saved to map data, but calculated based on the
+			/// number of adjacent matching resources.
+			/// </summary>
+			Adjacency,
+
+			/// <summary>
+			/// Emulates the effect of the Adjacency mode, but saves density values to map data.
+			/// </summary>
+			BakedAdjacency,
+		}
+
 		public static (T[] Types, U[] Weights) SplitDictionary<T, U>(IReadOnlyDictionary<T, U> typeWeights)
 		{
 			var types = typeWeights
@@ -263,7 +277,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		}
 
 		/// <summary>
-		/// Zone based on Map.Bounds.Contains. This is stricter than Map.Contains.
+		/// Zone based on Map.Bounds.Contains. This is stricter than Map.Contains, ignoring height.
 		/// </summary>
 		public void ZoneFromOutOfBounds<T>(CellLayer<T> zoneable, T value)
 		{
@@ -272,6 +286,9 @@ namespace OpenRA.Mods.Common.MapGenerator
 					zoneable[mpos] = value;
 		}
 
+		/// <summary>
+		/// Zone all cells that have ramps.
+		/// </summary>
 		public void ZoneFromRamps<T>(CellLayer<T> zoneable, T value)
 		{
 			var terrainInfo = Map.Rules.TerrainInfo;
@@ -283,7 +300,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// <summary>
 		/// Zones all cells that have ramps, except for cardinal ramps.
 		/// </summary>
-		public void ZoneFromComplexRamps<T>(CellLayer<T> zoneable, T value)
+		public void ZoneFromNonCardinalRamps<T>(CellLayer<T> zoneable, T value)
 		{
 			var terrainInfo = Map.Rules.TerrainInfo;
 			foreach (var mpos in Map.AllCells.MapCoords)
@@ -1612,7 +1629,8 @@ namespace OpenRA.Mods.Common.MapGenerator
 			Side fallback,
 			IReadOnlyList<MultiBrush> outside,
 			IReadOnlyList<MultiBrush> inside,
-			CellLayer<MultiBrush.Replaceability> replaceMask = null)
+			CellLayer<MultiBrush.Replaceability> replaceMask = null,
+			short? heightOffset = null)
 		{
 			CheckHasMapShapeOrNull(replaceMask);
 
@@ -1627,7 +1645,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			foreach (var tiling in tilings)
-				tiling.Paint(Map, ActorPlans, CPos.Zero, null, MultiBrush.Replaceability.Any, random);
+				tiling.Paint(Map, ActorPlans, CPos.Zero, heightOffset, MultiBrush.Replaceability.Any, random);
 
 			if (inside == null && outside == null)
 				return null;
@@ -2057,7 +2075,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 			CellLayer<int> plan,
 			CellLayer<ResourceTypeInfo> typePlan,
 			long targetValue,
-			bool bakeDensities = false)
+			ResourceDensityMode densityMode = ResourceDensityMode.Adjacency)
 		{
 			CheckHasMapShape(plan);
 			CheckHasMapShape(typePlan);
@@ -2168,7 +2186,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 						remaining -= AddResource(cpos);
 			}
 
-			if (bakeDensities)
+			if (densityMode == ResourceDensityMode.BakedAdjacency)
 			{
 				foreach (var cpos in Map.Resources.CellRegion)
 				{
@@ -2272,26 +2290,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 			decorable = ImproveSymmetry(decorable, false, (a, b) => a && b);
 
 			return decorable;
-		}
-
-		/// <summary>
-		/// Get the highest cell height in a MultiBrush collection. Does not consider ramps.
-		/// </summary>
-		public byte MaxHeightOfMultiBrushes(IEnumerable<MultiBrush> brushes)
-		{
-			return brushes
-				.SelectMany(b => b.GetHeightsAndRamps())
-				.Max(v => (byte)v.Height);
-		}
-
-		/// <summary>
-		/// Get the highest cell height in a MultiBrush collection filtered by segment inner type.
-		/// Does not consider ramps.
-		/// </summary>
-		public byte MaxHeightOfSegmentType(string type, IEnumerable<MultiBrush> brushes)
-		{
-			return MaxHeightOfMultiBrushes(
-				brushes.Where(b => b.Segment?.HasInnerType(type) ?? false));
 		}
 	}
 }

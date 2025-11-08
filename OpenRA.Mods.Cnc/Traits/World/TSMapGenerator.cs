@@ -533,16 +533,18 @@ namespace OpenRA.Mods.Cnc.Traits
 				coastPaths,
 				landPlan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 				[new MultiBrush().WithTemplate(map, param.WaterTile, CVec.Zero)],
-				null)
+				null,
+				null,
+				0)
 					?? throw new MapGenerationException("Could not fit tiles for coast");
 
-			var cliffHeight = terraformer.MaxHeightOfSegmentType(
+			var cliffHeight = MultiBrush.MaxHeightOfSegmentType(
 				param.CliffSegmentType,
 				param.SegmentedBrushes);
 
 			if (param.WaterCliffs)
 			{
-				var waterCliffHeight = terraformer.MaxHeightOfSegmentType(
+				var waterCliffHeight = MultiBrush.MaxHeightOfSegmentType(
 					param.WaterCliffSegmentType,
 					param.SegmentedBrushes);
 
@@ -855,7 +857,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 					var resourceMask = CellLayerUtils.Clone(playable);
 					terraformer.ZoneFromActors(resourceMask, false);
-					terraformer.ZoneFromComplexRamps(resourceMask, false);
+					terraformer.ZoneFromNonCardinalRamps(resourceMask, false);
 
 					var (plan, typePlan) = terraformer.PlanResources(
 						resourcePattern,
@@ -866,7 +868,7 @@ namespace OpenRA.Mods.Cnc.Traits
 						plan,
 						typePlan,
 						targetResourceValue,
-						true);
+						Terraformer.ResourceDensityMode.BakedAdjacency);
 					terraformer.ZoneFromResources(zoneable, false);
 
 					// Veins should be max density.
