@@ -350,7 +350,9 @@ namespace OpenRA.Mods.D2k.Traits
 					tilingPaths,
 					plan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 					null,
-					[new MultiBrush().WithTemplate(map, param.RockTile, CVec.Zero)])
+					[new MultiBrush().WithTemplate(map, param.RockTile, CVec.Zero)],
+					null,
+					0)
 						?? throw new MapGenerationException("Could not fit tiles for rock platforms");
 			}
 
@@ -458,7 +460,9 @@ namespace OpenRA.Mods.D2k.Traits
 					tilingPaths,
 					plan[0] ? Terraformer.Side.In : Terraformer.Side.Out,
 					null,
-					param.DuneBrushes)
+					param.DuneBrushes,
+					null,
+					0)
 						?? throw new MapGenerationException("Could not fit tiles for rock platforms");
 			}
 

@@ -434,3 +434,4 @@ EditorWorld:
 		DefaultStart: Clear
 		DefaultInner: Beach
 		DefaultEnd: Clear
+	Inherits@MapGenerators: ^MapGenerators
