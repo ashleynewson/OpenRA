@@ -9,7 +9,6 @@
 */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -19,134 +18,171 @@ using OpenRA.Support;
 namespace OpenRA.Mods.Common.MapGenerator
 {
 	/// <summary>
-	/// Replaces tiles with the appropriate LAT transition tile.
+	/// Replaces tiles to create smooth visual transistions based on "Lookup Adjacent Tile" rules.
 	/// </summary>
 	public sealed class LatTiler
 	{
-		/// <summary
+		/// <summary>
 		/// Defines how a tile should be replaced based on its neighboring tiles.
 		/// </summary>
 		public class LatRule
 		{
-			/// <summary>The tile type that this rule considers to replace.</summary>
-			[FieldLoader.Require]
-			public readonly ushort Main;
+			static readonly string[] LookupNames = [
+				"____",
+				"___x",
+				"__x_",
+				"__xx",
+				"_x__",
+				"_x_x",
+				"_xx_",
+				"_xxx",
+				"x___",
+				"x__x",
+				"x_x_",
+				"x_xx",
+				"xx__",
+				"xx_x",
+				"xxx_",
+				"xxxx",
+			];
 
-			/// <summary>Required type of a neighboring tile to match as a low bit in the lookup.</summary>
-			public readonly ushort? Low = null;
+			static List<ushort> LoadUshortList(MiniYaml my, string field)
+			{
+				var node = my.NodeWithKeyOrDefault(field);
+				if (node == null)
+					return null;
 
-			/// <summary>Required type of a neighboring tile to match as a high bit in the lookup.</summary>
-			public readonly ushort? High = null;
+				var str = node.Value.Value;
+				if (str == null)
+					return [];
+
+				return FieldLoader.GetValue<List<ushort>>(field, str);
+			}
+
+			/// <summary>
+			/// The tile types that this rule considers to replace (or null to match any).
+			/// </summary>
+			[FieldLoader.Ignore]
+			public readonly ImmutableHashSet<ushort> Main = null;
+
+			/// <summary>
+			/// Required type of a neighboring tile to match as a low bit in the lookup, or null
+			/// to match any not in High. One of Low or High must be non-null.
+			/// </summary>
+			[FieldLoader.Ignore]
+			public readonly ImmutableHashSet<ushort> Low = null;
+
+			/// <summary>
+			/// Required type of a neighboring tile to match as a high bit in the lookup, or null
+			/// to match any not in Low. One of Low or High must be non-null.
+			/// </summary>
+			[FieldLoader.Ignore]
+			public readonly ImmutableHashSet<ushort> High = null;
 
 			/// <summary>Replacement lookup table. Array index is a bitmask of U=1, R=2, D=4, L=8.</summary>
 			[FieldLoader.Ignore]
-			public readonly ImmutableArray<ushort> Replacements;
+			public readonly ImmutableArray<ImmutableArray<MultiBrush>> Replacements;
 
-			public LatRule(
-				ushort main,
-				ushort? low,
-				ushort? high,
-				ImmutableArray<ushort> replacements)
-			{
-				if (!low.HasValue && !high.HasValue)
-					throw new ArgumentException("both lowTile and highTile were null");
-
-				if (replacements.Length != 16)
-					throw new ArgumentException("replacements did not have 16 elements");
-
-				Main = main;
-				Low = low;
-				High = high;
-				Replacements = replacements;
-			}
-
-			public LatRule(MiniYaml my)
+			public LatRule(MiniYaml my, ITemplatedTerrainInfo itti)
 			{
 				FieldLoader.Load(this, my);
-				Replacements = FieldLoader.GetValue<List<ushort>>(
-					nameof(Replacements), my.NodeWithKey(nameof(Replacements)).Value.Value)
-						.ToImmutableArray();
 
-				if (!Low.HasValue && !High.HasValue)
+				var autoMain = my.NodeWithKeyOrDefault("AutoMain") != null;
+				List<ushort> main;
+				if (autoMain)
+					main = LoadUshortList(my, "AutoMain");
+				else
+					main = LoadUshortList(my, "Main");
+
+				Low = LoadUshortList(my, "Low")?.ToImmutableHashSet();
+				High = LoadUshortList(my, "High")?.ToImmutableHashSet();
+
+				if (Low == null && High == null)
 					throw new YamlException("both Low and High were null in LatRule");
 
-				if (Replacements.Length != 16)
-					throw new ArgumentException("Replacements did not have 16 elements");
+				if (Low != null && High != null && Low.Any(High.Contains))
+					throw new YamlException("Low and High have overlap in LatRule");
+
+				// For now, just support ushort lists. Arbitrary MultiBrushes could be supported by
+				// also treating the numeric nodes as MultiBrush collections.
+				var replacements = new ImmutableArray<MultiBrush>[16];
+				for (var i = 0; i < 16; i++)
+				{
+					var node = my.NodeWithKeyOrDefault(LookupNames[i]);
+					if (node == null)
+						continue;
+
+					var list = FieldLoader.GetValue<List<ushort>>(LookupNames[i], node.Value.Value);
+
+					if (autoMain)
+						main.AddRange(list);
+
+					replacements[i] =
+						list
+							.Select(t => new MultiBrush().WithTemplate(itti, t, CVec.Zero, 0))
+							.ToImmutableArray();
+					if (replacements[i].Length == 0)
+						throw new YamlException($"LatRule replacement {LookupNames[i]} has no values");
+				}
+
+				Main = main?.ToImmutableHashSet();
+				Replacements = replacements.ToImmutableArray();
 			}
 
 			/// <summary>
 			/// Given a tile type and its neighboring tile types, determine whether this rule
-			/// specifies a replacement tile type and return it if so (else null).
+			/// specifies a replacement MultiBrush and return it if so (else null).
 			/// </summary>
-			public ushort? OfferReplacement(ushort main, ushort[] adjacents)
+			/// <param name="main">The central tile, for which replacement is being considered.</param>
+			/// <param name="adjacents">The surrounding -Y, +X, +Y, -X tiles (in that order).</param>
+			/// <param name="random">Random source for picking replacements if multiple match.</param>
+			public MultiBrush OfferReplacement(ushort main, ushort[] adjacents, MersenneTwister random)
 			{
-				if (main != Main)
+				if (Main != null && !Main.Contains(main))
 					return null;
 
-				if (Low.HasValue &&
-					High.HasValue &&
-					adjacents.Any(t => t != Low.Value && t != High.Value))
+				if (Low != null &&
+					High != null &&
+					!adjacents.All(t => Low.Contains(t) || High.Contains(t)))
 				{
 					return null;
 				}
 
 				bool CheckBit(ushort type) =>
-					Low.HasValue
-						? type != Low.Value
-						: type == High.Value;
+					(Low != null)
+						? !Low.Contains(type)
+						: High.Contains(type);
 
 				var index =
 					(CheckBit(adjacents[0]) ? 1 : 0) |
 					(CheckBit(adjacents[1]) ? 2 : 0) |
 					(CheckBit(adjacents[2]) ? 4 : 0) |
 					(CheckBit(adjacents[3]) ? 8 : 0);
-				return Replacements[index];
+
+				if (Replacements[index] == null)
+					return null;
+
+				return MultiBrush.PickAny(Replacements[index], random);
 			}
 		}
 
-		static TerrainTile PickTile(MersenneTwister random, ITemplatedTerrainInfo templatedTerrainInfo, ushort tileType)
-		{
-			if (random != null && templatedTerrainInfo != null && templatedTerrainInfo.Templates.TryGetValue(tileType, out var template) && template.PickAny)
-				return new TerrainTile(tileType, (byte)random.Next(0, template.TilesCount));
-			else
-				return new TerrainTile(tileType, 0);
-		}
-
 		readonly ImmutableArray<LatRule> latRules;
-		readonly ImmutableDictionary<ushort, ushort> canonicalizations;
 
-		public LatTiler(
-			ImmutableArray<LatRule> latRules,
-			ImmutableDictionary<ushort, ushort> canonicalizations)
+		public LatTiler(ImmutableArray<LatRule> latRules)
 		{
 			this.latRules = latRules;
-			this.canonicalizations = canonicalizations;
 		}
 
-		public LatTiler(MiniYaml my)
+		public LatTiler(MiniYaml my, ITemplatedTerrainInfo itti)
 		{
 			var latRules = new List<LatRule>();
-			var canonicalizations = new Dictionary<ushort, ushort>();
 			foreach (var node in my.Nodes)
 			{
 				var parts = node.Key.Split('@');
 				switch (parts[0])
 				{
 					case "Rule":
-						latRules.Add(new LatRule(node.Value));
-						break;
-					case "UseAs":
-						if (parts.Length != 2 || !Exts.TryParseUshortInvariant(parts[1], out var to))
-							throw new YamlException($"invalid UseAs `{node.Key}`");
-
-						foreach (var fromStr in node.Value.Value.Split(","))
-						{
-							if (!Exts.TryParseUshortInvariant(fromStr, out var from))
-								throw new YamlException($"invalid UseAs `{node.Key}`");
-
-							canonicalizations.Add(from, to);
-						}
-
+						latRules.Add(new LatRule(node.Value, itti));
 						break;
 					default:
 						throw new YamlException($"Invalid LatTiler key `{node.Key}`");
@@ -154,66 +190,49 @@ namespace OpenRA.Mods.Common.MapGenerator
 			}
 
 			this.latRules = latRules.ToImmutableArray();
-			this.canonicalizations = canonicalizations.ToImmutableDictionary();
-		}
-
-		ushort CanonicalType(TerrainTile tile)
-		{
-			return canonicalizations.GetValueOrDefault(tile.Type, tile.Type);
 		}
 
 		/// <summary>
 		/// Provided a CellLayer of tiles, runs (first matching) rules against all tiles.
 		/// </summary>
-		/// <param name="random">Optional random source for picking tile indices.</param>
-		/// <param name="templatedTerrainInfo">Optional, used for picking tile indices.</param>
-		/// <param name="original">CellLayer of tiles.</param>
-		/// <returns>A copy of the original CellLayer with applicable replacements made.</returns>
-		public CellLayer<TerrainTile> OfferReplacements(
-			MersenneTwister random,
-			ITemplatedTerrainInfo templatedTerrainInfo,
-			CellLayer<TerrainTile> original)
+		/// <param name="map">Map to offer replacements for.</param>
+		/// <param name="random">Optional random source for picking replacements.</param>
+		/// <returns>A MultiBrush with the applicable map edits to apply.</returns>
+		public MultiBrush OfferReplacements(
+			Map map,
+			MersenneTwister random)
 		{
-			var replaced = CellLayerUtils.Clone(original);
-			foreach (var cpos in original.CellRegion)
+			var result = new MultiBrush();
+			var gridType = map.Grid.Type;
+
+			foreach (var cpos in map.Tiles.CellRegion)
 			{
-				var main = original[cpos].Type;
+				var main = map.Tiles[cpos].Type;
 				ushort[] adjacents = [main, main, main, main];
-				if (original.Contains(cpos + new CVec(0, -1)))
-					adjacents[0] = CanonicalType(original[cpos + new CVec(0, -1)]);
+				if (map.Tiles.Contains(cpos + new CVec(0, -1)))
+					adjacents[0] = map.Tiles[cpos + new CVec(0, -1)].Type;
 
-				if (original.Contains(cpos + new CVec(1, 0)))
-					adjacents[1] = CanonicalType(original[cpos + new CVec(1, 0)]);
+				if (map.Tiles.Contains(cpos + new CVec(1, 0)))
+					adjacents[1] = map.Tiles[cpos + new CVec(1, 0)].Type;
 
-				if (original.Contains(cpos + new CVec(0, 1)))
-					adjacents[2] = CanonicalType(original[cpos + new CVec(0, 1)]);
+				if (map.Tiles.Contains(cpos + new CVec(0, 1)))
+					adjacents[2] = map.Tiles[cpos + new CVec(0, 1)].Type;
 
-				if (original.Contains(cpos + new CVec(-1, 0)))
-					adjacents[3] = CanonicalType(original[cpos + new CVec(-1, 0)]);
+				if (map.Tiles.Contains(cpos + new CVec(-1, 0)))
+					adjacents[3] = map.Tiles[cpos + new CVec(-1, 0)].Type;
 
 				foreach (var latRule in latRules)
 				{
-					var maybe = latRule.OfferReplacement(main, adjacents);
-					if (maybe.HasValue)
+					var replacement = latRule.OfferReplacement(main, adjacents, random);
+					if (replacement != null)
 					{
-						replaced[cpos] = PickTile(random, templatedTerrainInfo, maybe.Value);
+						result.MergeFrom(replacement, cpos - CPos.Zero, gridType, map.Height[cpos]);
 						break;
 					}
 				}
 			}
 
-			return replaced;
-		}
-
-		/// <summary>
-		/// Wrapper over OfferReplacements. Runs rules over all tiles in a map, modifying the map.
-		/// </summary>
-		public void Replace(MersenneTwister random, Map map)
-		{
-			var templatedTerrainInfo = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
-			var updated = OfferReplacements(random, templatedTerrainInfo, map.Tiles);
-			foreach (var mpos in map.Tiles.CellRegion.MapCoords)
-				map.Tiles[mpos] = updated[mpos];
+			return result;
 		}
 	}
 }

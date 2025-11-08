@@ -578,9 +578,14 @@ namespace OpenRA.Mods.Common.MapGenerator
 		/// </summary>
 		public MultiBrush WithTemplate(Map map, ushort templateId, CVec offset, short heightOffset = 0)
 		{
-			var tileset = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
-			if (!tileset.Templates.TryGetValue(templateId, out var templateInfo))
-				throw new ArgumentException($"Map's tileset does not contain template with ID {templateId}.");
+			var itti = map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			return WithTemplate(itti, templateId, offset, heightOffset);
+		}
+
+		public MultiBrush WithTemplate(ITemplatedTerrainInfo itti, ushort templateId, CVec offset, short heightOffset = 0)
+		{
+			if (!itti.Templates.TryGetValue(templateId, out var templateInfo))
+				throw new ArgumentException($"Tileset does not contain template with ID {templateId}.");
 			return WithTemplate(templateInfo, offset, heightOffset);
 		}
 
@@ -985,6 +990,22 @@ namespace OpenRA.Mods.Common.MapGenerator
 				for (int i = tileRange.MinIndex; i <= tileRange.MaxIndex; i++)
 					possible.Add(new(tileRange.Type, (byte)i));
 			return possible;
+		}
+
+		/// <summary>Pick a random brush from a list, respecting brush weights.</summary>
+		public static MultiBrush PickAny(IReadOnlyList<MultiBrush> brushes, MersenneTwister random)
+		{
+			if (brushes.Count == 0)
+				throw new ArgumentException("brushes was empty");
+
+			if (brushes.Count == 1)
+				return brushes[0];
+
+			var weights = new int[brushes.Count];
+			for (var i = 0; i < weights.Length; i++)
+				weights[i] = brushes[i].Weight;
+
+			return brushes[random.PickWeighted(weights)];
 		}
 	}
 }

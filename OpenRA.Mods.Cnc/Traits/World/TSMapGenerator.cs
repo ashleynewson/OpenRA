@@ -221,6 +221,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			public readonly LatTiler LatTiler;
 			[FieldLoader.Ignore]
 			public readonly LatTiler IceLatTiler = null;
+			[FieldLoader.Require]
+			public readonly bool UseIceLatTiler = false;
 
 			[FieldLoader.Ignore]
 			public readonly ResourceTypeInfo DefaultResource;
@@ -280,9 +282,9 @@ namespace OpenRA.Mods.Cnc.Traits
 				RampTiles = FieldLoader.GetValue<List<ushort>>(
 					nameof(RampTiles),
 					my.NodeWithKey(nameof(RampTiles)).Value.Value);
-				LatTiler = new LatTiler(my.NodeWithKey("LatTiler").Value);
+				LatTiler = new LatTiler(my.NodeWithKey("LatTiler").Value, terrainInfo);
 				if (my.NodeWithKeyOrDefault("IceLatTiler") != null)
-					IceLatTiler = new LatTiler(my.NodeWithKeyOrDefault("IceLatTiler").Value);
+					IceLatTiler = new LatTiler(my.NodeWithKeyOrDefault("IceLatTiler").Value, terrainInfo);
 
 				var resourceTypes = map.Rules.Actors[SystemActors.World].TraitInfoOrDefault<ResourceLayerInfo>().ResourceTypes;
 				if (!resourceTypes.TryGetValue(my.NodeWithKey("DefaultResource").Value.Value, out DefaultResource))
@@ -921,8 +923,10 @@ namespace OpenRA.Mods.Cnc.Traits
 				DecorateFloorTiles(tile, fraction);
 
 			// Cosmetically repaint tiles
-			param.LatTiler.Replace(pickAnyRandom, map);
-			param.IceLatTiler?.Replace(pickAnyRandom, map);
+			terraformer.PaintTiling(pickAnyRandom, param.LatTiler.OfferReplacements(map, pickAnyRandom), 0);
+			if (param.UseIceLatTiler)
+				terraformer.PaintTiling(pickAnyRandom, param.IceLatTiler.OfferReplacements(map, pickAnyRandom), 0);
+
 			terraformer.RepaintTiles(repaintRandom, param.RepaintTiles);
 
 			terraformer.BakeMap();

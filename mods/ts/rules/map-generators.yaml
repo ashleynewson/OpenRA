@@ -84,6 +84,7 @@
 						RepaintTiles:
 							341: Water
 						RampTiles: 0, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+						UseIceLatTiler: False
 			MultiChoiceOption@hidden_tileset_overrides:
 				Choice@temperat:
 					Tileset: TEMPERATE
@@ -94,17 +95,62 @@
 							150: 250
 						LatTiler:
 							Rule@Rough:
-								Main: 150
+								AutoMain:
 								Low: 150
-								Replacements: 150, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166
+								____: 150
+								___x: 152
+								__x_: 153
+								__xx: 154
+								_x__: 155
+								_x_x: 156
+								_xx_: 157
+								_xxx: 158
+								x___: 159
+								x__x: 160
+								x_x_: 161
+								x_xx: 162
+								xx__: 163
+								xx_x: 164
+								xxx_: 165
+								xxxx: 166
 							Rule@Sand:
-								Main: 535
+								AutoMain:
 								Low: 535
-								Replacements: 535, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549, 550, 551
+								____: 535
+								___x: 537
+								__x_: 538
+								__xx: 539
+								_x__: 540
+								_x_x: 541
+								_xx_: 542
+								_xxx: 543
+								x___: 544
+								x__x: 545
+								x_x_: 546
+								x_xx: 547
+								xx__: 548
+								xx_x: 549
+								xxx_: 550
+								xxxx: 551
 							Rule@Green:
-								Main: 626
+								AutoMain:
 								Low: 626
-								Replacements: 626, 628, 629, 630, 631, 632, 633, 634, 635, 636, 637, 638, 639, 640, 641, 642
+								____: 626
+								___x: 628
+								__x_: 629
+								__xx: 630
+								_x__: 631
+								_x_x: 632
+								_xx_: 633
+								_xxx: 634
+								x___: 635
+								x__x: 636
+								x_x_: 637
+								x_xx: 638
+								xx__: 639
+								xx_x: 640
+								xxx_: 641
+								xxxx: 642
 				Choice@snow:
 					Tileset: SNOW
 					Settings:
@@ -115,17 +161,82 @@
 							1006: 150
 						LatTiler:
 							Rule@Rough:
-								Main: 150
+								AutoMain:
 								Low: 150
-								Replacements: 150, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166
+								____: 150
+								___x: 152
+								__x_: 153
+								__xx: 154
+								_x__: 155
+								_x_x: 156
+								_xx_: 157
+								_xxx: 158
+								x___: 159
+								x__x: 160
+								x_x_: 161
+								x_xx: 162
+								xx__: 163
+								xx_x: 164
+								xxx_: 165
+								xxxx: 166
 							Rule@Rock:
-								Main: 989
+								AutoMain:
 								Low: 989
-								Replacements: 989, 991, 992, 993, 994, 995, 996, 997, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005
+								____: 989
+								___x: 991
+								__x_: 992
+								__xx: 993
+								_x__: 994
+								_x_x: 995
+								_xx_: 996
+								_xxx: 997
+								x___: 998
+								x__x: 999
+								x_x_: 1000
+								x_xx: 1001
+								xx__: 1002
+								xx_x: 1003
+								xxx_: 1004
+								xxxx: 1005
 							Rule@Grey:
-								Main: 1006
+								AutoMain:
 								Low: 1006
-								Replacements: 1006, 1008, 1009, 1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1007
+								____: 1006
+								___x: 1008
+								__x_: 1009
+								__xx: 1010
+								_x__: 1011
+								_x_x: 1012
+								_xx_: 1013
+								_xxx: 1014
+								x___: 1015
+								x__x: 1016
+								x_x_: 1017
+								x_xx: 1018
+								xx__: 1019
+								xx_x: 1020
+								xxx_: 1021
+								xxxx: 1007
+						IceLatTiler:
+							Rule@Ice:
+								AutoMain:
+								Low: 341
+								____: 341
+								___x: 456, 520, 584
+								__x_: 457, 521, 585
+								__xx: 458, 522, 586
+								_x__: 459, 523, 587
+								_x_x: 460, 524, 588
+								_xx_: 461, 525, 589
+								_xxx: 462, 526, 590
+								x___: 463, 527, 591
+								x__x: 464, 528, 592
+								x_x_: 465, 529, 593
+								x_xx: 466, 530, 594
+								xx__: 467, 531, 595
+								xx_x: 468, 532, 596
+								xxx_: 469, 533, 597
+								xxxx: 470, 534, 598
 			IntegerOption@Seed:
 				Label: label-ts-map-generator-option-seed
 				Parameter: Seed
@@ -451,11 +562,7 @@
 					Settings:
 						WaterCliffs: True
 						WaterRoughness: 1000
-						IceLatTiler:
-							Rule@Ice:
-								Main: 341
-								Low: 341
-								Replacements: 341, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470
+						UseIceLatTiler: True
 				Choice@TemperateMixed:
 					Label: label-ts-map-generator-choice-coastlines-mixed
 					Tileset: TEMPERATE
@@ -467,11 +574,7 @@
 					Settings:
 						WaterCliffs: True
 						BeachSegmentTypes: IceShore
-						IceLatTiler:
-							Rule@Ice:
-								Main: 341
-								Low: 341
-								Replacements: 341, 456, 457, 458, 459, 460, 461, 462, 463, 464, 465, 466, 467, 468, 469, 470
+						UseIceLatTiler: True
 			BooleanOption@DenyWalledArea:
 				Label: label-ts-map-generator-option-deny-walled-areas
 				Parameter: DenyWalledAreas
