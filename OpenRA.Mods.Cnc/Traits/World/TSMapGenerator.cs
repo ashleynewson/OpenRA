@@ -436,13 +436,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			terraformer.InitMap();
 
-			RampTiler rampTiler;
-			{
-				var brushes = param.RampTiles
-					.Select(t => new MultiBrush().WithTemplate(map, t, CVec.Zero))
-					.ToList();
-				rampTiler = new RampTiler(map, brushes);
-			}
+			var rampTiler = new RampTiler(map, param.RampTiles);
 
 			var clearZone = new Terraformer.PathPartitionZone()
 			{

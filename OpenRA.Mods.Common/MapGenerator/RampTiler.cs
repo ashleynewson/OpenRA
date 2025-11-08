@@ -402,7 +402,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 		record struct RampProperties
 		{
 			public MultiBrush[] Brushes;
-			public int[] Weights;
 			public byte Tl;
 			public byte Tr;
 			public byte Br;
@@ -464,17 +463,25 @@ namespace OpenRA.Mods.Common.MapGenerator
 		// Only contains mappings for which there are brushes.
 		readonly Dictionary<int, List<byte>> rampLookup;
 
-		public RampTiler(Map map, IReadOnlyList<MultiBrush> brushes)
+		public RampTiler(Map map, IEnumerable<ushort> rampTemplates)
+			: this(
+				map,
+				rampTemplates
+					.Select(t => new MultiBrush().WithTemplate(map, t, CVec.Zero))
+					.ToList())
+		{ }
+
+		public RampTiler(Map map, IReadOnlyList<MultiBrush> rampBrushes)
 		{
 			this.map = map;
 			var heightStep = map.Grid.TileScale / 2;
 
 			var rampsToBrushes = new Dictionary<byte, List<MultiBrush>>();
-			foreach (var brush in brushes)
+			foreach (var brush in rampBrushes)
 			{
 				var heightsAndRamps = brush.GetHeightsAndRamps().ToList();
 				if (heightsAndRamps.Count != 1 || heightsAndRamps[0].Height != 0)
-					throw new NotImplementedException("brushes that are not single-tile are not supported");
+					throw new ArgumentException("brushes that are not single-tile are not supported");
 
 				var ramp = heightsAndRamps[0].Ramp;
 				if (!rampsToBrushes.ContainsKey(ramp))
@@ -497,7 +504,6 @@ namespace OpenRA.Mods.Common.MapGenerator
 				rampProperties[ramp] = new RampProperties()
 				{
 					Brushes = rampsToBrushes.GetValueOrDefault(ramp, []).ToArray(),
-					Weights = rampsToBrushes.GetValueOrDefault(ramp, []).Select(b => b.Weight).ToArray(),
 					Tl = (byte)tl,
 					Tr = (byte)tr,
 					Br = (byte)br,
@@ -758,8 +764,7 @@ namespace OpenRA.Mods.Common.MapGenerator
 				if (brushes.Length == 0)
 					return null;
 
-				var weights = rampProperties[ramps[cpos]].Weights;
-				var brush = brushes[random.PickWeighted(weights)];
+				var brush = MultiBrush.PickAny(brushes, random);
 				result.MergeFrom(brush, cpos - CPos.Zero, mapGridType, heights[cpos]);
 			}
 
